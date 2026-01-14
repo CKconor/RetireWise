@@ -64,3 +64,24 @@ export const DEFAULT_RETURN_RATES: Record<AccountType, number> = {
   gia: 7,
   savings: 3.5,
 };
+
+export interface Milestone {
+  percentage: number;       // 25, 50, 75, 100
+  amount: number;           // Target amount for this milestone
+  reached: boolean;
+  projectedReachAge: number | null;
+}
+
+export interface WhatIfResult {
+  scenario: string;
+  projectedTotal: number;
+  difference: number;
+  percentChange: number;
+}
+
+export interface StressTestResult {
+  dropPercent: number;
+  postDropTotal: number;
+  recoveryYears: number;
+  stillMeetsTarget: boolean;
+}

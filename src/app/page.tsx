@@ -8,6 +8,10 @@ import { SummaryCard } from '@/components/summary-card';
 import { StatsCards } from '@/components/stats-cards';
 import { ProjectionChart } from '@/components/projection-chart';
 import { AccountForm } from '@/components/account-form';
+import { PeaceOfMindCard } from '@/components/peace-of-mind-card';
+import { MilestoneTracker } from '@/components/milestone-tracker';
+import { WhatIfScenarios } from '@/components/what-if-scenarios';
+import { StressTestPanel } from '@/components/stress-test-panel';
 import { Button } from '@/components/ui/button';
 import { Account } from '@/types';
 
@@ -59,10 +63,14 @@ export default function Home() {
             <ProfileForm profile={profile} onUpdate={updateProfile} />
             <SummaryCard accounts={accounts} profile={profile} />
             <StatsCards accounts={accounts} profile={profile} />
+            <PeaceOfMindCard accounts={accounts} profile={profile} />
           </div>
 
           {/* Right Column - Accounts & Chart */}
           <div className="space-y-6 lg:col-span-8">
+            {/* Milestone Tracker */}
+            <MilestoneTracker accounts={accounts} profile={profile} />
+
             {/* Account Cards Grid */}
             <AccountList
               accounts={accounts}
@@ -74,6 +82,12 @@ export default function Home() {
 
             {/* Projection Chart */}
             <ProjectionChart accounts={accounts} profile={profile} />
+
+            {/* What-If Scenarios & Stress Test */}
+            <div className="grid gap-6 lg:grid-cols-2">
+              <WhatIfScenarios accounts={accounts} profile={profile} />
+              <StressTestPanel accounts={accounts} profile={profile} />
+            </div>
           </div>
         </div>
       </div>
