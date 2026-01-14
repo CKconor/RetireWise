@@ -147,7 +147,9 @@ export function MilestoneTracker({ accounts, profile }: MilestoneTrackerProps) {
                 milestone.reached
                   ? 'bg-emerald-50'
                   : milestone === nextMilestone
-                  ? 'bg-amber-50 ring-1 ring-amber-200'
+                  ? isOnTarget
+                    ? 'bg-emerald-50 ring-1 ring-emerald-200'
+                    : 'bg-amber-50 ring-1 ring-amber-200'
                   : 'bg-slate-50'
               }`}
             >
@@ -155,7 +157,9 @@ export function MilestoneTracker({ accounts, profile }: MilestoneTrackerProps) {
                 milestone.reached
                   ? 'text-emerald-600'
                   : milestone === nextMilestone
-                  ? 'text-amber-600'
+                  ? isOnTarget
+                    ? 'text-emerald-600'
+                    : 'text-amber-600'
                   : 'text-slate-400'
               }`}>
                 {milestone.label}
@@ -176,13 +180,17 @@ export function MilestoneTracker({ accounts, profile }: MilestoneTrackerProps) {
 
         {/* Next Milestone Message */}
         {nextMilestone ? (
-          <div className="rounded-lg bg-gradient-to-r from-amber-50 to-orange-50 p-3">
-            <p className="text-sm font-medium text-amber-800">
+          <div className={`rounded-lg p-3 ${
+            isOnTarget
+              ? 'bg-gradient-to-r from-emerald-50 to-teal-50'
+              : 'bg-gradient-to-r from-amber-50 to-orange-50'
+          }`}>
+            <p className={`text-sm font-medium ${isOnTarget ? 'text-emerald-800' : 'text-amber-800'}`}>
               Next milestone: {formatCurrency(nextMilestone.amount)}
-              <span className="font-normal text-amber-600"> ({formatCurrency(nextMilestone.amount - currentBalance)} to go)</span>
+              <span className={`font-normal ${isOnTarget ? 'text-emerald-600' : 'text-amber-600'}`}> ({formatCurrency(nextMilestone.amount - currentBalance)} to go)</span>
             </p>
             {nextMilestone.projectedReachAge && (
-              <p className="text-xs text-amber-600">
+              <p className={`text-xs ${isOnTarget ? 'text-emerald-600' : 'text-amber-600'}`}>
                 Projected to reach at age {nextMilestone.projectedReachAge}
               </p>
             )}
