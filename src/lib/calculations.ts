@@ -54,18 +54,24 @@ export function generateProjection(
 
   const currentYear = new Date().getFullYear();
   const dataPoints: ProjectionDataPoint[] = [];
+  const performanceVariance = 2; // ±2% for over/underperformance scenarios
 
   for (let year = 0; year <= yearsToRetirement; year++) {
     const months = year * 12;
     const age = profile.currentAge + year;
 
     let total = 0;
+    let totalOverperformance = 0;
+    let totalUnderperformance = 0;
+
     const dataPoint: ProjectionDataPoint = {
       year: currentYear + year,
       age,
       label: `Y${year}`,
       total: 0,
       totalReal: 0,
+      overperformanceReal: 0,
+      underperformanceReal: 0,
     };
 
     for (const account of accounts) {
@@ -75,13 +81,34 @@ export function generateProjection(
         account.annualReturnRate,
         months
       );
+      const overValue = calculateFutureValue(
+        account.currentBalance,
+        account.monthlyContribution,
+        account.annualReturnRate + performanceVariance,
+        months
+      );
+      const underValue = calculateFutureValue(
+        account.currentBalance,
+        account.monthlyContribution,
+        Math.max(0, account.annualReturnRate - performanceVariance),
+        months
+      );
+
       dataPoint[account.id] = Math.round(value);
       total += value;
+      totalOverperformance += overValue;
+      totalUnderperformance += underValue;
     }
 
     dataPoint.total = Math.round(total);
     dataPoint.totalReal = Math.round(
       adjustForInflation(total, year, profile.expectedInflation)
+    );
+    dataPoint.overperformanceReal = Math.round(
+      adjustForInflation(totalOverperformance, year, profile.expectedInflation)
+    );
+    dataPoint.underperformanceReal = Math.round(
+      adjustForInflation(totalUnderperformance, year, profile.expectedInflation)
     );
     dataPoints.push(dataPoint);
   }

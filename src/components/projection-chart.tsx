@@ -73,6 +73,14 @@ export function ProjectionChart({ accounts, profile }: ProjectionChartProps) {
                   <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
                   <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                 </linearGradient>
+                <linearGradient id="colorOver" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.08} />
+                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="colorUnder" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#f97316" stopOpacity={0.08} />
+                  <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
+                </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
               <XAxis
@@ -90,7 +98,15 @@ export function ProjectionChart({ accounts, profile }: ProjectionChartProps) {
                 dx={-10}
               />
               <Tooltip
-                formatter={(value) => [formatCurrency(value as number), 'Projected Value']}
+                formatter={(value, name) => {
+                  const labels: Record<string, string> = {
+                    totalReal: 'Expected',
+                    overperformanceReal: 'Optimistic (+2%)',
+                    underperformanceReal: 'Conservative (-2%)',
+                  };
+                  const key = name ?? '';
+                  return [formatCurrency(value as number), labels[key] || key];
+                }}
                 labelFormatter={(label) => `Year ${String(label).replace('Y', '')}`}
                 contentStyle={{
                   backgroundColor: '#fff',
@@ -113,8 +129,34 @@ export function ProjectionChart({ accounts, profile }: ProjectionChartProps) {
               />
               <Area
                 type="monotone"
+                dataKey="overperformanceReal"
+                name="overperformanceReal"
+                stroke="#3b82f6"
+                strokeWidth={1.5}
+                strokeOpacity={0.5}
+                strokeDasharray="4 2"
+                fillOpacity={1}
+                fill="url(#colorOver)"
+                dot={false}
+                activeDot={{ r: 4, fill: '#3b82f6', stroke: '#fff', strokeWidth: 2 }}
+              />
+              <Area
+                type="monotone"
+                dataKey="underperformanceReal"
+                name="underperformanceReal"
+                stroke="#f97316"
+                strokeWidth={1.5}
+                strokeOpacity={0.5}
+                strokeDasharray="4 2"
+                fillOpacity={1}
+                fill="url(#colorUnder)"
+                dot={false}
+                activeDot={{ r: 4, fill: '#f97316', stroke: '#fff', strokeWidth: 2 }}
+              />
+              <Area
+                type="monotone"
                 dataKey="totalReal"
-                name="Projected (Real)"
+                name="totalReal"
                 stroke="#10b981"
                 strokeWidth={3}
                 fillOpacity={1}

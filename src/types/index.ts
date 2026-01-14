@@ -27,6 +27,8 @@ export interface ProjectionDataPoint {
   label: string; // e.g., "Y0", "Y1", etc.
   total: number;
   totalReal: number; // inflation-adjusted
+  overperformanceReal: number; // optimistic scenario (+2% returns)
+  underperformanceReal: number; // pessimistic scenario (-2% returns)
   [accountId: string]: number | string;
 }
 
@@ -49,10 +51,10 @@ export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
 
 export const ACCOUNT_TYPE_COLORS: Record<AccountType, { bg: string; text: string }> = {
   isa: { bg: 'bg-emerald-100', text: 'text-emerald-700' },
-  sipp: { bg: 'bg-pink-100', text: 'text-pink-700' },
-  pension: { bg: 'bg-orange-100', text: 'text-orange-700' },
-  gia: { bg: 'bg-teal-100', text: 'text-teal-700' },
-  savings: { bg: 'bg-blue-100', text: 'text-blue-700' },
+  sipp: { bg: 'bg-rose-100', text: 'text-rose-700' },
+  pension: { bg: 'bg-violet-100', text: 'text-violet-700' },
+  gia: { bg: 'bg-sky-100', text: 'text-sky-700' },
+  savings: { bg: 'bg-amber-100', text: 'text-amber-700' },
 };
 
 export const DEFAULT_RETURN_RATES: Record<AccountType, number> = {
