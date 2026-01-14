@@ -4,6 +4,7 @@ import { Account, UserProfile } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   calculateTotalBalance,
+  calculateProjectedTotalReal,
   generateProjection,
   formatCurrency,
   formatCurrencyCompact,
@@ -16,6 +17,7 @@ interface MilestoneTrackerProps {
 
 export function MilestoneTracker({ accounts, profile }: MilestoneTrackerProps) {
   const currentBalance = calculateTotalBalance(accounts);
+  const projectedTotal = calculateProjectedTotalReal(accounts, profile);
   const projection = generateProjection(accounts, profile);
 
   // Calculate progress based on current balance
@@ -23,16 +25,35 @@ export function MilestoneTracker({ accounts, profile }: MilestoneTrackerProps) {
     ? (currentBalance / profile.targetAmount) * 100
     : 0;
 
+  // Check if on target (projected to meet or exceed goal)
+  const isOnTarget = projectedTotal >= profile.targetAmount;
+
   // Build milestones based on current balance
-  const milestonePercentages = [25, 50, 75, 100];
-  const milestones = milestonePercentages.map(percentage => {
-    const milestoneAmount = (profile.targetAmount * percentage) / 100;
-    const reached = currentBalance >= milestoneAmount;
+  // Include both percentage-based milestones and fixed £100k milestone
+  const percentageMilestones = [25, 50, 75, 100].map(percentage => ({
+    amount: (profile.targetAmount * percentage) / 100,
+    label: `${percentage}%`,
+    isFixed: false,
+  }));
+
+  const fixedMilestones = [
+    { amount: 100000, label: '£100K', isFixed: true },
+  ];
+
+  // Combine and sort by amount, filter out duplicates and milestones beyond target
+  const allMilestoneAmounts = [...percentageMilestones, ...fixedMilestones]
+    .filter(m => m.amount <= profile.targetAmount)
+    .sort((a, b) => a.amount - b.amount)
+    .filter((m, i, arr) => i === 0 || Math.abs(m.amount - arr[i - 1].amount) > 1000); // Remove near-duplicates
+
+  const milestones = allMilestoneAmounts.map(m => {
+    const reached = currentBalance >= m.amount;
+    const percentage = (m.amount / profile.targetAmount) * 100;
 
     // Find projected age to reach this milestone
     let projectedReachAge: number | null = null;
     for (const point of projection) {
-      if (point.totalReal >= milestoneAmount) {
+      if (point.totalReal >= m.amount) {
         projectedReachAge = point.age;
         break;
       }
@@ -40,7 +61,8 @@ export function MilestoneTracker({ accounts, profile }: MilestoneTrackerProps) {
 
     return {
       percentage,
-      amount: milestoneAmount,
+      amount: m.amount,
+      label: m.label,
       reached,
       projectedReachAge,
     };
@@ -82,7 +104,11 @@ export function MilestoneTracker({ accounts, profile }: MilestoneTrackerProps) {
         <div className="relative">
           <div className="h-3 w-full overflow-hidden rounded-full bg-slate-100">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-amber-400 to-emerald-400 transition-all duration-500"
+              className={`h-full rounded-full transition-all duration-500 ${
+                isOnTarget
+                  ? 'bg-emerald-500'
+                  : 'bg-gradient-to-r from-amber-400 to-amber-500'
+              }`}
               style={{ width: `${Math.min(100, currentProgress)}%` }}
             />
           </div>
@@ -113,11 +139,11 @@ export function MilestoneTracker({ accounts, profile }: MilestoneTrackerProps) {
         </div>
 
         {/* Milestone Cards */}
-        <div className="grid grid-cols-4 gap-2">
+        <div className="flex flex-wrap gap-2">
           {milestones.map((milestone) => (
             <div
-              key={milestone.percentage}
-              className={`rounded-lg p-2 text-center ${
+              key={milestone.amount}
+              className={`flex-1 min-w-[70px] rounded-lg p-2 text-center ${
                 milestone.reached
                   ? 'bg-emerald-50'
                   : milestone === nextMilestone
@@ -132,7 +158,7 @@ export function MilestoneTracker({ accounts, profile }: MilestoneTrackerProps) {
                   ? 'text-amber-600'
                   : 'text-slate-400'
               }`}>
-                {milestone.percentage}%
+                {milestone.label}
               </p>
               <p className="text-xs text-slate-500">
                 {formatCurrencyCompact(milestone.amount)}
