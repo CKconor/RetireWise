@@ -65,7 +65,7 @@ export function StressTestPanel({ accounts, profile }: StressTestPanelProps) {
               className={`rounded-lg p-4 border ${colors.bg} ${colors.border}`}
             >
               <div className="flex items-start justify-between">
-                <div>
+                <div className='max-w-[60%]'>
                   <p className="font-semibold text-slate-800">
                     {test.dropPercent}% Market Drop
                   </p>
