@@ -62,12 +62,12 @@ export function MilestoneTracker({ accounts, profile }: MilestoneTrackerProps) {
             />
           </div>
           {/* Milestone Markers */}
-          <div className="absolute inset-0 flex justify-between px-0">
+          <div className="absolute inset-0">
             {milestones.map((milestone) => (
               <div
                 key={milestone.percentage}
-                className="relative flex flex-col items-center"
-                style={{ left: `${milestone.percentage - 12.5}%`, width: '25%' }}
+                className="absolute top-0 -translate-x-1/2"
+                style={{ left: `${milestone.percentage}%` }}
               >
                 <div
                   className={`-mt-0.5 h-4 w-4 rounded-full border-2 ${
