@@ -3,8 +3,8 @@
 import { Account, UserProfile } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-  calculateMilestones,
-  calculateProjectedTotalReal,
+  calculateTotalBalance,
+  generateProjection,
   formatCurrency,
   formatCurrencyCompact,
 } from '@/lib/calculations';
@@ -15,11 +15,36 @@ interface MilestoneTrackerProps {
 }
 
 export function MilestoneTracker({ accounts, profile }: MilestoneTrackerProps) {
-  const milestones = calculateMilestones(accounts, profile);
-  const projectedReal = calculateProjectedTotalReal(accounts, profile);
+  const currentBalance = calculateTotalBalance(accounts);
+  const projection = generateProjection(accounts, profile);
+
+  // Calculate progress based on current balance
   const currentProgress = profile.targetAmount > 0
-    ? (projectedReal / profile.targetAmount) * 100
+    ? (currentBalance / profile.targetAmount) * 100
     : 0;
+
+  // Build milestones based on current balance
+  const milestonePercentages = [25, 50, 75, 100];
+  const milestones = milestonePercentages.map(percentage => {
+    const milestoneAmount = (profile.targetAmount * percentage) / 100;
+    const reached = currentBalance >= milestoneAmount;
+
+    // Find projected age to reach this milestone
+    let projectedReachAge: number | null = null;
+    for (const point of projection) {
+      if (point.totalReal >= milestoneAmount) {
+        projectedReachAge = point.age;
+        break;
+      }
+    }
+
+    return {
+      percentage,
+      amount: milestoneAmount,
+      reached,
+      projectedReachAge,
+    };
+  });
 
   // Find the next milestone to achieve
   const nextMilestone = milestones.find(m => !m.reached);
@@ -128,10 +153,11 @@ export function MilestoneTracker({ accounts, profile }: MilestoneTrackerProps) {
           <div className="rounded-lg bg-gradient-to-r from-amber-50 to-orange-50 p-3">
             <p className="text-sm font-medium text-amber-800">
               Next milestone: {formatCurrency(nextMilestone.amount)}
+              <span className="font-normal text-amber-600"> ({formatCurrency(nextMilestone.amount - currentBalance)} to go)</span>
             </p>
             {nextMilestone.projectedReachAge && (
               <p className="text-xs text-amber-600">
-                You're projected to reach this at age {nextMilestone.projectedReachAge}
+                Projected to reach at age {nextMilestone.projectedReachAge}
               </p>
             )}
           </div>
@@ -141,7 +167,7 @@ export function MilestoneTracker({ accounts, profile }: MilestoneTrackerProps) {
               All milestones reached!
             </p>
             <p className="text-xs text-emerald-600">
-              You're on track to exceed your retirement goal.
+              You've saved {formatCurrency(currentBalance)} towards your {formatCurrency(profile.targetAmount)} goal.
             </p>
           </div>
         )}

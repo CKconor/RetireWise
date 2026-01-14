@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import {
   formatCurrency,
   calculateFutureValue,
-  adjustForInflation,
   calculateRealReturn,
 } from '@/lib/calculations';
 
@@ -21,25 +20,21 @@ export function AccountCard({ account, profile, onEdit, onDelete }: AccountCardP
   const yearsToRetirement = profile.retirementAge - profile.currentAge;
   const months = yearsToRetirement * 12;
 
-  const projectedValue = calculateFutureValue(
+  const realReturn = calculateRealReturn(account.annualReturnRate, profile.expectedInflation);
+
+  // Use real return rate directly for proper inflation adjustment
+  // This matches the calculation used in calculateProjectedTotalReal
+  const projectedValueReal = calculateFutureValue(
     account.currentBalance,
     account.monthlyContribution,
-    account.annualReturnRate,
+    Math.max(0, realReturn),
     months
-  );
-
-  const projectedValueReal = adjustForInflation(
-    projectedValue,
-    yearsToRetirement,
-    profile.expectedInflation
   );
 
   const growth = projectedValueReal - account.currentBalance;
   const growthPercentage = account.currentBalance > 0
     ? Math.round((growth / account.currentBalance) * 100)
     : projectedValueReal > 0 ? 100 : 0;
-
-  const realReturn = calculateRealReturn(account.annualReturnRate, profile.expectedInflation);
   const colors = ACCOUNT_TYPE_COLORS[account.type];
 
   return (
