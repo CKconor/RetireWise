@@ -13,7 +13,7 @@ export function calculateFutureValue(
   let balance = currentBalance;
 
   for (let i = 0; i < months; i++) {
-    balance = balance * (1 + monthlyRate) + monthlyContribution;
+    balance = (balance + monthlyContribution) * (1 + monthlyRate);
   }
 
   return balance;

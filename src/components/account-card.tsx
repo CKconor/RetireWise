@@ -113,7 +113,7 @@ export function AccountCard({ account, profile, onEdit, onDelete }: AccountCardP
               Projected at Retirement <span className="text-xs">(real terms)</span>
             </span>
             <div className="text-right">
-              <span className="font-bold">{formatCurrency(Math.round(projectedValueReal))}</span>
+              <span className="text-xl font-bold">{formatCurrency(Math.round(projectedValueReal))}</span>
               <p className="text-xs font-medium text-emerald-600">
                 +{formatCurrency(Math.round(growth))} ({growthPercentage}%)
               </p>

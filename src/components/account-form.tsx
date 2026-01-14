@@ -114,7 +114,7 @@ export function AccountForm({ open, onOpenChange, account, onSave }: AccountForm
                 id="currentBalance"
                 type="number"
                 min={0}
-                step={100}
+                step="any"
                 value={currentBalance}
                 onChange={(e) => setCurrentBalance(parseFloat(e.target.value) || 0)}
                 className="bg-secondary/50"
@@ -126,7 +126,7 @@ export function AccountForm({ open, onOpenChange, account, onSave }: AccountForm
                 id="monthlyContribution"
                 type="number"
                 min={0}
-                step={10}
+                step="any"
                 value={monthlyContribution}
                 onChange={(e) => setMonthlyContribution(parseFloat(e.target.value) || 0)}
                 className="bg-secondary/50"
