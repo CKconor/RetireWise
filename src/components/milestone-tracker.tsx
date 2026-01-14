@@ -33,14 +33,14 @@ export function MilestoneTracker({ accounts, profile }: MilestoneTrackerProps) {
   const colors = getOnTrackColors(isOnTarget);
 
   // Build milestones
-  const percentageMilestones = [25, 50, 75, 100].map(percentage => ({
+  const percentageMilestones = [10, 25, 50, 75, 100].map(percentage => ({
     amount: (profile.targetAmount * percentage) / 100,
     label: `${percentage}%`,
   }));
 
   const fixedMilestones = [{ amount: 100000, label: '£100K' }];
 
-  const allMilestoneAmounts = [...percentageMilestones, ...fixedMilestones]
+  const allMilestoneAmounts = [...percentageMilestones]
     .filter(m => m.amount <= profile.targetAmount)
     .sort((a, b) => a.amount - b.amount)
     .filter((m, i, arr) => i === 0 || Math.abs(m.amount - arr[i - 1].amount) > 1000);

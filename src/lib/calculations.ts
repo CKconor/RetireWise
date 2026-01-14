@@ -57,11 +57,23 @@ export function getMonthsToRetirement(profile: UserProfile): number {
 }
 
 /**
- * Calculate average return rate across all accounts
+ * Calculate average return rate across all accounts, weighted by balance
  */
 export function calculateAverageReturnRate(accounts: Account[], defaultRate = 7): number {
   if (accounts.length === 0) return defaultRate;
-  return accounts.reduce((sum, acc) => sum + acc.annualReturnRate, 0) / accounts.length;
+
+  const totalBalance = accounts.reduce((sum, acc) => sum + acc.currentBalance, 0);
+
+  // If no balance, fall back to simple average
+  if (totalBalance <= 0) {
+    return accounts.reduce((sum, acc) => sum + acc.annualReturnRate, 0) / accounts.length;
+  }
+
+  // Weighted average by balance
+  return accounts.reduce((sum, acc) => {
+    const weight = acc.currentBalance / totalBalance;
+    return sum + acc.annualReturnRate * weight;
+  }, 0);
 }
 
 /**
