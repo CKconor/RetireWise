@@ -168,9 +168,9 @@ export function MilestoneTracker({ accounts, profile }: MilestoneTrackerProps) {
                 {formatCurrencyCompact(milestone.amount)}
               </p>
               {milestone.reached ? (
-                <span className="mt-1 inline-block text-xs text-emerald-600">Reached!</span>
+                <span className="mt-1 inline-block text-xs font-semibold text-emerald-600">Reached!</span>
               ) : milestone.projectedReachAge ? (
-                <span className="mt-1 inline-block text-xs text-slate-500">
+                <span className="mt-1 inline-block text-xs font-semibold text-slate-500">
                   Age {milestone.projectedReachAge}
                 </span>
               ) : null}
