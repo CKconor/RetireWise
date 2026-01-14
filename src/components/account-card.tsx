@@ -3,10 +3,13 @@
 import { Account, UserProfile, ACCOUNT_TYPE_LABELS, ACCOUNT_TYPE_COLORS } from '@/types';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { StatRow } from '@/components/ui/stat-row';
 import {
   formatCurrency,
   calculateFutureValue,
   calculateRealReturn,
+  getMonthsToRetirement,
+  calculateGrowthPercentage,
 } from '@/lib/calculations';
 
 interface AccountCardProps {
@@ -16,14 +19,16 @@ interface AccountCardProps {
   onDelete: (id: string) => void;
 }
 
-export function AccountCard({ account, profile, onEdit, onDelete }: AccountCardProps) {
-  const yearsToRetirement = profile.retirementAge - profile.currentAge;
-  const months = yearsToRetirement * 12;
+const TrendIcon = () => (
+  <svg className="h-4 w-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+  </svg>
+);
 
+export function AccountCard({ account, profile, onEdit, onDelete }: AccountCardProps) {
+  const months = getMonthsToRetirement(profile);
   const realReturn = calculateRealReturn(account.annualReturnRate, profile.expectedInflation);
 
-  // Use real return rate directly for proper inflation adjustment
-  // This matches the calculation used in calculateProjectedTotalReal
   const projectedValueReal = calculateFutureValue(
     account.currentBalance,
     account.monthlyContribution,
@@ -32,9 +37,7 @@ export function AccountCard({ account, profile, onEdit, onDelete }: AccountCardP
   );
 
   const growth = projectedValueReal - account.currentBalance;
-  const growthPercentage = account.currentBalance > 0
-    ? Math.round((growth / account.currentBalance) * 100)
-    : projectedValueReal > 0 ? 100 : 0;
+  const growthPercentage = calculateGrowthPercentage(account.currentBalance, projectedValueReal);
   const colors = ACCOUNT_TYPE_COLORS[account.type];
 
   return (
@@ -79,28 +82,14 @@ export function AccountCard({ account, profile, onEdit, onDelete }: AccountCardP
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">Current Balance</span>
-          <span className="font-semibold">{formatCurrency(account.currentBalance)}</span>
-        </div>
-
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">Monthly Contribution</span>
-          <span className="font-semibold">{formatCurrency(account.monthlyContribution)}</span>
-        </div>
-
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">Expected Return</span>
-          <div className="text-right">
-            <span className="flex items-center justify-end gap-1 font-semibold">
-              <svg className="h-4 w-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-              {account.annualReturnRate}% p.a.
-            </span>
-            <span className="text-xs text-muted-foreground">{realReturn.toFixed(1)}% real return</span>
-          </div>
-        </div>
+        <StatRow label="Current Balance" value={formatCurrency(account.currentBalance)} />
+        <StatRow label="Monthly Contribution" value={formatCurrency(account.monthlyContribution)} />
+        <StatRow
+          label="Expected Return"
+          value={<>{account.annualReturnRate}% p.a.</>}
+          icon={<TrendIcon />}
+          hint={`${realReturn.toFixed(1)}% real return`}
+        />
 
         <div className="border-t pt-3">
           <div className="flex items-center justify-between">

@@ -1,13 +1,15 @@
 'use client';
 
 import { Account, UserProfile } from '@/types';
-import { Progress } from '@/components/ui/progress';
+import { ProgressBar } from '@/components/ui/progress-bar';
 import {
   calculateTotalBalance,
   calculateTotalContributions,
   calculateProjectedTotalReal,
   calculateProgress,
   calculateRequiredContribution,
+  calculateAverageReturnRate,
+  getYearsToRetirement,
   formatCurrency,
 } from '@/lib/calculations';
 
@@ -21,16 +23,11 @@ export function SummaryCard({ accounts, profile }: SummaryCardProps) {
   const monthlyContributions = calculateTotalContributions(accounts);
   const projectedTotalReal = calculateProjectedTotalReal(accounts, profile);
   const progress = calculateProgress(projectedTotalReal, profile.targetAmount);
-  const yearsToRetirement = profile.retirementAge - profile.currentAge;
+  const yearsToRetirement = getYearsToRetirement(profile);
   const surplus = projectedTotalReal - profile.targetAmount;
   const isOnTrack = surplus >= 0;
+  const avgReturn = calculateAverageReturnRate(accounts);
 
-  // Calculate average return rate
-  const avgReturn = accounts.length > 0
-    ? accounts.reduce((sum, acc) => sum + acc.annualReturnRate, 0) / accounts.length
-    : 7;
-
-  // Calculate how much could be reduced if on track
   const requiredContribution = calculateRequiredContribution(
     totalBalance,
     profile.targetAmount,
@@ -75,12 +72,12 @@ export function SummaryCard({ accounts, profile }: SummaryCardProps) {
           <span className="text-blue-200">Progress to Target</span>
           <span className="font-medium">{progress.toFixed(1)}%</span>
         </div>
-        <div className="h-2 overflow-hidden rounded-full bg-blue-900">
-          <div
-            className={`h-full transition-all duration-500 ${isOnTrack ? 'bg-emerald-400' : 'bg-amber-400'}`}
-            style={{ width: `${Math.min(100, progress)}%` }}
-          />
-        </div>
+        <ProgressBar
+          value={progress}
+          color={isOnTrack ? 'bg-emerald-400' : 'bg-amber-400'}
+          bgColor="bg-blue-900"
+          height="sm"
+        />
       </div>
 
       <div className="mt-6 space-y-2">

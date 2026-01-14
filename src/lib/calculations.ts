@@ -43,6 +43,47 @@ export function calculateRealReturn(
 }
 
 /**
+ * Get years until retirement
+ */
+export function getYearsToRetirement(profile: UserProfile): number {
+  return Math.max(0, profile.retirementAge - profile.currentAge);
+}
+
+/**
+ * Get months until retirement
+ */
+export function getMonthsToRetirement(profile: UserProfile): number {
+  return getYearsToRetirement(profile) * 12;
+}
+
+/**
+ * Calculate average return rate across all accounts
+ */
+export function calculateAverageReturnRate(accounts: Account[], defaultRate = 7): number {
+  if (accounts.length === 0) return defaultRate;
+  return accounts.reduce((sum, acc) => sum + acc.annualReturnRate, 0) / accounts.length;
+}
+
+/**
+ * Calculate growth percentage between current and projected values
+ */
+export function calculateGrowthPercentage(currentBalance: number, projectedValue: number): number {
+  if (currentBalance <= 0) {
+    return projectedValue > 0 ? 100 : 0;
+  }
+  return Math.round(((projectedValue - currentBalance) / currentBalance) * 100);
+}
+
+/**
+ * Calculate a value as a percentage of a target
+ */
+export function calculatePercentageOfTarget(value: number, target: number, round = true): number {
+  if (target <= 0) return 0;
+  const percentage = (value / target) * 100;
+  return round ? Math.round(percentage) : percentage;
+}
+
+/**
  * Generate projection data points for charting
  * Uses real returns (nominal - inflation) to properly account for contributions over time
  */

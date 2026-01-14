@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { FormField } from '@/components/ui/form-field';
 import {
   Select,
   SelectContent,
@@ -80,8 +80,7 @@ export function AccountForm({ open, onOpenChange, account, onSave }: AccountForm
           <DialogTitle>{account ? 'Edit Account' : 'Add Account'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="accountName">Account Name</Label>
+          <FormField id="accountName" label="Account Name">
             <Input
               id="accountName"
               placeholder="e.g., Vanguard ISA"
@@ -89,10 +88,9 @@ export function AccountForm({ open, onOpenChange, account, onSave }: AccountForm
               onChange={(e) => setName(e.target.value)}
               className="bg-secondary/50"
             />
-          </div>
+          </FormField>
 
-          <div className="space-y-2">
-            <Label htmlFor="accountType">Account Type</Label>
+          <FormField id="accountType" label="Account Type">
             <Select value={type} onValueChange={handleTypeChange}>
               <SelectTrigger className="bg-secondary/50">
                 <SelectValue />
@@ -105,11 +103,10 @@ export function AccountForm({ open, onOpenChange, account, onSave }: AccountForm
                 ))}
               </SelectContent>
             </Select>
-          </div>
+          </FormField>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="currentBalance">Current Balance (£)</Label>
+            <FormField id="currentBalance" label="Current Balance (£)">
               <Input
                 id="currentBalance"
                 type="number"
@@ -119,9 +116,8 @@ export function AccountForm({ open, onOpenChange, account, onSave }: AccountForm
                 onChange={(e) => setCurrentBalance(parseFloat(e.target.value) || 0)}
                 className="bg-secondary/50"
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="monthlyContribution">Monthly Contribution (£)</Label>
+            </FormField>
+            <FormField id="monthlyContribution" label="Monthly Contribution (£)">
               <Input
                 id="monthlyContribution"
                 type="number"
@@ -131,11 +127,14 @@ export function AccountForm({ open, onOpenChange, account, onSave }: AccountForm
                 onChange={(e) => setMonthlyContribution(parseFloat(e.target.value) || 0)}
                 className="bg-secondary/50"
               />
-            </div>
+            </FormField>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="annualReturnRate">Expected Annual Return (%)</Label>
+          <FormField
+            id="annualReturnRate"
+            label="Expected Annual Return (%)"
+            hint="Typical: Stocks 5-10%, Bonds 2-4%, Savings 1-4%"
+          >
             <Input
               id="annualReturnRate"
               type="number"
@@ -146,10 +145,7 @@ export function AccountForm({ open, onOpenChange, account, onSave }: AccountForm
               onChange={(e) => setAnnualReturnRate(parseFloat(e.target.value) || 0)}
               className="bg-secondary/50"
             />
-            <p className="text-xs text-muted-foreground">
-              Typical: Stocks 5-10%, Bonds 2-4%, Savings 1-4%
-            </p>
-          </div>
+          </FormField>
 
           <DialogFooter className="gap-2 sm:gap-0">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
