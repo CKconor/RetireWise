@@ -30,7 +30,7 @@ export function StatCard({ icon, iconColor = 'slate', label, value, className }:
         <div className={cn('h-4 w-4', colors.text)}>{icon}</div>
       </div>
       <p className="mt-1 text-xs text-muted-foreground">{label}</p>
-      <p className="text-base font-bold">{value}</p>
+      <p className="text-base font-bold" style={{ fontFamily: 'Georgia, serif' }}>{value}</p>
     </Card>
   );
 }
