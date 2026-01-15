@@ -68,7 +68,6 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
   return (
     <SectionCard
       icon={<UserIcon />}
-      iconColor="text-[#0c1929]"
       title="Your Details"
       contentClassName="space-y-4"
     >

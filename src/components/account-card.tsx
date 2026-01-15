@@ -101,7 +101,7 @@ export function AccountCard({ account, profile, onEdit, onDelete }: AccountCardP
 
         <div className="divider-gradient" />
 
-        <div className="rounded-xl bg-gradient-to-r from-teal-50/80 to-emerald-50/50 p-3">
+        <div className="rounded-xl bg-gradient-to-r from-teal-50 to-emerald-50/50 p-3 ring-1 ring-teal-200">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-medium text-teal-700">Projected Value</p>

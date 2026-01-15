@@ -71,7 +71,7 @@ export function WhatIfScenarios({ accounts, profile }: WhatIfScenariosProps) {
 
   if (accounts.length === 0) {
     return (
-      <SectionCard icon={<QuestionIcon />} iconColor="text-[#0c1929]" title="What If...">
+      <SectionCard icon={<QuestionIcon />} title="What If...">
         <p className="text-sm text-muted-foreground">Add accounts to explore scenarios.</p>
       </SectionCard>
     );
@@ -82,7 +82,7 @@ export function WhatIfScenarios({ accounts, profile }: WhatIfScenariosProps) {
   const returnDiff = returnProjection - baseProjection;
 
   return (
-    <SectionCard icon={<QuestionIcon />} iconColor="text-[#0c1929]" title="What If..." contentClassName="space-y-5">
+    <SectionCard icon={<QuestionIcon />} title="What If..." contentClassName="space-y-5">
       {/* Extra Contribution Scenario */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">

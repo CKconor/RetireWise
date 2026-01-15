@@ -10,7 +10,6 @@ import {
   calculatePercentageOfTarget,
   formatCurrency,
 } from '@/lib/calculations';
-import { getOnTrackColors } from '@/lib/utils';
 
 interface StressTestPanelProps {
   accounts: Account[];
@@ -45,8 +44,7 @@ export function StressTestPanel({ accounts, profile }: StressTestPanelProps) {
   return (
     <SectionCard
       icon={<ShieldIcon />}
-      iconColor="text-rose-500"
-      title="Stress Test"
+            title="Stress Test"
       contentClassName="space-y-4"
     >
       <p className="text-sm text-slate-600">
@@ -57,12 +55,15 @@ export function StressTestPanel({ accounts, profile }: StressTestPanelProps) {
         {stressTests.map((test) => {
           const percentOfBase = Math.round((test.postDropTotal / baseProjection) * 100);
           const percentOfTarget = calculatePercentageOfTarget(test.postDropTotal, profile.targetAmount);
-          const colors = getOnTrackColors(test.stillMeetsTarget);
 
           return (
             <div
               key={test.dropPercent}
-              className={`rounded-lg p-4 border ${colors.bg} ${colors.border}`}
+              className={`rounded-xl p-4 ${
+                test.stillMeetsTarget
+                  ? 'bg-gradient-to-r from-teal-50 to-emerald-50/50 ring-1 ring-teal-200'
+                  : 'bg-gradient-to-r from-amber-50 to-orange-50/50 ring-1 ring-amber-200'
+              }`}
             >
               <div className="flex items-start justify-between">
                 <div className='max-w-[60%]'>
@@ -75,7 +76,7 @@ export function StressTestPanel({ accounts, profile }: StressTestPanelProps) {
                 </div>
                 <div className={`rounded-full px-2 py-1 text-xs font-medium ${
                   test.stillMeetsTarget
-                    ? 'bg-emerald-100 text-emerald-700'
+                    ? 'bg-teal-100 text-teal-700'
                     : 'bg-amber-100 text-amber-700'
                 }`}>
                   {percentOfTarget}% of target
@@ -85,7 +86,7 @@ export function StressTestPanel({ accounts, profile }: StressTestPanelProps) {
               <div className="mt-3 space-y-2">
                 <ProgressBar
                   value={percentOfBase}
-                  color={colors.fill}
+                  color={test.stillMeetsTarget ? 'bg-teal-500' : 'bg-amber-500'}
                   bgColor="bg-slate-200"
                   height="sm"
                 />

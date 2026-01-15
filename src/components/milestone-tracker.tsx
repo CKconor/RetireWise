@@ -10,7 +10,6 @@ import {
   formatCurrency,
   formatCurrencyCompact,
 } from '@/lib/calculations';
-import { getOnTrackColors } from '@/lib/utils';
 
 interface MilestoneTrackerProps {
   accounts: Account[];
@@ -62,9 +61,9 @@ export function MilestoneTracker({ accounts, profile }: MilestoneTrackerProps) {
 
   if (accounts.length === 0) {
     return (
-      <SectionCard icon={<BadgeIcon />} iconColor="text-amber-600" title="Milestones">
+      <SectionCard icon={<BadgeIcon />} title="Milestones">
         <div className="flex flex-col items-center justify-center py-8 text-center">
-          <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-amber-50">
+          <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-[#0c1929] to-[#1e3a5f]">
             <svg className="h-6 w-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
             </svg>
@@ -79,7 +78,6 @@ export function MilestoneTracker({ accounts, profile }: MilestoneTrackerProps) {
   return (
     <SectionCard
       icon={<BadgeIcon />}
-      iconColor="text-amber-600"
       title="Milestones"
       action={
         <span className="badge-gold">
@@ -139,11 +137,11 @@ export function MilestoneTracker({ accounts, profile }: MilestoneTrackerProps) {
             key={milestone.amount}
             className={`group relative rounded-xl p-3 text-center transition-all duration-300 ${
               milestone.reached
-                ? 'bg-gradient-to-b from-teal-50 to-emerald-50/50'
+                ? 'bg-gradient-to-r from-teal-50 to-emerald-50/50 ring-1 ring-teal-200'
                 : milestone === nextMilestone
                 ? isOnTarget
-                  ? 'bg-gradient-to-b from-teal-50/50 to-white ring-1 ring-teal-200'
-                  : 'bg-gradient-to-b from-amber-50/50 to-white ring-1 ring-amber-200'
+                  ? 'bg-gradient-to-r from-teal-50 to-emerald-50/50 ring-1 ring-teal-200'
+                  : 'bg-gradient-to-r from-amber-50 to-orange-50/50 ring-1 ring-amber-200'
                 : 'bg-slate-50/50'
             }`}
             style={{ animationDelay: `${index * 0.05}s` }}
@@ -182,8 +180,8 @@ export function MilestoneTracker({ accounts, profile }: MilestoneTrackerProps) {
       {nextMilestone ? (
         <div className={`rounded-xl p-4 ${
           isOnTarget
-            ? 'bg-gradient-to-r from-teal-50 via-emerald-50/50 to-teal-50'
-            : 'bg-gradient-to-r from-amber-50 via-orange-50/50 to-amber-50'
+            ? 'bg-gradient-to-r from-teal-50 to-emerald-50/50 ring-1 ring-teal-200'
+            : 'bg-gradient-to-r from-amber-50 to-orange-50/50 ring-1 ring-amber-200'
         }`}>
           <div className="flex items-center justify-between">
             <div>
@@ -206,7 +204,7 @@ export function MilestoneTracker({ accounts, profile }: MilestoneTrackerProps) {
           </div>
         </div>
       ) : (
-        <div className="rounded-xl bg-gradient-to-r from-teal-50 via-emerald-50 to-teal-50 p-4">
+        <div className="rounded-xl bg-gradient-to-r from-teal-50 to-emerald-50/50 p-4 ring-1 ring-teal-200">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-teal-100">
               <svg className="h-5 w-5 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

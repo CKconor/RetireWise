@@ -73,10 +73,10 @@ export function PeaceOfMindCard({ accounts, profile }: PeaceOfMindCardProps) {
   const message = getMessage();
 
   const getScoreColor = () => {
-    if (confidenceScore >= 8) return { text: 'text-teal-600', bg: 'bg-teal-50', bar: 'bg-teal-500' };
-    if (confidenceScore >= 6) return { text: 'text-[#0c1929]', bg: 'bg-slate-50', bar: 'bg-[#0c1929]' };
-    if (confidenceScore >= 4) return { text: 'text-amber-600', bg: 'bg-amber-50', bar: 'bg-amber-500' };
-    return { text: 'text-slate-500', bg: 'bg-slate-50', bar: 'bg-slate-400' };
+    if (confidenceScore >= 8) return { text: 'text-teal-700', bg: 'bg-gradient-to-r from-teal-50 to-emerald-50/50 ring-1 ring-teal-200', bar: 'bg-teal-500' };
+    if (confidenceScore >= 6) return { text: 'text-[#0c1929]', bg: 'bg-slate-50 ring-1 ring-slate-200', bar: 'bg-[#0c1929]' };
+    if (confidenceScore >= 4) return { text: 'text-amber-700', bg: 'bg-gradient-to-r from-amber-50 to-orange-50/50 ring-1 ring-amber-200', bar: 'bg-amber-500' };
+    return { text: 'text-slate-500', bg: 'bg-slate-50 ring-1 ring-slate-200', bar: 'bg-slate-400' };
   };
 
   const colors = getScoreColor();
@@ -84,8 +84,7 @@ export function PeaceOfMindCard({ accounts, profile }: PeaceOfMindCardProps) {
   return (
     <SectionCard
       icon={<HeartIcon />}
-      iconColor="text-rose-500"
-      title="Peace of Mind"
+            title="Peace of Mind"
       contentClassName="space-y-4"
     >
       {/* Confidence Score */}
@@ -127,8 +126,8 @@ export function PeaceOfMindCard({ accounts, profile }: PeaceOfMindCardProps) {
         <div className="grid grid-cols-2 gap-3">
           <div className={`rounded-xl p-3 ${
             buffer >= 0
-              ? 'bg-teal-50 ring-1 ring-teal-200'
-              : 'bg-amber-50 ring-1 ring-amber-200'
+              ? 'bg-gradient-to-r from-teal-50 to-emerald-50/50 ring-1 ring-teal-200'
+              : 'bg-gradient-to-r from-amber-50 to-orange-50/50 ring-1 ring-amber-200'
           }`}>
             <p className={`text-xs font-medium ${
               buffer >= 0 ? 'text-teal-600' : 'text-amber-600'
