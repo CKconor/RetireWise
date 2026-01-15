@@ -9,7 +9,6 @@ import {
   generateProjection,
   formatCurrency,
 } from '@/lib/calculations';
-import { getConfidenceColors } from '@/lib/utils';
 
 interface PeaceOfMindCardProps {
   accounts: Account[];
@@ -45,7 +44,7 @@ export function PeaceOfMindCard({ accounts, profile }: PeaceOfMindCardProps) {
     if (confidenceScore >= 8) {
       return {
         headline: "You're in great shape",
-        detail: `You're projected to exceed your target by ${formatCurrency(buffer)}. Even in a conservative scenario, you'd reach ${conservativePercent}% of your goal.`,
+        detail: `Projected to exceed target by ${formatCurrency(buffer)}. Even conservatively, you'd reach ${conservativePercent}% of your goal.`,
       };
     }
 
@@ -53,49 +52,65 @@ export function PeaceOfMindCard({ accounts, profile }: PeaceOfMindCardProps) {
       return {
         headline: "You're on track",
         detail: buffer >= 0
-          ? `You're projected to meet your target with a ${bufferPercent}% buffer. Keep going!`
-          : `You're making good progress. A small increase in savings could help you reach your full target.`,
+          ? `Projected to meet your target with a ${bufferPercent}% buffer. Keep going!`
+          : `Making good progress. A small increase in savings could help you reach your full target.`,
       };
     }
 
     if (confidenceScore >= 4) {
       return {
         headline: "Making progress",
-        detail: `You're working toward your goal. Small adjustments to your savings or timeline can make a big difference.`,
+        detail: `You're working toward your goal. Small adjustments can make a big difference.`,
       };
     }
 
     return {
       headline: "Room to grow",
-      detail: "Your retirement plan is just getting started. Every contribution brings you closer to your goal.",
+      detail: "Your retirement plan is just getting started. Every contribution counts.",
     };
   };
 
   const message = getMessage();
-  const colors = getConfidenceColors(confidenceScore);
 
-  const getBarColor = (index: number) => {
-    if (index >= confidenceScore) return 'bg-slate-200';
-    if (confidenceScore >= 8) return 'bg-emerald-400';
-    if (confidenceScore >= 6) return 'bg-blue-400';
-    if (confidenceScore >= 4) return 'bg-amber-400';
-    return 'bg-slate-300';
+  const getScoreColor = () => {
+    if (confidenceScore >= 8) return { text: 'text-teal-600', bg: 'bg-teal-50', bar: 'bg-teal-500' };
+    if (confidenceScore >= 6) return { text: 'text-[#0c1929]', bg: 'bg-slate-50', bar: 'bg-[#0c1929]' };
+    if (confidenceScore >= 4) return { text: 'text-amber-600', bg: 'bg-amber-50', bar: 'bg-amber-500' };
+    return { text: 'text-slate-500', bg: 'bg-slate-50', bar: 'bg-slate-400' };
   };
 
+  const colors = getScoreColor();
+
   return (
-    <SectionCard icon={<HeartIcon />} iconColor="text-violet-500" title="Peace of Mind" contentClassName="space-y-4">
+    <SectionCard
+      icon={<HeartIcon />}
+      iconColor="text-rose-500"
+      title="Peace of Mind"
+      contentClassName="space-y-4"
+    >
       {/* Confidence Score */}
-      <div className={`rounded-lg p-4 ${colors.bg}`}>
+      <div className={`rounded-xl p-4 ${colors.bg}`}>
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-slate-600">Confidence Score</p>
-            <p className={`text-3xl font-bold ${colors.text}`}>
-              {confidenceScore}<span className="text-lg text-slate-400">/10</span>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Confidence Score
+            </p>
+            <p className={`font-display text-4xl ${colors.text}`}>
+              {confidenceScore}
+              <span className="text-xl text-slate-300">/10</span>
             </p>
           </div>
-          <div className="flex gap-0.5">
+          <div className="flex gap-1">
             {[...Array(10)].map((_, i) => (
-              <div key={i} className={`h-8 w-2 rounded-full ${getBarColor(i)}`} />
+              <div
+                key={i}
+                className={`h-10 w-1.5 rounded-full transition-all duration-300 ${
+                  i < confidenceScore ? colors.bar : 'bg-slate-200'
+                }`}
+                style={{
+                  opacity: i < confidenceScore ? 1 - (i * 0.05) : 1,
+                }}
+              />
             ))}
           </div>
         </div>
@@ -103,22 +118,33 @@ export function PeaceOfMindCard({ accounts, profile }: PeaceOfMindCardProps) {
 
       {/* Reassuring Message */}
       <div className="space-y-1">
-        <p className="font-semibold text-slate-800">{message.headline}</p>
-        <p className="text-sm text-slate-600">{message.detail}</p>
+        <p className="font-display text-2xl text-foreground">{message.headline}</p>
+        <p className="text-sm leading-relaxed text-muted-foreground">{message.detail}</p>
       </div>
 
       {/* Key Stats */}
       {accounts.length > 0 && (
-        <div className="grid grid-cols-2 gap-3 pt-2">
-          <div className="rounded-lg bg-slate-50 p-3">
-            <p className="text-xs text-slate-500">Safety Buffer</p>
-            <p className={`font-semibold ${buffer >= 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
+        <div className="grid grid-cols-2 gap-3">
+          <div className={`rounded-xl p-3 ${
+            buffer >= 0
+              ? 'bg-teal-50 ring-1 ring-teal-200'
+              : 'bg-amber-50 ring-1 ring-amber-200'
+          }`}>
+            <p className={`text-xs font-medium ${
+              buffer >= 0 ? 'text-teal-600' : 'text-amber-600'
+            }`}>Safety Buffer</p>
+            <p className={`font-display text-xl ${
+              buffer >= 0 ? 'text-teal-700' : 'text-amber-700'
+            }`}>
               {buffer >= 0 ? '+' : ''}{bufferPercent}%
             </p>
           </div>
-          <div className="rounded-lg bg-slate-50 p-3">
-            <p className="text-xs text-slate-500">Worst Case</p>
-            <p className="font-semibold text-slate-700">{conservativePercent}% of goal</p>
+          <div className="rounded-xl bg-[#0c1929] p-3">
+            <p className="text-xs font-medium text-white/70">Worst Case</p>
+            <p className="font-display text-xl text-white">
+              {conservativePercent}%
+              <span className="text-sm text-white/60"> of goal</span>
+            </p>
           </div>
         </div>
       )}

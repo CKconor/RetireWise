@@ -32,24 +32,24 @@ const ACCOUNT_TYPES: AccountType[] = ['isa', 'sipp', 'pension', 'gia', 'savings'
 export function AccountForm({ open, onOpenChange, account, onSave }: AccountFormProps) {
   const [name, setName] = useState('');
   const [type, setType] = useState<AccountType>('isa');
-  const [currentBalance, setCurrentBalance] = useState(0);
-  const [monthlyContribution, setMonthlyContribution] = useState(0);
-  const [annualReturnRate, setAnnualReturnRate] = useState(7);
+  const [currentBalance, setCurrentBalance] = useState('');
+  const [monthlyContribution, setMonthlyContribution] = useState('');
+  const [annualReturnRate, setAnnualReturnRate] = useState('');
 
   useEffect(() => {
     if (open) {
       if (account) {
         setName(account.name);
         setType(account.type);
-        setCurrentBalance(account.currentBalance);
-        setMonthlyContribution(account.monthlyContribution);
-        setAnnualReturnRate(account.annualReturnRate);
+        setCurrentBalance(String(account.currentBalance));
+        setMonthlyContribution(String(account.monthlyContribution));
+        setAnnualReturnRate(String(account.annualReturnRate));
       } else {
         setName('');
         setType('isa');
-        setCurrentBalance(0);
-        setMonthlyContribution(0);
-        setAnnualReturnRate(DEFAULT_RETURN_RATES['isa']);
+        setCurrentBalance('');
+        setMonthlyContribution('');
+        setAnnualReturnRate(String(DEFAULT_RETURN_RATES['isa']));
       }
     }
   }, [open, account]);
@@ -57,7 +57,7 @@ export function AccountForm({ open, onOpenChange, account, onSave }: AccountForm
   const handleTypeChange = (newType: AccountType) => {
     setType(newType);
     if (!account) {
-      setAnnualReturnRate(DEFAULT_RETURN_RATES[newType]);
+      setAnnualReturnRate(String(DEFAULT_RETURN_RATES[newType]));
     }
   };
 
@@ -66,9 +66,9 @@ export function AccountForm({ open, onOpenChange, account, onSave }: AccountForm
     onSave({
       name: name.trim() || ACCOUNT_TYPE_LABELS[type],
       type,
-      currentBalance,
-      monthlyContribution,
-      annualReturnRate,
+      currentBalance: parseFloat(currentBalance) || 0,
+      monthlyContribution: parseFloat(monthlyContribution) || 0,
+      annualReturnRate: parseFloat(annualReturnRate) || 0,
     });
     onOpenChange(false);
   };
@@ -113,7 +113,7 @@ export function AccountForm({ open, onOpenChange, account, onSave }: AccountForm
                 min={0}
                 step="any"
                 value={currentBalance}
-                onChange={(e) => setCurrentBalance(parseFloat(e.target.value) || 0)}
+                onChange={(e) => setCurrentBalance(e.target.value)}
                 className="bg-secondary/50"
               />
             </FormField>
@@ -124,7 +124,7 @@ export function AccountForm({ open, onOpenChange, account, onSave }: AccountForm
                 min={0}
                 step="any"
                 value={monthlyContribution}
-                onChange={(e) => setMonthlyContribution(parseFloat(e.target.value) || 0)}
+                onChange={(e) => setMonthlyContribution(e.target.value)}
                 className="bg-secondary/50"
               />
             </FormField>
@@ -142,7 +142,7 @@ export function AccountForm({ open, onOpenChange, account, onSave }: AccountForm
               max={30}
               step={0.5}
               value={annualReturnRate}
-              onChange={(e) => setAnnualReturnRate(parseFloat(e.target.value) || 0)}
+              onChange={(e) => setAnnualReturnRate(e.target.value)}
               className="bg-secondary/50"
             />
           </FormField>

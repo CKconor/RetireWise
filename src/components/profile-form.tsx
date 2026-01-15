@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { UserProfile } from '@/types';
 import { Input } from '@/components/ui/input';
 import { SectionCard } from '@/components/ui/section-card';
@@ -36,44 +37,72 @@ const TrendIcon = () => (
 );
 
 export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
+  const [currentAge, setCurrentAge] = useState(String(profile.currentAge));
+  const [retirementAge, setRetirementAge] = useState(String(profile.retirementAge));
+  const [targetAmount, setTargetAmount] = useState(String(profile.targetAmount));
+  const [expectedInflation, setExpectedInflation] = useState(String(profile.expectedInflation));
+
+  // Sync local state when profile changes externally
+  useEffect(() => {
+    setCurrentAge(String(profile.currentAge));
+    setRetirementAge(String(profile.retirementAge));
+    setTargetAmount(String(profile.targetAmount));
+    setExpectedInflation(String(profile.expectedInflation));
+  }, [profile.currentAge, profile.retirementAge, profile.targetAmount, profile.expectedInflation]);
+
+  const handleBlur = (field: keyof UserProfile, value: string) => {
+    const numValue = field === 'expectedInflation' ? parseFloat(value) : parseInt(value);
+    if (!isNaN(numValue)) {
+      onUpdate({ [field]: numValue });
+    } else {
+      // Reset to profile value if invalid
+      if (field === 'currentAge') setCurrentAge(String(profile.currentAge));
+      if (field === 'retirementAge') setRetirementAge(String(profile.retirementAge));
+      if (field === 'targetAmount') setTargetAmount(String(profile.targetAmount));
+      if (field === 'expectedInflation') setExpectedInflation(String(profile.expectedInflation));
+    }
+  };
+
   const yearsToRetirement = getYearsToRetirement(profile);
 
   return (
     <SectionCard
       icon={<UserIcon />}
-      iconColor="text-primary"
+      iconColor="text-[#0c1929]"
       title="Your Details"
-      contentClassName="space-y-5"
+      contentClassName="space-y-4"
     >
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-3">
         <FormField id="currentAge" label="Current Age" icon={<CalendarIcon />}>
           <Input
             id="currentAge"
             type="number"
             min={18}
             max={100}
-            value={profile.currentAge}
-            onChange={(e) => onUpdate({ currentAge: parseInt(e.target.value) || 0 })}
-            className="bg-secondary/50"
+            value={currentAge}
+            onChange={(e) => setCurrentAge(e.target.value)}
+            onBlur={() => handleBlur('currentAge', currentAge)}
+            className="bg-secondary/30 transition-colors focus:bg-white"
           />
         </FormField>
         <FormField id="retirementAge" label="Retirement Age" icon={<CalendarIcon />}>
           <Input
             id="retirementAge"
             type="number"
-            min={profile.currentAge + 1}
+            min={18}
             max={100}
-            value={profile.retirementAge}
-            onChange={(e) => onUpdate({ retirementAge: parseInt(e.target.value) || 0 })}
-            className="bg-secondary/50"
+            value={retirementAge}
+            onChange={(e) => setRetirementAge(e.target.value)}
+            onBlur={() => handleBlur('retirementAge', retirementAge)}
+            className="bg-secondary/30 transition-colors focus:bg-white"
           />
         </FormField>
       </div>
 
       {yearsToRetirement > 0 && (
-        <div className="rounded-lg bg-secondary/50 px-4 py-2 text-center text-sm">
-          <span className="font-semibold">{yearsToRetirement} years</span>
-          <span className="text-muted-foreground"> until retirement</span>
+        <div className="rounded-xl bg-gradient-to-r from-[#0c1929] to-[#1e3a5f] px-4 py-3 text-center">
+          <span className="font-display text-2xl text-white">{yearsToRetirement}</span>
+          <span className="ml-2 text-sm text-white/70">years until retirement</span>
         </div>
       )}
 
@@ -88,9 +117,10 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
           type="number"
           min={0}
           step={10000}
-          value={profile.targetAmount}
-          onChange={(e) => onUpdate({ targetAmount: parseInt(e.target.value) || 0 })}
-          className="bg-secondary/50"
+          value={targetAmount}
+          onChange={(e) => setTargetAmount(e.target.value)}
+          onBlur={() => handleBlur('targetAmount', targetAmount)}
+          className="bg-secondary/30 transition-colors focus:bg-white"
         />
       </FormField>
 
@@ -106,9 +136,10 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
           min={0}
           max={10}
           step={0.1}
-          value={profile.expectedInflation}
-          onChange={(e) => onUpdate({ expectedInflation: parseFloat(e.target.value) || 0 })}
-          className="bg-secondary/50"
+          value={expectedInflation}
+          onChange={(e) => setExpectedInflation(e.target.value)}
+          onBlur={() => handleBlur('expectedInflation', expectedInflation)}
+          className="bg-secondary/30 transition-colors focus:bg-white"
         />
       </FormField>
     </SectionCard>

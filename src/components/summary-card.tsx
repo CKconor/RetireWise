@@ -1,7 +1,6 @@
 'use client';
 
 import { Account, UserProfile } from '@/types';
-import { ProgressBar } from '@/components/ui/progress-bar';
 import {
   calculateTotalBalance,
   calculateTotalContributions,
@@ -42,72 +41,100 @@ export function SummaryCard({ accounts, profile }: SummaryCardProps) {
     : 0;
 
   return (
-    <div className="rounded-xl bg-[#0f2744] p-6 text-white shadow-lg">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm text-blue-200">Projected at Retirement</p>
-          <p className="mt-1 text-4xl font-bold">{formatCurrency(projectedTotalReal)}</p>
-          <p className="mt-1 text-sm text-blue-200">
-            in {yearsToRetirement} years • in today's money
-          </p>
-          <p className="text-xs text-blue-300">
-            Adjusted for {profile.expectedInflation}% annual inflation
-          </p>
+    <div className="card-hero rounded-2xl p-6 text-white shadow-xl shadow-[#0c1929]/30">
+      <div className="relative z-10">
+        {/* Header with status */}
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-sm font-medium text-white/70">Projected at Retirement</p>
+            <p className="stat-value-xl mt-1 text-white">{formatCurrency(projectedTotalReal)}</p>
+            <div className="mt-2 flex items-center gap-2">
+              <span className="badge-gold text-xs">
+                {yearsToRetirement} years to go
+              </span>
+              <span className="text-xs text-white/60">in today's money</span>
+            </div>
+          </div>
+          <div className={`flex h-12 w-12 items-center justify-center rounded-full ${
+            isOnTrack
+              ? 'bg-teal-500/20 ring-2 ring-teal-400/30'
+              : 'bg-amber-500/20 ring-2 ring-amber-400/30'
+          }`}>
+            {isOnTrack ? (
+              <svg className="h-6 w-6 text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            ) : (
+              <svg className="h-6 w-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+            )}
+          </div>
         </div>
-        <div className={`rounded-full p-2 ${isOnTrack ? 'bg-emerald-500/20' : 'bg-amber-500/20'}`}>
+
+        {/* Progress Bar */}
+        <div className="mt-6">
+          <div className="mb-2 flex justify-between text-sm">
+            <span className="text-white/70">Progress to Target</span>
+            <span className="font-semibold text-white">{progress.toFixed(1)}%</span>
+          </div>
+          <div className="h-2.5 w-full overflow-hidden rounded-full bg-white/10">
+            <div
+              className={`h-full rounded-full transition-all duration-700 ease-out ${
+                isOnTrack
+                  ? 'bg-gradient-to-r from-teal-400 to-emerald-400'
+                  : 'bg-gradient-to-r from-amber-400 to-orange-400'
+              }`}
+              style={{ width: `${Math.min(100, progress)}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Status Message */}
+        <div className="mt-6 rounded-xl bg-white/5 p-4 backdrop-blur-sm">
           {isOnTrack ? (
-            <svg className="h-6 w-6 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="status-dot status-dot-success" />
+                <p className="text-sm font-semibold text-teal-300">
+                  On track! {formatCurrency(surplus)} above target
+                </p>
+              </div>
+              {potentialReduction > 0 && (
+                <p className="flex items-start gap-2 text-xs text-white/70">
+                  <svg className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                  <span>
+                    You could reduce contributions by <span className="font-semibold text-amber-300">{formatCurrency(potentialReduction)}/month</span> ({reductionPercentage}%) and still hit your target
+                  </span>
+                </p>
+              )}
+            </div>
           ) : (
-            <svg className="h-6 w-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="status-dot status-dot-warning" />
+                <p className="text-sm font-semibold text-amber-300">
+                  {formatCurrency(Math.abs(surplus))} below target
+                </p>
+              </div>
+              <p className="flex items-start gap-2 text-xs text-white/70">
+                <svg className="mt-0.5 h-4 w-4 flex-shrink-0 text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+                <span>
+                  Increase contributions by <span className="font-semibold text-teal-300">{formatCurrency(requiredContribution - monthlyContributions)}/month</span> to reach your target
+                </span>
+              </p>
+            </div>
           )}
         </div>
-      </div>
 
-      <div className="mt-6 space-y-2">
-        <div className="flex justify-between text-sm">
-          <span className="text-blue-200">Progress to Target</span>
-          <span className="font-medium">{progress.toFixed(1)}%</span>
-        </div>
-        <ProgressBar
-          value={progress}
-          color={isOnTrack ? 'bg-emerald-400' : 'bg-amber-400'}
-          bgColor="bg-blue-900"
-          height="sm"
-        />
-      </div>
-
-      <div className="mt-6 space-y-2">
-        {isOnTrack ? (
-          <>
-            <p className="text-sm font-medium text-emerald-400">
-              You're on track! {formatCurrency(surplus)} above target
-            </p>
-            {potentialReduction > 0 && (
-              <p className="flex items-center gap-1.5 text-xs text-blue-200">
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                </svg>
-                You could reduce contributions by {formatCurrency(potentialReduction)}/month ({reductionPercentage}%) and still hit your target
-              </p>
-            )}
-          </>
-        ) : (
-          <>
-            <p className="text-sm font-medium text-amber-400">
-              {formatCurrency(Math.abs(surplus))} below target
-            </p>
-            <p className="flex items-center gap-1.5 text-xs text-blue-200">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-              Increase contributions by {formatCurrency(requiredContribution - monthlyContributions)}/month to reach your target
-            </p>
-          </>
-        )}
+        {/* Inflation note */}
+        <p className="mt-4 text-center text-xs text-white/50">
+          Adjusted for {profile.expectedInflation}% annual inflation
+        </p>
       </div>
     </div>
   );

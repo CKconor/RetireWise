@@ -10,7 +10,6 @@ import {
   calculateWhatIfReturns,
   formatCurrency,
 } from '@/lib/calculations';
-import { getDiffColors } from '@/lib/utils';
 
 interface WhatIfScenariosProps {
   accounts: Account[];
@@ -27,17 +26,16 @@ interface ScenarioResultProps {
   label: string;
   value: number;
   diff: number;
-  bgColor: string;
 }
 
-function ScenarioResult({ label, value, diff, bgColor }: ScenarioResultProps) {
+function ScenarioResult({ label, value, diff }: ScenarioResultProps) {
   return (
-    <div className={`flex items-center justify-between rounded-lg p-3 ${bgColor}`}>
-      <span className="text-sm text-slate-600">{label}</span>
+    <div className="flex items-center justify-between rounded-lg bg-slate-50 p-3">
+      <span className="text-sm text-muted-foreground">{label}</span>
       <div className="text-right">
-        <span className="font-semibold text-slate-800">{formatCurrency(value)}</span>
+        <span className="font-display text-lg text-foreground">{formatCurrency(value)}</span>
         {diff !== 0 && (
-          <span className={`ml-2 text-sm ${getDiffColors(diff)}`}>
+          <span className={`ml-2 text-sm font-medium ${diff > 0 ? 'text-teal-600' : 'text-amber-600'}`}>
             ({diff > 0 ? '+' : ''}{formatCurrency(diff)})
           </span>
         )}
@@ -73,7 +71,7 @@ export function WhatIfScenarios({ accounts, profile }: WhatIfScenariosProps) {
 
   if (accounts.length === 0) {
     return (
-      <SectionCard icon={<QuestionIcon />} iconColor="text-blue-500" title="What If...">
+      <SectionCard icon={<QuestionIcon />} iconColor="text-[#0c1929]" title="What If...">
         <p className="text-sm text-muted-foreground">Add accounts to explore scenarios.</p>
       </SectionCard>
     );
@@ -84,15 +82,15 @@ export function WhatIfScenarios({ accounts, profile }: WhatIfScenariosProps) {
   const returnDiff = returnProjection - baseProjection;
 
   return (
-    <SectionCard icon={<QuestionIcon />} iconColor="text-blue-500" title="What If..." contentClassName="space-y-6">
+    <SectionCard icon={<QuestionIcon />} iconColor="text-[#0c1929]" title="What If..." contentClassName="space-y-5">
       {/* Extra Contribution Scenario */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-slate-700">
+          <label className="text-sm font-medium text-foreground">
             I save {extraContribution >= 0 ? 'extra' : 'less'}:
           </label>
-          <span className="text-sm font-bold text-blue-600">
-            {extraContribution >= 0 ? '+' : ''}{formatCurrency(extraContribution)}/month
+          <span className="font-display text-lg text-[#0c1929]">
+            {extraContribution >= 0 ? '+' : ''}{formatCurrency(extraContribution)}/mo
           </span>
         </div>
         <input
@@ -102,25 +100,24 @@ export function WhatIfScenarios({ accounts, profile }: WhatIfScenariosProps) {
           step="50"
           value={extraContribution}
           onChange={(e) => setExtraContribution(Number(e.target.value))}
-          className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
+          className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#0c1929]"
         />
         <ScenarioResult
           label="Projected total:"
           value={contributionProjection}
           diff={contributionDiff}
-          bgColor="bg-blue-50"
         />
       </div>
 
       {/* Retirement Age Scenario */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-slate-700">I retire at:</label>
-          <span className="text-sm font-bold text-violet-600">
+          <label className="text-sm font-medium text-foreground">I retire at:</label>
+          <span className="font-display text-lg text-[#0c1929]">
             Age {profile.retirementAge + retirementAgeAdjust}
             {retirementAgeAdjust !== 0 && (
-              <span className="text-slate-400 font-normal">
-                {' '}({retirementAgeAdjust > 0 ? '+' : ''}{retirementAgeAdjust} years)
+              <span className="text-muted-foreground text-sm font-sans font-normal">
+                {' '}({retirementAgeAdjust > 0 ? '+' : ''}{retirementAgeAdjust}y)
               </span>
             )}
           </span>
@@ -132,21 +129,20 @@ export function WhatIfScenarios({ accounts, profile }: WhatIfScenariosProps) {
           step="1"
           value={retirementAgeAdjust}
           onChange={(e) => setRetirementAgeAdjust(Number(e.target.value))}
-          className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-violet-500"
+          className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#0c1929]"
         />
         <ScenarioResult
           label="Projected total:"
           value={retirementAgeProjection}
           diff={retirementDiff}
-          bgColor="bg-violet-50"
         />
       </div>
 
       {/* Return Rate Scenario */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-slate-700">Markets perform:</label>
-          <span className="text-sm font-bold text-orange-600">
+          <label className="text-sm font-medium text-foreground">Markets perform:</label>
+          <span className="font-display text-lg text-[#0c1929]">
             {returnAdjust >= 0 ? '+' : ''}{returnAdjust}% vs expected
           </span>
         </div>
@@ -157,13 +153,12 @@ export function WhatIfScenarios({ accounts, profile }: WhatIfScenariosProps) {
           step="1"
           value={returnAdjust}
           onChange={(e) => setReturnAdjust(Number(e.target.value))}
-          className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-orange-500"
+          className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#0c1929]"
         />
         <ScenarioResult
           label="Projected total:"
           value={returnProjection}
           diff={returnDiff}
-          bgColor="bg-orange-50"
         />
       </div>
 
@@ -175,7 +170,7 @@ export function WhatIfScenarios({ accounts, profile }: WhatIfScenariosProps) {
             setRetirementAgeAdjust(0);
             setReturnAdjust(0);
           }}
-          className="w-full text-sm text-slate-500 hover:text-slate-700 py-2"
+          className="w-full text-sm text-muted-foreground hover:text-foreground py-2 transition-colors"
         >
           Reset all scenarios
         </button>
