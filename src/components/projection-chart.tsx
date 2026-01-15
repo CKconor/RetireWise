@@ -87,7 +87,7 @@ export function ProjectionChart({ accounts, profile }: ProjectionChartProps) {
           </span>
           <Popover>
             <PopoverTrigger asChild>
-              <button className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+              <button className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
                 <Settings2 className="h-4 w-4" />
               </button>
             </PopoverTrigger>

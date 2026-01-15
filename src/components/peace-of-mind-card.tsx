@@ -22,6 +22,22 @@ const HeartIcon = () => (
 );
 
 export function PeaceOfMindCard({ accounts, profile }: PeaceOfMindCardProps) {
+  if (accounts.length === 0) {
+    return (
+      <SectionCard icon={<HeartIcon />} title="Peace of Mind">
+        <div className="flex flex-col items-center py-6 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-[#0c1929] to-[#1e3a5f]">
+            <svg className="h-7 w-7 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+          </div>
+          <p className="mt-4 font-display text-lg text-foreground">Your confidence score</p>
+          <p className="mt-1 text-sm text-muted-foreground">Add accounts to see how secure your retirement plan is</p>
+        </div>
+      </SectionCard>
+    );
+  }
+
   const confidenceScore = calculateConfidenceScore(accounts, profile);
   const projectedReal = calculateProjectedTotalReal(accounts, profile);
   const projection = generateProjection(accounts, profile);
@@ -34,13 +50,6 @@ export function PeaceOfMindCard({ accounts, profile }: PeaceOfMindCardProps) {
   const conservativePercent = calculatePercentageOfTarget(conservativeAtRetirement, profile.targetAmount);
 
   const getMessage = () => {
-    if (accounts.length === 0) {
-      return {
-        headline: "Let's get started",
-        detail: "Add your first account to see your retirement outlook.",
-      };
-    }
-
     if (confidenceScore >= 8) {
       return {
         headline: "You're in great shape",

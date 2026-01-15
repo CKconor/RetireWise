@@ -28,8 +28,8 @@ export default function Home() {
       <div className="flex min-h-screen items-center justify-center bg-mesh">
         <div className="flex flex-col items-center gap-4">
           <div className="relative h-12 w-12">
-            <div className="absolute inset-0 animate-ping rounded-full bg-amber-400/20" />
-            <div className="absolute inset-2 animate-pulse rounded-full bg-gradient-to-br from-amber-400 to-teal-500" />
+            <div className="absolute inset-0 animate-ping rounded-full bg-[#1e3a5f]/30" />
+            <div className="absolute inset-2 animate-pulse rounded-full bg-gradient-to-br from-[#0c1929] to-[#1e3a5f]" />
           </div>
           <span className="font-display text-lg text-muted-foreground">Loading your forecast...</span>
         </div>

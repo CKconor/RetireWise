@@ -72,7 +72,15 @@ export function WhatIfScenarios({ accounts, profile }: WhatIfScenariosProps) {
   if (accounts.length === 0) {
     return (
       <SectionCard icon={<QuestionIcon />} title="What If...">
-        <p className="text-sm text-muted-foreground">Add accounts to explore scenarios.</p>
+        <div className="flex flex-col items-center py-6 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-[#0c1929] to-[#1e3a5f]">
+            <svg className="h-7 w-7 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <p className="mt-4 font-display text-lg text-foreground">Explore possibilities</p>
+          <p className="mt-1 text-sm text-muted-foreground">Add accounts to see how changes affect your retirement</p>
+        </div>
       </SectionCard>
     );
   }
@@ -170,7 +178,7 @@ export function WhatIfScenarios({ accounts, profile }: WhatIfScenariosProps) {
             setRetirementAgeAdjust(0);
             setReturnAdjust(0);
           }}
-          className="w-full text-sm text-muted-foreground hover:text-foreground py-2 transition-colors"
+          className="w-full cursor-pointer text-sm text-muted-foreground hover:text-foreground py-2 transition-colors"
         >
           Reset all scenarios
         </button>

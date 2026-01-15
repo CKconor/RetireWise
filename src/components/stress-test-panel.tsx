@@ -36,7 +36,15 @@ export function StressTestPanel({ accounts, profile }: StressTestPanelProps) {
   if (accounts.length === 0) {
     return (
       <SectionCard icon={<ShieldIcon />} title="Stress Test">
-        <p className="text-sm text-muted-foreground">Add accounts to see stress test results.</p>
+        <div className="flex flex-col items-center py-6 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-[#0c1929] to-[#1e3a5f]">
+            <svg className="h-7 w-7 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+          </div>
+          <p className="mt-4 font-display text-lg text-foreground">Test your resilience</p>
+          <p className="mt-1 text-sm text-muted-foreground">Add accounts to see how your plan handles market drops</p>
+        </div>
       </SectionCard>
     );
   }
