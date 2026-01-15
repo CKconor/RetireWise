@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Account, UserProfile } from '@/types';
 import { AccountCard } from '@/components/account-card';
 import { AccountForm } from '@/components/account-form';
-import { EmptyState } from '@/components/ui/empty-state';
+import { Card } from '@/components/ui/card';
 
 interface AccountListProps {
   accounts: Account[];
@@ -14,8 +14,8 @@ interface AccountListProps {
   onDelete: (id: string) => void;
 }
 
-const PlusIcon = () => (
-  <svg className="h-6 w-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+const PlusIcon = ({ className = "h-6 w-6" }: { className?: string }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
   </svg>
 );
@@ -45,14 +45,27 @@ export function AccountList({ accounts, profile, onAdd, onUpdate, onDelete }: Ac
     }
   };
 
+  const handleAddClick = () => {
+    setEditingAccount(null);
+    setFormOpen(true);
+  };
+
   return (
     <>
       {accounts.length === 0 ? (
-        <EmptyState
-          icon={<PlusIcon />}
-          title="No accounts yet"
-          description="Add your first account to start tracking your retirement savings."
-        />
+        <div
+          onClick={handleAddClick}
+          className="cursor-pointer rounded-xl border-2 border-dashed border-slate-200 bg-white/50 p-12 text-center transition-all hover:border-slate-300 hover:bg-white/80"
+        >
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[#0c1929] to-[#1e3a5f]">
+            <PlusIcon className="h-8 w-8 text-amber-400" />
+          </div>
+          <h3 className="mt-6 font-display text-xl text-foreground">Add your first account</h3>
+          <p className="mt-2 text-muted-foreground">
+            Start tracking your retirement savings by adding an account.
+          </p>
+          <p className="mt-4 text-sm font-medium text-slate-500">Click to get started</p>
+        </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {accounts.map((account) => (
@@ -64,6 +77,18 @@ export function AccountList({ accounts, profile, onAdd, onUpdate, onDelete }: Ac
               onDelete={onDelete}
             />
           ))}
+          <Card
+            onClick={handleAddClick}
+            className="card-hover flex min-h-[200px] cursor-pointer flex-col items-center justify-center gap-3 border-2 border-dashed border-slate-200 bg-white/50 transition-all hover:border-slate-300 hover:bg-white/80"
+          >
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-[#0c1929] to-[#1e3a5f]">
+              <PlusIcon className="h-5 w-5 text-amber-400" />
+            </div>
+            <div className="text-center">
+              <p className="font-display text-lg text-slate-600">Add Account</p>
+              <p className="text-sm text-muted-foreground">Track another retirement account</p>
+            </div>
+          </Card>
         </div>
       )}
 

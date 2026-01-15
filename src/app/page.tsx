@@ -1,18 +1,15 @@
 'use client';
 
-import { useState } from 'react';
 import { useRetirementData } from '@/hooks/use-retirement-data';
 import { ProfileForm } from '@/components/profile-form';
 import { AccountList } from '@/components/account-list';
 import { SummaryCard } from '@/components/summary-card';
 import { StatsCards } from '@/components/stats-cards';
 import { ProjectionChart } from '@/components/projection-chart';
-import { AccountForm } from '@/components/account-form';
 import { PeaceOfMindCard } from '@/components/peace-of-mind-card';
 import { MilestoneTracker } from '@/components/milestone-tracker';
 import { WhatIfScenarios } from '@/components/what-if-scenarios';
 import { StressTestPanel } from '@/components/stress-test-panel';
-import { Button } from '@/components/ui/button';
 import { Account } from '@/types';
 
 export default function Home() {
@@ -25,8 +22,6 @@ export default function Home() {
     updateAccount,
     deleteAccount,
   } = useRetirementData();
-
-  const [showAddForm, setShowAddForm] = useState(false);
 
   if (!isLoaded) {
     return (
@@ -59,15 +54,6 @@ export default function Home() {
                 <p className="text-xs text-muted-foreground">Your path to financial freedom</p>
               </div>
             </div>
-            <Button
-              onClick={() => setShowAddForm(true)}
-              className="gap-2 bg-gradient-to-r from-[#0c1929] to-[#1e3a5f] shadow-lg shadow-[#0c1929]/20 transition-all hover:shadow-xl hover:shadow-[#0c1929]/30"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Add Account
-            </Button>
           </div>
         </div>
       </header>
@@ -94,13 +80,8 @@ export default function Home() {
 
           {/* Right Column - Accounts & Chart */}
           <div className="space-y-6 lg:col-span-8">
-            {/* Milestone Tracker */}
-            <div className="opacity-0 animate-fade-in stagger-2">
-              <MilestoneTracker accounts={accounts} profile={profile} />
-            </div>
-
             {/* Account Cards Grid */}
-            <div className="opacity-0 animate-fade-in stagger-3">
+            <div className="opacity-0 animate-fade-in stagger-2">
               <AccountList
                 accounts={accounts}
                 profile={profile}
@@ -111,8 +92,13 @@ export default function Home() {
             </div>
 
             {/* Projection Chart */}
-            <div className="opacity-0 animate-fade-in stagger-4">
+            <div className="opacity-0 animate-fade-in stagger-3">
               <ProjectionChart accounts={accounts} profile={profile} />
+            </div>
+
+            {/* Milestone Tracker */}
+            <div className="opacity-0 animate-fade-in stagger-4">
+              <MilestoneTracker accounts={accounts} profile={profile} />
             </div>
 
             {/* What-If Scenarios & Stress Test */}
@@ -138,16 +124,6 @@ export default function Home() {
         </div>
       </footer>
 
-      {/* Add Account Form Dialog */}
-      <AccountForm
-        open={showAddForm}
-        onOpenChange={setShowAddForm}
-        account={null}
-        onSave={(data) => {
-          addAccount(data);
-          setShowAddForm(false);
-        }}
-      />
     </div>
   );
 }
