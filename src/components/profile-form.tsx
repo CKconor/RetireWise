@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react';
 import { UserProfile } from '@/types';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { SectionCard } from '@/components/ui/section-card';
 import { FormField } from '@/components/ui/form-field';
-import { getYearsToRetirement } from '@/lib/calculations';
+import { getYearsToRetirement, formatCurrency } from '@/lib/calculations';
 
 interface ProfileFormProps {
   profile: UserProfile;
@@ -36,11 +37,19 @@ const TrendIcon = () => (
   </svg>
 );
 
+const PensionIcon = () => (
+  <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+  </svg>
+);
+
 export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
   const [currentAge, setCurrentAge] = useState(String(profile.currentAge));
   const [retirementAge, setRetirementAge] = useState(String(profile.retirementAge));
   const [targetAmount, setTargetAmount] = useState(String(profile.targetAmount));
   const [expectedInflation, setExpectedInflation] = useState(String(profile.expectedInflation));
+  const [statePensionAmount, setStatePensionAmount] = useState(String(profile.statePensionAmount));
+  const [statePensionAge, setStatePensionAge] = useState(String(profile.statePensionAge));
 
   // Sync local state when profile changes externally
   useEffect(() => {
@@ -48,10 +57,13 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
     setRetirementAge(String(profile.retirementAge));
     setTargetAmount(String(profile.targetAmount));
     setExpectedInflation(String(profile.expectedInflation));
-  }, [profile.currentAge, profile.retirementAge, profile.targetAmount, profile.expectedInflation]);
+    setStatePensionAmount(String(profile.statePensionAmount));
+    setStatePensionAge(String(profile.statePensionAge));
+  }, [profile.currentAge, profile.retirementAge, profile.targetAmount, profile.expectedInflation, profile.statePensionAmount, profile.statePensionAge]);
 
   const handleBlur = (field: keyof UserProfile, value: string) => {
-    const numValue = field === 'expectedInflation' ? parseFloat(value) : parseInt(value);
+    const useFloat = field === 'expectedInflation' || field === 'statePensionAmount';
+    const numValue = useFloat ? parseFloat(value) : parseInt(value);
     if (!isNaN(numValue)) {
       onUpdate({ [field]: numValue });
     } else {
@@ -60,8 +72,12 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
       if (field === 'retirementAge') setRetirementAge(String(profile.retirementAge));
       if (field === 'targetAmount') setTargetAmount(String(profile.targetAmount));
       if (field === 'expectedInflation') setExpectedInflation(String(profile.expectedInflation));
+      if (field === 'statePensionAmount') setStatePensionAmount(String(profile.statePensionAmount));
+      if (field === 'statePensionAge') setStatePensionAge(String(profile.statePensionAge));
     }
   };
+
+  const annualStatePension = profile.statePensionAmount * 52;
 
   const yearsToRetirement = getYearsToRetirement(profile);
 
@@ -141,6 +157,78 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
           className="bg-secondary/30 transition-colors focus:bg-white"
         />
       </FormField>
+
+      <div className="divider-gradient" />
+
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="h-4 w-4 text-muted-foreground">
+              <PensionIcon />
+            </div>
+            <span className="text-sm font-medium">State Pension</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="includeStatePension"
+              checked={profile.includeStatePension}
+              onCheckedChange={(checked) => onUpdate({ includeStatePension: checked === true })}
+            />
+            <label htmlFor="includeStatePension" className="text-sm text-muted-foreground cursor-pointer">
+              Include in projections
+            </label>
+          </div>
+        </div>
+
+        {profile.includeStatePension && (
+          <>
+            <div className="grid grid-cols-2 gap-3">
+              <FormField
+                id="statePensionAmount"
+                label="Weekly Amount (£)"
+                hint="Full rate: £221.20/week"
+              >
+                <Input
+                  id="statePensionAmount"
+                  type="number"
+                  min={0}
+                  max={500}
+                  step={0.01}
+                  value={statePensionAmount}
+                  onChange={(e) => setStatePensionAmount(e.target.value)}
+                  onBlur={() => handleBlur('statePensionAmount', statePensionAmount)}
+                  className="bg-secondary/30 transition-colors focus:bg-white"
+                />
+              </FormField>
+              <FormField
+                id="statePensionAge"
+                label="Start Age"
+                hint="Currently 66-68 in UK"
+              >
+                <Input
+                  id="statePensionAge"
+                  type="number"
+                  min={60}
+                  max={75}
+                  value={statePensionAge}
+                  onChange={(e) => {
+                    setStatePensionAge(e.target.value);
+                    const numValue = parseInt(e.target.value);
+                    if (!isNaN(numValue)) {
+                      onUpdate({ statePensionAge: numValue });
+                    }
+                  }}
+                  className="bg-secondary/30 transition-colors focus:bg-white"
+                />
+              </FormField>
+            </div>
+            <div className="flex items-center justify-between rounded-lg bg-slate-50/80 p-2.5 ring-1 ring-slate-200/60">
+              <span className="text-xs text-muted-foreground">Annual income</span>
+              <span className="font-semibold">{formatCurrency(annualStatePension)}<span className="text-xs text-muted-foreground font-normal">/yr from {profile.statePensionAge}</span></span>
+            </div>
+          </>
+        )}
+      </div>
     </SectionCard>
   );
 }

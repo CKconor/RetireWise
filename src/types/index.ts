@@ -14,6 +14,9 @@ export interface UserProfile {
   retirementAge: number;
   targetAmount: number;
   expectedInflation: number; // percentage, e.g., 2.5 for 2.5%
+  statePensionAmount: number; // weekly amount in GBP
+  statePensionAge: number; // age when state pension starts (default 67)
+  includeStatePension: boolean; // whether to include in projections
 }
 
 export interface AppState {

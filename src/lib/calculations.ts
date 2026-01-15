@@ -543,6 +543,72 @@ export function findCoastFireYear(
 }
 
 /**
+ * Calculate annual State Pension income
+ */
+export function calculateAnnualStatePension(weeklyAmount: number): number {
+  return weeklyAmount * 52;
+}
+
+/**
+ * Calculate the portfolio equivalent of State Pension income
+ * Accounts for the gap between retirement age and State Pension start age
+ * Uses life expectancy of 90 for planning purposes
+ */
+export function calculateStatePensionEquivalent(
+  profile: UserProfile,
+  withdrawalRate: number = 4,
+  lifeExpectancy: number = 90
+): number {
+  if (!profile.includeStatePension || profile.statePensionAmount <= 0) {
+    return 0;
+  }
+
+  const annualPension = calculateAnnualStatePension(profile.statePensionAmount);
+  const fullEquivalent = annualPension / (withdrawalRate / 100);
+
+  // Calculate retirement duration and years with State Pension
+  const retirementYears = Math.max(0, lifeExpectancy - profile.retirementAge);
+  const yearsWithStatePension = Math.max(0, lifeExpectancy - profile.statePensionAge);
+
+  if (retirementYears <= 0) return 0;
+
+  // Pro-rate the equivalent based on portion of retirement covered by State Pension
+  const coverageRatio = yearsWithStatePension / retirementYears;
+
+  return Math.round(fullEquivalent * coverageRatio);
+}
+
+/**
+ * Calculate how much State Pension reduces the required portfolio target
+ */
+export function calculateReducedTarget(profile: UserProfile): number {
+  const statePensionEquivalent = calculateStatePensionEquivalent(profile);
+  return Math.max(0, profile.targetAmount - statePensionEquivalent);
+}
+
+/**
+ * Calculate total retirement income from portfolio and State Pension
+ * @param portfolioValue - the total portfolio value at retirement
+ * @param profile - user profile with State Pension settings
+ * @param withdrawalRate - annual withdrawal rate percentage (default 4%)
+ */
+export function calculateTotalRetirementIncome(
+  portfolioValue: number,
+  profile: UserProfile,
+  withdrawalRate: number = 4
+): { portfolioIncome: number; statePensionIncome: number; totalIncome: number } {
+  const portfolioIncome = portfolioValue * (withdrawalRate / 100);
+  const statePensionIncome = profile.includeStatePension
+    ? calculateAnnualStatePension(profile.statePensionAmount)
+    : 0;
+  return {
+    portfolioIncome,
+    statePensionIncome,
+    totalIncome: portfolioIncome + statePensionIncome,
+  };
+}
+
+/**
  * Calculate impact of market drop and recovery time
  * Uses real returns for proper inflation adjustment
  */

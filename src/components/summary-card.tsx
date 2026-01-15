@@ -10,6 +10,8 @@ import {
   calculateAverageReturnRate,
   getYearsToRetirement,
   formatCurrency,
+  calculateTotalRetirementIncome,
+  calculateStatePensionEquivalent,
 } from '@/lib/calculations';
 
 interface SummaryCardProps {
@@ -44,15 +46,20 @@ export function SummaryCard({ accounts, profile }: SummaryCardProps) {
   const totalBalance = calculateTotalBalance(accounts);
   const monthlyContributions = calculateTotalContributions(accounts);
   const projectedTotalReal = calculateProjectedTotalReal(accounts, profile);
-  const progress = calculateProgress(projectedTotalReal, profile.targetAmount);
   const yearsToRetirement = getYearsToRetirement(profile);
-  const surplus = projectedTotalReal - profile.targetAmount;
-  const isOnTrack = surplus >= 0;
   const avgReturn = calculateAverageReturnRate(accounts);
+
+  // State Pension calculations
+  const statePensionEquivalent = calculateStatePensionEquivalent(profile);
+  const effectiveTarget = profile.targetAmount - statePensionEquivalent;
+  const progress = calculateProgress(projectedTotalReal, effectiveTarget);
+  const surplus = projectedTotalReal - effectiveTarget;
+  const isOnTrack = surplus >= 0;
+  const retirementIncome = calculateTotalRetirementIncome(projectedTotalReal, profile);
 
   const requiredContribution = calculateRequiredContribution(
     totalBalance,
-    profile.targetAmount,
+    effectiveTarget,
     yearsToRetirement,
     avgReturn,
     profile.expectedInflation
@@ -153,6 +160,42 @@ export function SummaryCard({ accounts, profile }: SummaryCardProps) {
             </div>
           )}
         </div>
+
+        {/* State Pension & Income section */}
+        {profile.includeStatePension && statePensionEquivalent > 0 && (
+          <div className="mt-4 rounded-xl bg-white/5 p-4 backdrop-blur-sm">
+            <div className="flex items-center gap-2 mb-3">
+              <svg className="h-4 w-4 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+              <span className="text-sm font-medium text-violet-300">State Pension Impact</span>
+            </div>
+            <div className="space-y-2 text-sm">
+              {profile.statePensionAge > profile.retirementAge && (
+                <div className="flex justify-between text-xs mb-2 pb-2 border-b border-white/10">
+                  <span className="text-amber-300">Gap before State Pension</span>
+                  <span className="text-amber-300">{profile.statePensionAge - profile.retirementAge} years (ages {profile.retirementAge}-{profile.statePensionAge})</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-white/70">Income from age {profile.statePensionAge}</span>
+                <span className="font-semibold text-white">{formatCurrency(retirementIncome.totalIncome)}/yr</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-white/50">From portfolio (4% withdrawal)</span>
+                <span className="text-white/70">{formatCurrency(retirementIncome.portfolioIncome)}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-white/50">From State Pension</span>
+                <span className="text-violet-300">{formatCurrency(retirementIncome.statePensionIncome)}</span>
+              </div>
+              <div className="mt-2 pt-2 border-t border-white/10 flex justify-between">
+                <span className="text-white/70">Reduces target by</span>
+                <span className="font-semibold text-teal-300">{formatCurrency(statePensionEquivalent)}</span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Inflation note */}
         <p className="mt-4 text-center text-xs text-white/50">
