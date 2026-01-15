@@ -178,7 +178,7 @@ export function WhatIfScenarios({ accounts, profile }: WhatIfScenariosProps) {
             setRetirementAgeAdjust(0);
             setReturnAdjust(0);
           }}
-          className="w-full cursor-pointer text-sm text-muted-foreground hover:text-foreground py-2 transition-colors"
+          className="w-full cursor-pointer rounded-lg text-sm text-muted-foreground hover:bg-slate-100 hover:text-foreground py-2 transition-colors"
         >
           Reset all scenarios
         </button>
