@@ -511,6 +511,38 @@ export function calculateWhatIfReturns(
 }
 
 /**
+ * Calculate Coast FIRE number - the amount needed today such that
+ * compound growth alone (no contributions) reaches the target by retirement
+ */
+export function calculateCoastFireNumber(
+  profile: UserProfile,
+  averageRealReturn: number
+): number {
+  const yearsToRetirement = profile.retirementAge - profile.currentAge;
+  if (yearsToRetirement <= 0) return profile.targetAmount;
+
+  // Coast FIRE = Target / (1 + realReturn)^years
+  const realRate = averageRealReturn / 100;
+  return profile.targetAmount / Math.pow(1 + realRate, yearsToRetirement);
+}
+
+/**
+ * Find the year when Coast FIRE is reached (if ever)
+ * Returns the year index or null if not reached within the projection
+ */
+export function findCoastFireYear(
+  projection: ProjectionDataPoint[],
+  coastFireNumber: number
+): number | null {
+  for (let i = 0; i < projection.length; i++) {
+    if (projection[i].totalReal >= coastFireNumber) {
+      return i;
+    }
+  }
+  return null;
+}
+
+/**
  * Calculate impact of market drop and recovery time
  * Uses real returns for proper inflation adjustment
  */
