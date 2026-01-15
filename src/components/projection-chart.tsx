@@ -64,7 +64,7 @@ export function ProjectionChart({ accounts, profile }: ProjectionChartProps) {
 
   if (accounts.length === 0) {
     return (
-      <SectionCard icon={<ChartIcon />} iconColor="text-teal-600" title="Growth Projection">
+      <SectionCard icon={<ChartIcon />} title="Growth Projection">
         <div className="flex h-[300px] flex-col items-center justify-center">
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0c1929] to-[#1e3a5f]">
             <EmptyChartIcon />
