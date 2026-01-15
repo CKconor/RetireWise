@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { Account, UserProfile } from '@/types';
 import { SectionCard } from '@/components/ui/section-card';
+import { Button } from '@/components/ui/button';
 import {
   calculateProjectedTotalReal,
   calculateWhatIfContribution,
@@ -29,8 +30,14 @@ interface ScenarioResultProps {
 }
 
 function ScenarioResult({ label, value, diff }: ScenarioResultProps) {
+  const bgClass = diff > 0
+    ? 'bg-gradient-to-r from-teal-50 to-emerald-50/50 ring-1 ring-teal-200'
+    : diff < 0
+    ? 'bg-gradient-to-r from-amber-50 to-orange-50/50 ring-1 ring-amber-200'
+    : 'bg-gradient-to-r from-slate-50 to-slate-100/50 ring-1 ring-slate-200';
+
   return (
-    <div className="flex items-center justify-between rounded-lg bg-slate-50 p-3">
+    <div className={`flex items-center justify-between rounded-xl p-3 ${bgClass}`}>
       <span className="text-sm text-muted-foreground">{label}</span>
       <div className="text-right">
         <span className="font-display text-lg text-foreground">{formatCurrency(value)}</span>
@@ -92,12 +99,15 @@ export function WhatIfScenarios({ accounts, profile }: WhatIfScenariosProps) {
   return (
     <SectionCard icon={<QuestionIcon />} title="What If..." contentClassName="space-y-5">
       {/* Extra Contribution Scenario */}
-      <div className="space-y-2">
+      <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-foreground">
+          <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <svg className="h-4 w-4 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
             I save {extraContribution >= 0 ? 'extra' : 'less'}:
           </label>
-          <span className="font-display text-lg text-[#0c1929]">
+          <span className="font-display text-lg text-foreground">
             {extraContribution >= 0 ? '+' : ''}{formatCurrency(extraContribution)}/mo
           </span>
         </div>
@@ -108,7 +118,7 @@ export function WhatIfScenarios({ accounts, profile }: WhatIfScenariosProps) {
           step="50"
           value={extraContribution}
           onChange={(e) => setExtraContribution(Number(e.target.value))}
-          className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#0c1929]"
+          className="slider-premium"
         />
         <ScenarioResult
           label="Projected total:"
@@ -118,10 +128,15 @@ export function WhatIfScenarios({ accounts, profile }: WhatIfScenariosProps) {
       </div>
 
       {/* Retirement Age Scenario */}
-      <div className="space-y-2">
+      <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-foreground">I retire at:</label>
-          <span className="font-display text-lg text-[#0c1929]">
+          <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <svg className="h-4 w-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            I retire at:
+          </label>
+          <span className="font-display text-lg text-foreground">
             Age {profile.retirementAge + retirementAgeAdjust}
             {retirementAgeAdjust !== 0 && (
               <span className="text-muted-foreground text-sm font-sans font-normal">
@@ -137,7 +152,7 @@ export function WhatIfScenarios({ accounts, profile }: WhatIfScenariosProps) {
           step="1"
           value={retirementAgeAdjust}
           onChange={(e) => setRetirementAgeAdjust(Number(e.target.value))}
-          className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#0c1929]"
+          className="slider-premium"
         />
         <ScenarioResult
           label="Projected total:"
@@ -147,10 +162,15 @@ export function WhatIfScenarios({ accounts, profile }: WhatIfScenariosProps) {
       </div>
 
       {/* Return Rate Scenario */}
-      <div className="space-y-2">
+      <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-foreground">Markets perform:</label>
-          <span className="font-display text-lg text-[#0c1929]">
+          <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <svg className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+            </svg>
+            Markets perform:
+          </label>
+          <span className="font-display text-lg text-foreground">
             {returnAdjust >= 0 ? '+' : ''}{returnAdjust}% vs expected
           </span>
         </div>
@@ -161,7 +181,7 @@ export function WhatIfScenarios({ accounts, profile }: WhatIfScenariosProps) {
           step="1"
           value={returnAdjust}
           onChange={(e) => setReturnAdjust(Number(e.target.value))}
-          className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#0c1929]"
+          className="slider-premium"
         />
         <ScenarioResult
           label="Projected total:"
@@ -172,16 +192,20 @@ export function WhatIfScenarios({ accounts, profile }: WhatIfScenariosProps) {
 
       {/* Reset Button */}
       {(extraContribution !== 0 || retirementAgeAdjust !== 0 || returnAdjust !== 0) && (
-        <button
+        <Button
+          variant="ghost"
           onClick={() => {
             setExtraContribution(0);
             setRetirementAgeAdjust(0);
             setReturnAdjust(0);
           }}
-          className="w-full cursor-pointer rounded-lg text-sm text-muted-foreground hover:bg-slate-100 hover:text-foreground py-2 transition-colors"
+          className="w-full text-muted-foreground hover:text-foreground"
         >
+          <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
           Reset all scenarios
-        </button>
+        </Button>
       )}
     </SectionCard>
   );
