@@ -1,8 +1,17 @@
 'use client';
 
+import { useState } from 'react';
 import { Account, UserProfile, ACCOUNT_TYPE_LABELS, ACCOUNT_TYPE_COLORS } from '@/types';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   formatCurrency,
   calculateFutureValue,
@@ -19,6 +28,7 @@ interface AccountCardProps {
 }
 
 export function AccountCard({ account, profile, onEdit, onDelete }: AccountCardProps) {
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const months = getMonthsToRetirement(profile);
   const realReturn = calculateRealReturn(account.annualReturnRate, profile.expectedInflation);
 
@@ -64,7 +74,7 @@ export function AccountCard({ account, profile, onEdit, onDelete }: AccountCardP
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => onDelete(account.id)}
+              onClick={() => setShowDeleteConfirm(true)}
               className="h-8 w-8 p-0 text-muted-foreground transition-colors hover:bg-red-50 hover:text-destructive"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -116,6 +126,31 @@ export function AccountCard({ account, profile, onEdit, onDelete }: AccountCardP
           </div>
         </div>
       </CardContent>
+
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Account</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{account.name}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-3">
+            <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                onDelete(account.id);
+                setShowDeleteConfirm(false);
+              }}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
