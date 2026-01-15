@@ -97,31 +97,52 @@ export function ProjectionChart({ accounts, profile }: ProjectionChartProps) {
               dx={-10}
             />
             <Tooltip
-              formatter={(value, name) => {
-                const labels: Record<string, string> = {
-                  totalReal: 'Expected',
-                  overperformanceReal: 'Optimistic (+2%)',
-                  underperformanceReal: 'Conservative (-2%)',
+              content={({ active, payload, label }) => {
+                if (!active || !payload || payload.length === 0) return null;
+
+                const lineConfig: Record<string, { label: string; color: string }> = {
+                  totalReal: { label: 'Expected', color: '#3b82f6' },
+                  overperformanceReal: { label: 'Optimistic (+2%)', color: '#22c55e' },
+                  underperformanceReal: { label: 'Conservative (-2%)', color: '#f59e0b' },
                 };
-                const key = name ?? '';
-                return [formatCurrency(value as number), labels[key] || key];
-              }}
-              labelFormatter={(label) => `Year ${String(label).replace('Y', '')}`}
-              contentStyle={{
-                backgroundColor: '#fff',
-                border: '1px solid #e8e4de',
-                borderRadius: '12px',
-                boxShadow: '0 10px 40px -10px rgba(12, 25, 41, 0.15)',
-                padding: '12px 16px',
-              }}
-              itemStyle={{
-                color: '#1a1a1a',
-                fontSize: '13px',
-              }}
-              labelStyle={{
-                color: '#6b6560',
-                fontWeight: 600,
-                marginBottom: '4px',
+
+                return (
+                  <div
+                    style={{
+                      backgroundColor: '#fff',
+                      border: '1px solid #e8e4de',
+                      borderRadius: '12px',
+                      boxShadow: '0 10px 40px -10px rgba(12, 25, 41, 0.15)',
+                      padding: '12px 16px',
+                    }}
+                  >
+                    <p style={{ color: '#6b6560', fontWeight: 600, marginBottom: '8px', fontSize: '13px' }}>
+                      Year {String(label).replace('Y', '')}
+                    </p>
+                    {[...payload]
+                      .sort((a, b) => (b.value as number) - (a.value as number))
+                      .map((entry) => {
+                        const config = lineConfig[entry.dataKey as string];
+                        if (!config) return null;
+                        return (
+                          <div key={entry.dataKey} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                            <span
+                              style={{
+                                width: '10px',
+                                height: '10px',
+                                borderRadius: '50%',
+                                backgroundColor: config.color,
+                                flexShrink: 0,
+                              }}
+                            />
+                            <span style={{ color: '#1a1a1a', fontSize: '13px' }}>
+                              {config.label}: {formatCurrency(entry.value as number)}
+                            </span>
+                          </div>
+                        );
+                      })}
+                  </div>
+                );
               }}
             />
             <ReferenceLine
@@ -130,12 +151,30 @@ export function ProjectionChart({ accounts, profile }: ProjectionChartProps) {
               strokeDasharray="8 4"
               strokeWidth={2}
               strokeOpacity={0.4}
-              label={{
-                value: 'Target',
-                position: 'right',
-                fill: '#6b6560',
-                fontSize: 12,
-                fontWeight: 600,
+              label={({ viewBox }) => {
+                const x = (viewBox?.x ?? 0) + 4;
+                const y = (viewBox?.y ?? 0) - 8;
+                return (
+                  <g>
+                    <rect
+                      x={x - 4}
+                      y={y - 10}
+                      width={42}
+                      height={16}
+                      rx={4}
+                      fill="rgba(255, 255, 255, 0.85)"
+                    />
+                    <text
+                      x={x}
+                      y={y}
+                      fill="#6b6560"
+                      fontSize={12}
+                      fontWeight={600}
+                    >
+                      Target
+                    </text>
+                  </g>
+                );
               }}
             />
             <Area
