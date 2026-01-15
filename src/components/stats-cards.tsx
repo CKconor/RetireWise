@@ -40,7 +40,7 @@ export function StatsCards({ accounts, profile }: StatsCardsProps) {
       <StatCard
         icon={<WalletIcon />}
         iconColor="blue"
-        label="Current Portfolio"
+        label="Portfolio"
         value={formatCurrency(totalBalance)}
       />
       <StatCard
