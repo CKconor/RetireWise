@@ -16,7 +16,7 @@ export function StatCard({ icon, label, value, subValue, className }: StatCardPr
       </div>
       <div className="mt-3">
         <p className="text-xs font-medium text-white/60">{label}</p>
-        <p className="font-display text-2xl text-white">{value}</p>
+        <p className="font-display text-xl text-white">{value}</p>
         {subValue && (
           <p className="text-xs text-white/60">{subValue}</p>
         )}
