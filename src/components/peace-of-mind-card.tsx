@@ -105,7 +105,7 @@ export function PeaceOfMindCard({ accounts, profile }: PeaceOfMindCardProps) {
             </p>
             <p className={`font-display text-4xl ${colors.text}`}>
               {confidenceScore}
-              <span className="text-xl text-slate-300">/10</span>
+              <span className="text-xl text-slate-500">/10</span>
             </p>
           </div>
           <div className="flex gap-1">
