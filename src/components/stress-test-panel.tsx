@@ -35,7 +35,7 @@ export function StressTestPanel({ accounts, profile }: StressTestPanelProps) {
 
   if (accounts.length === 0) {
     return (
-      <SectionCard icon={<ShieldIcon />} iconColor="text-rose-500" title="Stress Test">
+      <SectionCard icon={<ShieldIcon />} title="Stress Test">
         <p className="text-sm text-muted-foreground">Add accounts to see stress test results.</p>
       </SectionCard>
     );
