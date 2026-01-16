@@ -48,8 +48,8 @@ export function AccountCard({ account, profile, onEdit, onDelete }: AccountCardP
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-[#0c1929] to-[#1e3a5f]">
-              <svg className="h-5 w-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-[#0c1929] to-[#1e3a5f] dark:from-amber-400 dark:to-amber-500">
+              <svg className="h-5 w-5 text-amber-400 dark:text-[#0c1929]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
               </svg>
             </div>
@@ -65,7 +65,7 @@ export function AccountCard({ account, profile, onEdit, onDelete }: AccountCardP
               variant="ghost"
               size="sm"
               onClick={() => onEdit(account)}
-              className="h-8 w-8 p-0 text-muted-foreground transition-colors hover:bg-slate-100 hover:text-foreground"
+              className="h-8 w-8 p-0 text-muted-foreground transition-colors hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-foreground"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -75,7 +75,7 @@ export function AccountCard({ account, profile, onEdit, onDelete }: AccountCardP
               variant="ghost"
               size="sm"
               onClick={() => setShowDeleteConfirm(true)}
-              className="h-8 w-8 p-0 text-muted-foreground transition-colors hover:bg-red-50 hover:text-destructive"
+              className="h-8 w-8 p-0 text-muted-foreground transition-colors hover:bg-red-50 dark:hover:bg-red-950 hover:text-destructive"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -86,19 +86,19 @@ export function AccountCard({ account, profile, onEdit, onDelete }: AccountCardP
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-lg bg-slate-50/80 p-2.5">
+          <div className="rounded-lg bg-slate-50/80 dark:bg-slate-800/80 p-2.5">
             <p className="text-xs text-muted-foreground">Balance</p>
             <p className="font-display text-lg">{formatCurrency(account.currentBalance)}</p>
           </div>
-          <div className="rounded-lg bg-slate-50/80 p-2.5">
+          <div className="rounded-lg bg-slate-50/80 dark:bg-slate-800/80 p-2.5">
             <p className="text-xs text-muted-foreground">Monthly</p>
             <p className="font-display text-lg">{formatCurrency(account.monthlyContribution)}</p>
           </div>
         </div>
 
-        <div className="flex items-center justify-between rounded-lg bg-slate-50/80 p-2.5">
+        <div className="flex items-center justify-between rounded-lg bg-slate-50/80 dark:bg-slate-800/80 p-2.5">
           <div className="flex items-center gap-2">
-            <svg className="h-4 w-4 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="h-4 w-4 text-teal-500 dark:text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
             </svg>
             <span className="text-xs text-muted-foreground">Expected Return</span>
@@ -111,15 +111,15 @@ export function AccountCard({ account, profile, onEdit, onDelete }: AccountCardP
 
         <div className="divider-gradient" />
 
-        <div className="rounded-xl bg-gradient-to-r from-teal-50 to-emerald-50/50 p-3 ring-1 ring-teal-200">
+        <div className="rounded-xl bg-gradient-to-r from-teal-50 to-emerald-50/50 dark:from-teal-900/30 dark:to-emerald-900/30 p-3 ring-1 ring-teal-200 dark:ring-teal-700">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-medium text-teal-700">Projected Value</p>
-              <p className="text-xs text-teal-600/70">at retirement (real terms)</p>
+              <p className="text-xs font-medium text-teal-700 dark:text-teal-300">Projected Value</p>
+              <p className="text-xs text-teal-600/70 dark:text-teal-400/70">at retirement (real terms)</p>
             </div>
             <div className="text-right">
-              <p className="font-display text-2xl text-teal-700">{formatCurrency(Math.round(projectedValueReal))}</p>
-              <p className="text-xs font-semibold text-teal-600">
+              <p className="font-display text-2xl text-teal-700 dark:text-teal-300">{formatCurrency(Math.round(projectedValueReal))}</p>
+              <p className="text-xs font-semibold text-teal-600 dark:text-teal-400">
                 +{formatCurrency(Math.round(growth))} ({growthPercentage}%)
               </p>
             </div>

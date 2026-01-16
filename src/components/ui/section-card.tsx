@@ -26,8 +26,8 @@ export function SectionCard({
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2.5 font-display text-2xl font-normal tracking-tight">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#0c1929] to-[#1e3a5f]">
-              <span className="h-5 w-5 text-amber-400">{icon}</span>
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#0c1929] to-[#1e3a5f] dark:from-amber-400 dark:to-amber-500">
+              <span className="h-5 w-5 text-amber-400 dark:text-[#0c1929]">{icon}</span>
             </span>
             {title}
           </CardTitle>

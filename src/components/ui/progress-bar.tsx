@@ -19,7 +19,7 @@ interface ProgressBarProps {
 export function ProgressBar({
   value,
   color = 'bg-emerald-500',
-  bgColor = 'bg-slate-100',
+  bgColor = 'bg-slate-100 dark:bg-slate-700',
   height = 'md',
   className
 }: ProgressBarProps) {

@@ -97,7 +97,7 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
             value={currentAge}
             onChange={(e) => setCurrentAge(e.target.value)}
             onBlur={() => handleBlur('currentAge', currentAge)}
-            className="bg-secondary/30 transition-colors focus:bg-white"
+            className="bg-secondary/30 transition-colors focus:bg-white dark:focus:bg-secondary"
           />
         </FormField>
         <FormField id="retirementAge" label="Retirement Age" icon={<CalendarIcon />}>
@@ -109,7 +109,7 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
             value={retirementAge}
             onChange={(e) => setRetirementAge(e.target.value)}
             onBlur={() => handleBlur('retirementAge', retirementAge)}
-            className="bg-secondary/30 transition-colors focus:bg-white"
+            className="bg-secondary/30 transition-colors focus:bg-white dark:focus:bg-secondary"
           />
         </FormField>
       </div>
@@ -135,7 +135,7 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
           value={targetAmount}
           onChange={(e) => setTargetAmount(e.target.value)}
           onBlur={() => handleBlur('targetAmount', targetAmount)}
-          className="bg-secondary/30 transition-colors focus:bg-white"
+          className="bg-secondary/30 transition-colors focus:bg-white dark:focus:bg-secondary"
         />
       </FormField>
 
@@ -154,7 +154,7 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
           value={expectedInflation}
           onChange={(e) => setExpectedInflation(e.target.value)}
           onBlur={() => handleBlur('expectedInflation', expectedInflation)}
-          className="bg-secondary/30 transition-colors focus:bg-white"
+          className="bg-secondary/30 transition-colors focus:bg-white dark:focus:bg-secondary"
         />
       </FormField>
 
@@ -197,7 +197,7 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
                   value={statePensionAmount}
                   onChange={(e) => setStatePensionAmount(e.target.value)}
                   onBlur={() => handleBlur('statePensionAmount', statePensionAmount)}
-                  className="bg-secondary/30 transition-colors focus:bg-white"
+                  className="bg-secondary/30 transition-colors focus:bg-white dark:focus:bg-secondary"
                 />
               </FormField>
               <FormField
@@ -218,11 +218,11 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
                       onUpdate({ statePensionAge: numValue });
                     }
                   }}
-                  className="bg-secondary/30 transition-colors focus:bg-white"
+                  className="bg-secondary/30 transition-colors focus:bg-white dark:focus:bg-secondary"
                 />
               </FormField>
             </div>
-            <div className="flex items-center justify-between rounded-lg bg-slate-50/80 p-2.5 ring-1 ring-slate-200/60">
+            <div className="flex items-center justify-between rounded-lg bg-secondary/50 p-2.5 ring-1 ring-border/60">
               <span className="text-xs text-muted-foreground">Annual income</span>
               <span className="font-semibold">{formatCurrency(annualStatePension)}<span className="text-xs text-muted-foreground font-normal">/yr from {profile.statePensionAge}</span></span>
             </div>

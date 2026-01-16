@@ -18,6 +18,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { generateProjection, formatCurrency, formatCurrencyCompact, calculateCoastFireNumber, findCoastFireYear, calculateAverageReturnRate } from '@/lib/calculations';
+import { useChartColors } from '@/hooks/use-chart-colors';
 
 interface ProjectionChartProps {
   accounts: Account[];
@@ -40,6 +41,7 @@ export function ProjectionChart({ accounts, profile }: ProjectionChartProps) {
   const [showOptimistic, setShowOptimistic] = useState(true);
   const [showConservative, setShowConservative] = useState(true);
   const [showCoastFire, setShowCoastFire] = useState(true);
+  const chartColors = useChartColors();
 
   const data = useMemo(
     () => generateProjection(accounts, profile),
@@ -66,8 +68,10 @@ export function ProjectionChart({ accounts, profile }: ProjectionChartProps) {
     return (
       <SectionCard icon={<ChartIcon />} title="Growth Projection">
         <div className="flex h-[300px] flex-col items-center justify-center">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0c1929] to-[#1e3a5f]">
-            <EmptyChartIcon />
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0c1929] to-[#1e3a5f] dark:from-amber-400 dark:to-amber-500">
+            <svg className="h-8 w-8 text-amber-400 dark:text-[#0c1929]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
           </div>
           <p className="font-display text-2xl text-foreground">No projection data</p>
           <p className="mt-1 text-sm text-muted-foreground">Add accounts to see your growth forecast</p>
@@ -149,19 +153,19 @@ export function ProjectionChart({ accounts, profile }: ProjectionChartProps) {
                 <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e8e4de" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} vertical={false} />
             <XAxis
               dataKey="age"
               axisLine={false}
               tickLine={false}
-              tick={{ fill: '#6b6560', fontSize: 12 }}
+              tick={{ fill: chartColors.axis, fontSize: 12 }}
               dy={10}
-              label={{ value: 'Age', position: 'insideBottom', offset: -20, fill: '#6b6560', fontSize: 12, fontWeight: 600 }}
+              label={{ value: 'Age', position: 'insideBottom', offset: -20, fill: chartColors.axis, fontSize: 12, fontWeight: 600 }}
             />
             <YAxis
               axisLine={false}
               tickLine={false}
-              tick={{ fill: '#6b6560', fontSize: 12 }}
+              tick={{ fill: chartColors.axis, fontSize: 12 }}
               tickFormatter={(value) => formatCurrencyCompact(value)}
               dx={-10}
             />
@@ -180,14 +184,14 @@ export function ProjectionChart({ accounts, profile }: ProjectionChartProps) {
                 return (
                   <div
                     style={{
-                      backgroundColor: '#fff',
-                      border: '1px solid #e8e4de',
+                      backgroundColor: chartColors.tooltipBg,
+                      border: `1px solid ${chartColors.tooltipBorder}`,
                       borderRadius: '12px',
                       boxShadow: '0 10px 40px -10px rgba(12, 25, 41, 0.15)',
                       padding: '12px 16px',
                     }}
                   >
-                    <p style={{ color: '#6b6560', fontWeight: 600, marginBottom: '8px', fontSize: '13px' }}>
+                    <p style={{ color: chartColors.tooltipMuted, fontWeight: 600, marginBottom: '8px', fontSize: '13px' }}>
                       Age {label}
                     </p>
                     {[...payload]
@@ -206,14 +210,14 @@ export function ProjectionChart({ accounts, profile }: ProjectionChartProps) {
                                 flexShrink: 0,
                               }}
                             />
-                            <span style={{ color: '#1a1a1a', fontSize: '13px' }}>
+                            <span style={{ color: chartColors.tooltipText, fontSize: '13px' }}>
                               {config.label}: {formatCurrency(entry.value as number)}
                             </span>
                           </div>
                         );
                       })}
                     {showTargets && (
-                      <div style={{ borderTop: '1px solid #e8e4de', marginTop: '8px', paddingTop: '8px' }}>
+                      <div style={{ borderTop: `1px solid ${chartColors.tooltipBorder}`, marginTop: '8px', paddingTop: '8px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span
                             style={{
@@ -224,7 +228,7 @@ export function ProjectionChart({ accounts, profile }: ProjectionChartProps) {
                               flexShrink: 0,
                             }}
                           />
-                          <span style={{ color: '#6b6560', fontSize: '12px' }}>
+                          <span style={{ color: chartColors.tooltipMuted, fontSize: '12px' }}>
                             Coast FIRE: {formatCurrency(coastFireInfo.amount)}
                           </span>
                         </div>
@@ -236,7 +240,7 @@ export function ProjectionChart({ accounts, profile }: ProjectionChartProps) {
             />
             <ReferenceLine
               y={profile.targetAmount}
-              stroke="#0c1929"
+              stroke={chartColors.targetLine}
               strokeDasharray="8 4"
               strokeWidth={2}
               strokeOpacity={0.4}
@@ -251,12 +255,12 @@ export function ProjectionChart({ accounts, profile }: ProjectionChartProps) {
                       width={42}
                       height={16}
                       rx={4}
-                      fill="rgba(255, 255, 255, 0.85)"
+                      fill={chartColors.labelBg}
                     />
                     <text
                       x={x}
                       y={y}
-                      fill="#6b6560"
+                      fill={chartColors.axis}
                       fontSize={12}
                       fontWeight={600}
                     >
@@ -284,7 +288,7 @@ export function ProjectionChart({ accounts, profile }: ProjectionChartProps) {
                         width={70}
                         height={16}
                         rx={4}
-                        fill="rgba(255, 255, 255, 0.85)"
+                        fill={chartColors.labelBg}
                       />
                       <text
                         x={x}
@@ -312,7 +316,7 @@ export function ProjectionChart({ accounts, profile }: ProjectionChartProps) {
                 fillOpacity={1}
                 fill="url(#colorOver)"
                 dot={false}
-                activeDot={{ r: 4, fill: '#22c55e', stroke: '#fff', strokeWidth: 2 }}
+                activeDot={{ r: 4, fill: '#22c55e', stroke: chartColors.activeDotStroke, strokeWidth: 2 }}
               />
             )}
             {showConservative && (
@@ -327,7 +331,7 @@ export function ProjectionChart({ accounts, profile }: ProjectionChartProps) {
                 fillOpacity={1}
                 fill="url(#colorUnder)"
                 dot={false}
-                activeDot={{ r: 4, fill: '#f59e0b', stroke: '#fff', strokeWidth: 2 }}
+                activeDot={{ r: 4, fill: '#f59e0b', stroke: chartColors.activeDotStroke, strokeWidth: 2 }}
               />
             )}
             <Area
@@ -339,7 +343,7 @@ export function ProjectionChart({ accounts, profile }: ProjectionChartProps) {
               fillOpacity={1}
               fill="url(#colorTotal)"
               dot={false}
-              activeDot={{ r: 6, fill: '#3b82f6', stroke: '#fff', strokeWidth: 2 }}
+              activeDot={{ r: 6, fill: '#3b82f6', stroke: chartColors.activeDotStroke, strokeWidth: 2 }}
             />
           </AreaChart>
         </ResponsiveContainer>

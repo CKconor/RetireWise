@@ -31,10 +31,10 @@ interface ScenarioResultProps {
 
 function ScenarioResult({ label, value, diff }: ScenarioResultProps) {
   const bgClass = diff > 0
-    ? 'bg-gradient-to-r from-teal-50 to-emerald-50/50 ring-1 ring-teal-200'
+    ? 'bg-gradient-to-r from-teal-50 to-emerald-50/50 dark:from-teal-900/30 dark:to-emerald-900/30 ring-1 ring-teal-200 dark:ring-teal-700'
     : diff < 0
-    ? 'bg-gradient-to-r from-amber-50 to-orange-50/50 ring-1 ring-amber-200'
-    : 'bg-gradient-to-r from-slate-50 to-slate-100/50 ring-1 ring-slate-200';
+    ? 'bg-gradient-to-r from-amber-50 to-orange-50/50 dark:from-amber-900/30 dark:to-orange-900/30 ring-1 ring-amber-200 dark:ring-amber-700'
+    : 'bg-gradient-to-r from-slate-50 to-slate-100/50 dark:from-slate-800 dark:to-slate-800/50 ring-1 ring-slate-200 dark:ring-slate-700';
 
   return (
     <div className={`flex items-center justify-between rounded-xl p-3 ${bgClass}`}>
@@ -42,7 +42,7 @@ function ScenarioResult({ label, value, diff }: ScenarioResultProps) {
       <div className="text-right">
         <span className="font-display text-lg text-foreground">{formatCurrency(value)}</span>
         {diff !== 0 && (
-          <span className={`ml-2 text-sm font-medium ${diff > 0 ? 'text-teal-600' : 'text-amber-600'}`}>
+          <span className={`ml-2 text-sm font-medium ${diff > 0 ? 'text-teal-600 dark:text-teal-400' : 'text-amber-600 dark:text-amber-400'}`}>
             ({diff > 0 ? '+' : ''}{formatCurrency(diff)})
           </span>
         )}
@@ -80,8 +80,8 @@ export function WhatIfScenarios({ accounts, profile }: WhatIfScenariosProps) {
     return (
       <SectionCard icon={<QuestionIcon />} title="What If...">
         <div className="flex flex-col items-center py-6 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-[#0c1929] to-[#1e3a5f]">
-            <svg className="h-7 w-7 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-[#0c1929] to-[#1e3a5f] dark:from-amber-400 dark:to-amber-500">
+            <svg className="h-7 w-7 text-amber-400 dark:text-[#0c1929]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>

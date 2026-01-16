@@ -142,11 +142,23 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+  }
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "cv11", "ss01";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+  /* Smooth theme transitions for common elements */
+  .card-hero,
+  .card-premium,
+  header,
+  [class*="bg-gradient"],
+  [class*="bg-slate"],
+  [class*="ring-"] {
+    transition: background 0.2s ease-in-out, background-color 0.2s ease-in-out, border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
   }
 }
 
@@ -309,6 +321,14 @@
   );
 }
 
+.dark .card-premium {
+  background: linear-gradient(
+    135deg,
+    rgba(18, 26, 36, 1) 0%,
+    rgba(26, 36, 50, 1) 100%
+  );
+}
+
 .card-premium::before {
   content: '';
   position: absolute;
@@ -334,6 +354,16 @@
   );
   position: relative;
   overflow: hidden;
+}
+
+.dark .card-hero {
+  background: linear-gradient(
+    135deg,
+    #fbbf24 0%,
+    #f97316 50%,
+    #fbbf24 100%
+  );
+  color: #1a1a1a;
 }
 
 .card-hero::before {

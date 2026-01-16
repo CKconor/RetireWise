@@ -26,8 +26,8 @@ export function PeaceOfMindCard({ accounts, profile }: PeaceOfMindCardProps) {
     return (
       <SectionCard icon={<HeartIcon />} title="Peace of Mind">
         <div className="flex flex-col items-center py-6 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-[#0c1929] to-[#1e3a5f]">
-            <svg className="h-7 w-7 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-[#0c1929] to-[#1e3a5f] dark:from-amber-400 dark:to-amber-500">
+            <svg className="h-7 w-7 text-amber-400 dark:text-[#0c1929]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
             </svg>
           </div>
@@ -82,10 +82,10 @@ export function PeaceOfMindCard({ accounts, profile }: PeaceOfMindCardProps) {
   const message = getMessage();
 
   const getScoreColor = () => {
-    if (confidenceScore >= 8) return { text: 'text-teal-700', bg: 'bg-gradient-to-r from-teal-50 to-emerald-50/50 ring-1 ring-teal-200', bar: 'bg-teal-500' };
-    if (confidenceScore >= 6) return { text: 'text-[#0c1929]', bg: 'bg-slate-50 ring-1 ring-slate-200', bar: 'bg-[#0c1929]' };
-    if (confidenceScore >= 4) return { text: 'text-amber-700', bg: 'bg-gradient-to-r from-amber-50 to-orange-50/50 ring-1 ring-amber-200', bar: 'bg-amber-500' };
-    return { text: 'text-slate-500', bg: 'bg-slate-50 ring-1 ring-slate-200', bar: 'bg-slate-400' };
+    if (confidenceScore >= 8) return { text: 'text-teal-700 dark:text-teal-300', bg: 'bg-gradient-to-r from-teal-50 to-emerald-50/50 dark:from-teal-900/30 dark:to-emerald-900/30 ring-1 ring-teal-200 dark:ring-teal-700', bar: 'bg-teal-500' };
+    if (confidenceScore >= 6) return { text: 'text-[#0c1929] dark:text-amber-400', bg: 'bg-slate-50 dark:bg-slate-800 ring-1 ring-slate-200 dark:ring-slate-700', bar: 'bg-[#0c1929] dark:bg-amber-400' };
+    if (confidenceScore >= 4) return { text: 'text-amber-700 dark:text-amber-300', bg: 'bg-gradient-to-r from-amber-50 to-orange-50/50 dark:from-amber-900/30 dark:to-orange-900/30 ring-1 ring-amber-200 dark:ring-amber-700', bar: 'bg-amber-500' };
+    return { text: 'text-slate-500 dark:text-slate-400', bg: 'bg-slate-50 dark:bg-slate-800 ring-1 ring-slate-200 dark:ring-slate-700', bar: 'bg-slate-400' };
   };
 
   const colors = getScoreColor();
@@ -113,7 +113,7 @@ export function PeaceOfMindCard({ accounts, profile }: PeaceOfMindCardProps) {
               <div
                 key={i}
                 className={`h-10 w-1.5 rounded-full transition-all duration-300 ${
-                  i < confidenceScore ? colors.bar : 'bg-slate-200'
+                  i < confidenceScore ? colors.bar : 'bg-slate-200 dark:bg-slate-700'
                 }`}
                 style={{
                   opacity: i < confidenceScore ? 1 - (i * 0.05) : 1,
@@ -135,23 +135,23 @@ export function PeaceOfMindCard({ accounts, profile }: PeaceOfMindCardProps) {
         <div className="grid grid-cols-2 gap-3">
           <div className={`rounded-xl p-3 ${
             buffer >= 0
-              ? 'bg-gradient-to-r from-teal-50 to-emerald-50/50 ring-1 ring-teal-200'
-              : 'bg-gradient-to-r from-amber-50 to-orange-50/50 ring-1 ring-amber-200'
+              ? 'bg-gradient-to-r from-teal-50 to-emerald-50/50 dark:from-teal-900/30 dark:to-emerald-900/30 ring-1 ring-teal-200 dark:ring-teal-700'
+              : 'bg-gradient-to-r from-amber-50 to-orange-50/50 dark:from-amber-900/30 dark:to-orange-900/30 ring-1 ring-amber-200 dark:ring-amber-700'
           }`}>
             <p className={`text-xs font-medium ${
-              buffer >= 0 ? 'text-teal-600' : 'text-amber-600'
+              buffer >= 0 ? 'text-teal-600 dark:text-teal-400' : 'text-amber-600 dark:text-amber-400'
             }`}>Safety Buffer</p>
             <p className={`font-display text-xl ${
-              buffer >= 0 ? 'text-teal-700' : 'text-amber-700'
+              buffer >= 0 ? 'text-teal-700 dark:text-teal-300' : 'text-amber-700 dark:text-amber-300'
             }`}>
               {buffer >= 0 ? '+' : ''}{bufferPercent}%
             </p>
           </div>
-          <div className="rounded-xl bg-[#0c1929] p-3">
-            <p className="text-xs font-medium text-white/70">Worst Case</p>
-            <p className="font-display text-xl text-white">
+          <div className="rounded-xl bg-[#0c1929] dark:bg-amber-500 p-3">
+            <p className="text-xs font-medium text-white/70 dark:text-[#0c1929]/70">Worst Case</p>
+            <p className="font-display text-xl text-white dark:text-[#0c1929]">
               {conservativePercent}%
-              <span className="text-sm text-white/60"> of goal</span>
+              <span className="text-sm text-white/60 dark:text-[#0c1929]/60"> of goal</span>
             </p>
           </div>
         </div>

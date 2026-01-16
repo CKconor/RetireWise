@@ -55,7 +55,7 @@ export function AccountList({ accounts, profile, onAdd, onUpdate, onDelete }: Ac
       {accounts.length === 0 ? (
         <div
           onClick={handleAddClick}
-          className="cursor-pointer rounded-xl border-2 border-dashed border-slate-200 bg-white/50 p-12 text-center transition-all hover:border-slate-300 hover:bg-white/80"
+          className="cursor-pointer rounded-xl border-2 border-dashed border-border bg-card/50 p-12 text-center transition-all hover:border-muted-foreground/30 hover:bg-card/80"
         >
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[#0c1929] to-[#1e3a5f]">
             <PlusIcon className="h-8 w-8 text-amber-400" />
@@ -64,7 +64,7 @@ export function AccountList({ accounts, profile, onAdd, onUpdate, onDelete }: Ac
           <p className="mt-2 text-muted-foreground">
             Start tracking your retirement savings by adding an account.
           </p>
-          <p className="mt-4 text-sm font-medium text-slate-500">Click to get started</p>
+          <p className="mt-4 text-sm font-medium text-muted-foreground">Click to get started</p>
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
@@ -79,13 +79,13 @@ export function AccountList({ accounts, profile, onAdd, onUpdate, onDelete }: Ac
           ))}
           <Card
             onClick={handleAddClick}
-            className="card-hover flex min-h-[200px] cursor-pointer flex-col items-center justify-center gap-3 border-2 border-dashed border-slate-200 bg-white/50 transition-all hover:border-slate-300 hover:bg-white/80"
+            className="card-hover flex min-h-[200px] cursor-pointer flex-col items-center justify-center gap-3 border-2 border-dashed border-border bg-card/50 transition-all hover:border-muted-foreground/30 hover:bg-card/80"
           >
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-[#0c1929] to-[#1e3a5f]">
               <PlusIcon className="h-5 w-5 text-amber-400" />
             </div>
             <div className="text-center">
-              <p className="font-display text-lg text-slate-600">Add Account</p>
+              <p className="font-display text-lg text-foreground">Add Account</p>
               <p className="text-sm text-muted-foreground">Track another retirement account</p>
             </div>
           </Card>
