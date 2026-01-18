@@ -147,7 +147,7 @@ export function AccountForm({ open, onOpenChange, account, onSave }: AccountForm
             />
           </FormField>
 
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="gap-4 sm:gap-0">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
