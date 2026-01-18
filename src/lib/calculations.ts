@@ -519,11 +519,12 @@ export function calculateCoastFireNumber(
   averageRealReturn: number
 ): number {
   const yearsToRetirement = profile.retirementAge - profile.currentAge;
-  if (yearsToRetirement <= 0) return profile.targetAmount;
+  const effectiveTarget = calculateReducedTarget(profile);
+  if (yearsToRetirement <= 0) return effectiveTarget;
 
   // Coast FIRE = Target / (1 + realReturn)^years
   const realRate = averageRealReturn / 100;
-  return profile.targetAmount / Math.pow(1 + realRate, yearsToRetirement);
+  return effectiveTarget / Math.pow(1 + realRate, yearsToRetirement);
 }
 
 /**
