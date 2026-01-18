@@ -115,9 +115,10 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
       </div>
 
       {yearsToRetirement > 0 && (
-        <div className="rounded-xl bg-gradient-to-r from-[#0c1929] to-[#1e3a5f] px-4 py-3 text-center">
-          <span className="font-display text-2xl text-white">{yearsToRetirement}</span>
-          <span className="ml-2 text-sm text-white/70">years until retirement</span>
+        <div className="card-hero rounded-2xl p-4 text-white dark:text-[#1a1a1a] shadow-xl shadow-[#0c1929]/30 dark:shadow-amber-900/40">
+          <p className="relative z-10 text-center font-display text-xl text-wh">
+            {yearsToRetirement} <span className="text-xs font-sans text-white/60 dark:text-[#1a1a1a]/60">years to retirement</span>
+          </p>
         </div>
       )}
 
