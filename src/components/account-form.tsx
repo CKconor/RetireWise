@@ -151,7 +151,7 @@ export function AccountForm({ open, onOpenChange, account, onSave }: AccountForm
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" className="bg-gradient ml-4">
+            <Button type="submit" className="bg-primary ml-4">
               {account ? 'Save Changes' : 'Add Account'}
             </Button>
           </DialogFooter>
