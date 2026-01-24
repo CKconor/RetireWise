@@ -8,6 +8,7 @@ import {
   calculatePercentageOfTarget,
   generateProjection,
   formatCurrency,
+  calculateStatePensionEquivalent,
 } from '@/lib/calculations';
 
 interface PeaceOfMindCardProps {
@@ -41,13 +42,18 @@ export function PeaceOfMindCard({ accounts, profile }: PeaceOfMindCardProps) {
   const confidenceScore = calculateConfidenceScore(accounts, profile);
   const projectedReal = calculateProjectedTotalReal(accounts, profile);
   const projection = generateProjection(accounts, profile);
-  const buffer = projectedReal - profile.targetAmount;
-  const bufferPercent = calculatePercentageOfTarget(buffer + profile.targetAmount, profile.targetAmount) - 100;
+
+  // Account for state pension in target calculation (same as SummaryCard)
+  const statePensionEquivalent = calculateStatePensionEquivalent(profile);
+  const effectiveTarget = profile.targetAmount - statePensionEquivalent;
+
+  const buffer = projectedReal - effectiveTarget;
+  const bufferPercent = calculatePercentageOfTarget(buffer + effectiveTarget, effectiveTarget) - 100;
 
   const conservativeAtRetirement = projection.length > 0
     ? projection[projection.length - 1].underperformanceReal
     : 0;
-  const conservativePercent = calculatePercentageOfTarget(conservativeAtRetirement, profile.targetAmount);
+  const conservativePercent = calculatePercentageOfTarget(conservativeAtRetirement, effectiveTarget);
 
   const getMessage = () => {
     if (confidenceScore >= 8) {
