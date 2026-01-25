@@ -39,6 +39,13 @@ export function AccountCard({ account, profile, onEdit, onDelete }: AccountCardP
     months
   );
 
+  const projectedValueNominal = calculateFutureValue(
+    account.currentBalance,
+    account.monthlyContribution,
+    account.annualReturnRate,
+    months
+  );
+
   const growth = projectedValueReal - account.currentBalance;
   const growthPercentage = calculateGrowthPercentage(account.currentBalance, projectedValueReal);
   const colors = ACCOUNT_TYPE_COLORS[account.type];
@@ -119,6 +126,9 @@ export function AccountCard({ account, profile, onEdit, onDelete }: AccountCardP
             </div>
             <div className="text-right">
               <p className="font-display text-2xl text-teal-700 dark:text-teal-300">{formatCurrency(Math.round(projectedValueReal))}</p>
+              <p className="text-xs text-teal-600/70 dark:text-teal-400/70">
+                {formatCurrency(Math.round(projectedValueNominal))} before inflation
+              </p>
               <p className="text-xs font-semibold text-teal-600 dark:text-teal-400">
                 +{formatCurrency(Math.round(growth))} ({growthPercentage}%)
               </p>
