@@ -5,6 +5,7 @@ import {
   calculateTotalBalance,
   calculateTotalContributions,
   calculateProjectedTotalReal,
+  calculateProjectedTotal,
   calculateProgress,
   calculateRequiredContribution,
   calculateAverageReturnRate,
@@ -46,6 +47,7 @@ export function SummaryCard({ accounts, profile }: SummaryCardProps) {
   const totalBalance = calculateTotalBalance(accounts);
   const monthlyContributions = calculateTotalContributions(accounts);
   const projectedTotalReal = calculateProjectedTotalReal(accounts, profile);
+  const projectedTotalNominal = calculateProjectedTotal(accounts, profile);
   const yearsToRetirement = getYearsToRetirement(profile);
   const avgReturn = calculateAverageReturnRate(accounts);
 
@@ -78,6 +80,9 @@ export function SummaryCard({ accounts, profile }: SummaryCardProps) {
           <div>
             <p className="text-sm font-medium text-white/70 dark:text-[#1a1a1a]/80">Projected at Retirement</p>
             <p className="stat-value-xl mt-1">{formatCurrency(projectedTotalReal)}</p>
+            <p className="mt-1 text-sm text-white/50 dark:text-[#1a1a1a]/50">
+              {formatCurrency(projectedTotalNominal)} before inflation
+            </p>
             <div className="mt-2 flex items-center gap-2">
               <span className="badge-gold text-xs">
                 {yearsToRetirement} years to go
