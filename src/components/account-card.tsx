@@ -129,7 +129,7 @@ export function AccountCard({ account, profile, onEdit, onDelete }: AccountCardP
               <p className="text-xs font-semibold text-teal-600 dark:text-teal-400">
                 +{formatCurrency(Math.round(growth))} ({growthPercentage}%)
               </p>
-              <p className="text-xs text-teal-600/70 dark:text-teal-400/70">
+              <p className="mt-1 text-xs text-teal-600/70 dark:text-teal-400/70">
                 {formatCurrency(Math.round(projectedValueNominal))} before inflation
               </p>
             </div>
