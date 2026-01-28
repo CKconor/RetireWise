@@ -7,13 +7,18 @@ export function calculateFutureValue(
   currentBalance: number,
   monthlyContribution: number,
   annualReturnRate: number,
-  months: number
+  months: number,
+  annualContributionIncrease: number = 0
 ): number {
   const monthlyRate = annualReturnRate / 100 / 12;
   let balance = currentBalance;
+  let currentContribution = monthlyContribution;
 
   for (let i = 0; i < months; i++) {
-    balance = (balance + monthlyContribution) * (1 + monthlyRate);
+    if (i > 0 && i % 12 === 0 && annualContributionIncrease > 0) {
+      currentContribution = monthlyContribution * Math.pow(1 + annualContributionIncrease / 100, i / 12);
+    }
+    balance = (balance + currentContribution) * (1 + monthlyRate);
   }
 
   return balance;
@@ -130,12 +135,14 @@ export function generateProjection(
     };
 
     for (const account of accounts) {
+      const increase = account.annualContributionIncrease ?? 0;
       // Nominal value
       const value = calculateFutureValue(
         account.currentBalance,
         account.monthlyContribution,
         account.annualReturnRate,
-        months
+        months,
+        increase
       );
 
       // Real values using real return rate (nominal - inflation)
@@ -144,19 +151,22 @@ export function generateProjection(
         account.currentBalance,
         account.monthlyContribution,
         realReturn,
-        months
+        months,
+        increase
       );
       const overRealValue = calculateFutureValue(
         account.currentBalance,
         account.monthlyContribution,
         realReturn + performanceVariance,
-        months
+        months,
+        increase
       );
       const underRealValue = calculateFutureValue(
         account.currentBalance,
         account.monthlyContribution,
         Math.max(0, realReturn - performanceVariance),
-        months
+        months,
+        increase
       );
 
       dataPoint[account.id] = Math.round(value);
@@ -190,12 +200,14 @@ export function calculateAccountProjections(
   const months = yearsToRetirement * 12;
 
   return accounts.map((account) => {
+    const increase = account.annualContributionIncrease ?? 0;
     // Nominal projection
     const projectedValue = calculateFutureValue(
       account.currentBalance,
       account.monthlyContribution,
       account.annualReturnRate,
-      months
+      months,
+      increase
     );
     // Real projection using real return rate
     const realReturn = Math.max(0, account.annualReturnRate - profile.expectedInflation);
@@ -203,7 +215,8 @@ export function calculateAccountProjections(
       account.currentBalance,
       account.monthlyContribution,
       realReturn,
-      months
+      months,
+      increase
     );
     const growth = projectedValueReal - account.currentBalance;
     const growthPercentage =
@@ -256,7 +269,8 @@ export function calculateProjectedTotal(
       account.currentBalance,
       account.monthlyContribution,
       account.annualReturnRate,
-      months
+      months,
+      account.annualContributionIncrease ?? 0
     );
   }
 
@@ -283,7 +297,8 @@ export function calculateProjectedTotalReal(
       account.currentBalance,
       account.monthlyContribution,
       realReturn,
-      months
+      months,
+      account.annualContributionIncrease ?? 0
     );
   }
 
@@ -463,7 +478,8 @@ export function calculateWhatIfContribution(
       account.currentBalance,
       account.monthlyContribution + extraForAccount,
       realReturn,
-      months
+      months,
+      account.annualContributionIncrease ?? 0
     );
   }
 
@@ -503,7 +519,8 @@ export function calculateWhatIfReturns(
       account.currentBalance,
       account.monthlyContribution,
       realReturn,
-      months
+      months,
+      account.annualContributionIncrease ?? 0
     );
   }
 
@@ -644,7 +661,8 @@ export function calculateMarketDropImpact(
       droppedBalance,
       account.monthlyContribution,
       realReturn,
-      months
+      months,
+      account.annualContributionIncrease ?? 0
     );
   }
 

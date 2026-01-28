@@ -35,6 +35,7 @@ export function AccountForm({ open, onOpenChange, account, onSave }: AccountForm
   const [currentBalance, setCurrentBalance] = useState('');
   const [monthlyContribution, setMonthlyContribution] = useState('');
   const [annualReturnRate, setAnnualReturnRate] = useState('');
+  const [annualContributionIncrease, setAnnualContributionIncrease] = useState('0');
 
   useEffect(() => {
     if (open) {
@@ -44,12 +45,14 @@ export function AccountForm({ open, onOpenChange, account, onSave }: AccountForm
         setCurrentBalance(String(account.currentBalance));
         setMonthlyContribution(String(account.monthlyContribution));
         setAnnualReturnRate(String(account.annualReturnRate));
+        setAnnualContributionIncrease(String(account.annualContributionIncrease ?? 0));
       } else {
         setName('');
         setType('isa');
         setCurrentBalance('');
         setMonthlyContribution('');
         setAnnualReturnRate(String(DEFAULT_RETURN_RATES['isa']));
+        setAnnualContributionIncrease('0');
       }
     }
   }, [open, account]);
@@ -69,6 +72,7 @@ export function AccountForm({ open, onOpenChange, account, onSave }: AccountForm
       currentBalance: parseFloat(currentBalance) || 0,
       monthlyContribution: parseFloat(monthlyContribution) || 0,
       annualReturnRate: parseFloat(annualReturnRate) || 0,
+      annualContributionIncrease: parseFloat(annualContributionIncrease) || 0,
     });
     onOpenChange(false);
   };
@@ -129,6 +133,23 @@ export function AccountForm({ open, onOpenChange, account, onSave }: AccountForm
               />
             </FormField>
           </div>
+
+          <FormField
+            id="annualContributionIncrease"
+            label="Annual Contribution Increase (%)"
+            hint="e.g. 2% to match expected salary growth"
+          >
+            <Input
+              id="annualContributionIncrease"
+              type="number"
+              min={0}
+              max={20}
+              step={0.5}
+              value={annualContributionIncrease}
+              onChange={(e) => setAnnualContributionIncrease(e.target.value)}
+              className="bg-secondary/50"
+            />
+          </FormField>
 
           <FormField
             id="annualReturnRate"

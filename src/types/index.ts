@@ -7,6 +7,7 @@ export interface Account {
   currentBalance: number;
   monthlyContribution: number;
   annualReturnRate: number; // percentage, e.g., 7 for 7%
+  annualContributionIncrease: number; // percentage, e.g., 2 for 2% yearly increase
 }
 
 export interface UserProfile {

@@ -32,18 +32,22 @@ export function AccountCard({ account, profile, onEdit, onDelete }: AccountCardP
   const months = getMonthsToRetirement(profile);
   const realReturn = calculateRealReturn(account.annualReturnRate, profile.expectedInflation);
 
+  const increase = account.annualContributionIncrease ?? 0;
+
   const projectedValueReal = calculateFutureValue(
     account.currentBalance,
     account.monthlyContribution,
     Math.max(0, realReturn),
-    months
+    months,
+    increase
   );
 
   const projectedValueNominal = calculateFutureValue(
     account.currentBalance,
     account.monthlyContribution,
     account.annualReturnRate,
-    months
+    months,
+    increase
   );
 
   const growth = projectedValueReal - account.currentBalance;
@@ -99,7 +103,12 @@ export function AccountCard({ account, profile, onEdit, onDelete }: AccountCardP
           </div>
           <div className="rounded-lg bg-slate-50/80 dark:bg-slate-800/80 p-2.5">
             <p className="text-xs text-muted-foreground">Monthly</p>
-            <p className="font-display text-lg">{formatCurrency(account.monthlyContribution)}</p>
+            <p className="font-display text-lg">
+              {formatCurrency(account.monthlyContribution)}
+              {increase > 0 && (
+                <span className="text-xs font-normal text-muted-foreground"> (+{increase}%/yr)</span>
+              )}
+            </p>
           </div>
         </div>
 

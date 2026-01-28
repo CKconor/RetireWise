@@ -58,6 +58,7 @@ export function createAccount(partial: Partial<Account> & { name: string; type: 
     currentBalance: 0,
     monthlyContribution: 0,
     annualReturnRate: 7,
+    annualContributionIncrease: 0,
     ...partial,
   };
 }
