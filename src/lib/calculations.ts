@@ -170,6 +170,7 @@ export function generateProjection(
       );
 
       dataPoint[account.id] = Math.round(value);
+      dataPoint[`${account.id}_real`] = Math.round(realValue);
       total += value;
       totalReal += realValue;
       totalOverperformanceReal += overRealValue;

@@ -180,6 +180,13 @@ export function ProjectionChart({ accounts, profile }: ProjectionChartProps) {
                 };
 
                 const showTargets = showCoastFire && coastFireInfo;
+                const dataPoint = payload[0]?.payload;
+
+                // Get account values from the data point
+                const accountBreakdown = accounts.map((account) => ({
+                  name: account.name,
+                  value: dataPoint?.[`${account.id}_real`] as number | undefined,
+                })).filter((item) => item.value !== undefined);
 
                 return (
                   <div
@@ -216,6 +223,25 @@ export function ProjectionChart({ accounts, profile }: ProjectionChartProps) {
                           </div>
                         );
                       })}
+                    {accountBreakdown.length > 0 && (
+                      <div style={{ borderTop: `1px solid ${chartColors.tooltipBorder}`, marginTop: '8px', paddingTop: '8px' }}>
+                        <p style={{ color: chartColors.tooltipMuted, fontWeight: 600, marginBottom: '6px', fontSize: '12px' }}>
+                          Account Breakdown
+                        </p>
+                        {accountBreakdown
+                          .sort((a, b) => (b.value ?? 0) - (a.value ?? 0))
+                          .map((item) => (
+                            <div key={item.name} style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', marginBottom: '2px' }}>
+                              <span style={{ color: chartColors.tooltipMuted, fontSize: '12px' }}>
+                                {item.name}
+                              </span>
+                              <span style={{ color: chartColors.tooltipText, fontSize: '12px', fontWeight: 500 }}>
+                                {formatCurrency(item.value ?? 0)}
+                              </span>
+                            </div>
+                          ))}
+                      </div>
+                    )}
                     {showTargets && (
                       <div style={{ borderTop: `1px solid ${chartColors.tooltipBorder}`, marginTop: '8px', paddingTop: '8px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
