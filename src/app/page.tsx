@@ -8,9 +8,9 @@ import { SummaryCard } from '@/components/summary-card';
 import { StatsCards } from '@/components/stats-cards';
 import { ProjectionChart } from '@/components/projection-chart';
 import { PeaceOfMindCard } from '@/components/peace-of-mind-card';
+import { IsaBridgeCard } from '@/components/isa-bridge-card';
 import { MilestoneTracker } from '@/components/milestone-tracker';
 import { WhatIfScenarios } from '@/components/what-if-scenarios';
-import { StressTestPanel } from '@/components/stress-test-panel';
 import { generatePdfReport } from '@/lib/pdf-report';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { Account } from '@/types';
@@ -142,13 +142,13 @@ export default function Home() {
               <MilestoneTracker accounts={accounts} profile={profile} />
             </div>
 
-            {/* What-If Scenarios & Stress Test */}
+            {/* What-If Scenarios & ISA Bridge */}
             <div className="grid gap-6 lg:grid-cols-2">
               <div className="opacity-0 animate-fade-in stagger-5">
                 <WhatIfScenarios accounts={accounts} profile={profile} />
               </div>
               <div className="opacity-0 animate-fade-in stagger-6">
-                <StressTestPanel accounts={accounts} profile={profile} />
+                <IsaBridgeCard accounts={accounts} profile={profile} />
               </div>
             </div>
           </div>

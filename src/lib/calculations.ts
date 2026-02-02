@@ -683,3 +683,111 @@ export function calculateMarketDropImpact(
     stillMeetsTarget: postDropProjectedReal >= profile.targetAmount,
   };
 }
+
+/**
+ * Calculate annual retirement expenses using the 4% rule (inverse = divide by 25)
+ */
+export function calculateAnnualRetirementExpenses(profile: UserProfile): number {
+  return profile.targetAmount / 25;
+}
+
+/**
+ * Calculate the number of years between retirement age and state pension age
+ */
+export function calculateBridgePeriodYears(profile: UserProfile): number {
+  return Math.max(0, profile.statePensionAge - profile.retirementAge);
+}
+
+/**
+ * Calculate the total amount needed for the ISA bridge period
+ * This accounts for continued growth during drawdown and inflation
+ */
+export function calculateIsaBridgeRequired(
+  profile: UserProfile
+): number {
+  const bridgeYears = calculateBridgePeriodYears(profile);
+  if (bridgeYears <= 0) return 0;
+
+  const annualExpenses = calculateAnnualRetirementExpenses(profile);
+
+  // Calculate total needed, accounting for inflation during bridge period
+  // and some growth while drawing down (assume conservative 3% real return during drawdown)
+  const drawdownReturn = 0.03;
+  let totalNeeded = 0;
+
+  for (let year = 0; year < bridgeYears; year++) {
+    // Each year's expenses, adjusted for inflation from retirement start
+    const inflationAdjustedExpense = annualExpenses * Math.pow(1 + profile.expectedInflation / 100, year);
+    // Discount back to retirement start value (accounts for growth during drawdown)
+    const presentValue = inflationAdjustedExpense / Math.pow(1 + drawdownReturn, year);
+    totalNeeded += presentValue;
+  }
+
+  return Math.round(totalNeeded);
+}
+
+/**
+ * Calculate the projected value of accessible accounts (ISA, GIA, Savings) at retirement
+ * These are accounts that can be accessed before state pension age without penalty
+ */
+export function calculateAccessibleBalance(
+  accounts: Account[],
+  profile: UserProfile
+): number {
+  const accessibleTypes = ['isa', 'gia', 'savings'];
+  const accessibleAccounts = accounts.filter(acc => accessibleTypes.includes(acc.type));
+
+  const yearsToRetirement = profile.retirementAge - profile.currentAge;
+  if (yearsToRetirement <= 0) {
+    return accessibleAccounts.reduce((sum, acc) => sum + acc.currentBalance, 0);
+  }
+
+  const months = yearsToRetirement * 12;
+  let total = 0;
+
+  for (const account of accessibleAccounts) {
+    const realReturn = Math.max(0, account.annualReturnRate - profile.expectedInflation);
+    total += calculateFutureValue(
+      account.currentBalance,
+      account.monthlyContribution,
+      realReturn,
+      months,
+      account.annualContributionIncrease ?? 0
+    );
+  }
+
+  return Math.round(total);
+}
+
+export interface IsaBridgeProgress {
+  required: number;
+  accessible: number;
+  shortfall: number;
+  progress: number;
+  bridgeYears: number;
+  annualExpenses: number;
+}
+
+/**
+ * Calculate complete ISA bridge progress information
+ */
+export function calculateIsaBridgeProgress(
+  accounts: Account[],
+  profile: UserProfile
+): IsaBridgeProgress {
+  const bridgeYears = calculateBridgePeriodYears(profile);
+  const annualExpenses = calculateAnnualRetirementExpenses(profile);
+  const required = calculateIsaBridgeRequired(profile);
+  const accessible = calculateAccessibleBalance(accounts, profile);
+  const shortfall = Math.max(0, required - accessible);
+  const progress = required > 0 ? Math.min(100, (accessible / required) * 100) : 100;
+
+  return {
+    required,
+    accessible,
+    shortfall,
+    progress,
+    bridgeYears,
+    annualExpenses,
+  };
+}
