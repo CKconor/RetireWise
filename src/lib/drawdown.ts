@@ -1,0 +1,303 @@
+import {
+  Account,
+  UserProfile,
+  DrawdownConfig,
+  DrawdownYearResult,
+  DrawdownSimulationResult,
+  AccountType,
+} from '@/types';
+import { calculateFutureValue, calculateAnnualStatePension } from '@/lib/calculations';
+
+// Default withdrawal order by account type priority
+const DEFAULT_TYPE_ORDER: AccountType[] = ['isa', 'gia', 'savings', 'sipp', 'pension'];
+
+/**
+ * Calculate tax on withdrawals for a given year.
+ * Simplified UK tax rules.
+ */
+function calculateWithdrawalTax(
+  withdrawals: Record<string, number>,
+  accounts: Account[],
+  accountRetirementBalances: Record<string, number>,
+  accountTotalContributed: Record<string, number>,
+  sippTaxFreeUsed: Record<string, number>,
+  statePensionIncome: number,
+  taxModeling: boolean
+): { taxPaid: number; updatedSippTaxFreeUsed: Record<string, number> } {
+  if (!taxModeling) {
+    return { taxPaid: 0, updatedSippTaxFreeUsed: sippTaxFreeUsed };
+  }
+
+  const accountMap = new Map(accounts.map((a) => [a.id, a]));
+  let taxableIncome = statePensionIncome; // State pension counts toward income tax bands
+  let totalCgt = 0;
+  const newSippTaxFreeUsed = { ...sippTaxFreeUsed };
+
+  const CGT_ALLOWANCE = 3000;
+  const PERSONAL_ALLOWANCE = 12570;
+  const BASIC_LIMIT = 50270;
+  const HIGHER_LIMIT = 125140;
+
+  for (const [accountId, withdrawal] of Object.entries(withdrawals)) {
+    if (withdrawal <= 0) continue;
+    const account = accountMap.get(accountId);
+    if (!account) continue;
+
+    switch (account.type) {
+      case 'isa':
+      case 'savings':
+        // Tax-free
+        break;
+
+      case 'gia': {
+        // CGT on gains portion only
+        const projectedValue = accountRetirementBalances[accountId] ?? 0;
+        const totalContributed = accountTotalContributed[accountId] ?? 0;
+        const gainPct = projectedValue > 0 ? Math.max(0, (projectedValue - totalContributed) / projectedValue) : 0;
+        const gains = withdrawal * gainPct;
+        const taxableGains = Math.max(0, gains - CGT_ALLOWANCE);
+        // Simplified: assume basic rate CGT (10%)
+        totalCgt += taxableGains * 0.1;
+        break;
+      }
+
+      case 'sipp':
+      case 'pension': {
+        // 25% tax-free lump sum, rest taxed as income
+        const totalPot = accountRetirementBalances[accountId] ?? 0;
+        const taxFreeAllowance = totalPot * 0.25;
+        const usedSoFar = newSippTaxFreeUsed[accountId] ?? 0;
+        const remainingTaxFree = Math.max(0, taxFreeAllowance - usedSoFar);
+        const taxFreeFromThis = Math.min(withdrawal, remainingTaxFree);
+        newSippTaxFreeUsed[accountId] = usedSoFar + taxFreeFromThis;
+        const taxablePortion = withdrawal - taxFreeFromThis;
+        taxableIncome += taxablePortion;
+        break;
+      }
+    }
+  }
+
+  // Calculate income tax on taxable income (SIPP/pension withdrawals + state pension)
+  let incomeTax = 0;
+  if (taxableIncome > PERSONAL_ALLOWANCE) {
+    const taxable = taxableIncome - PERSONAL_ALLOWANCE;
+    if (taxable <= BASIC_LIMIT - PERSONAL_ALLOWANCE) {
+      incomeTax = taxable * 0.2;
+    } else if (taxable <= HIGHER_LIMIT - PERSONAL_ALLOWANCE) {
+      incomeTax = (BASIC_LIMIT - PERSONAL_ALLOWANCE) * 0.2 + (taxable - (BASIC_LIMIT - PERSONAL_ALLOWANCE)) * 0.4;
+    } else {
+      incomeTax =
+        (BASIC_LIMIT - PERSONAL_ALLOWANCE) * 0.2 +
+        (HIGHER_LIMIT - BASIC_LIMIT) * 0.4 +
+        (taxable - (HIGHER_LIMIT - PERSONAL_ALLOWANCE)) * 0.45;
+    }
+  }
+
+  return {
+    taxPaid: incomeTax + totalCgt,
+    updatedSippTaxFreeUsed: newSippTaxFreeUsed,
+  };
+}
+
+/**
+ * Get ordered accounts for withdrawal based on config's accountOrder.
+ * Falls back to default type-based order for any accounts not in the order list.
+ */
+function getOrderedAccounts(accounts: Account[], accountOrder: string[]): Account[] {
+  const accountMap = new Map(accounts.map((a) => [a.id, a]));
+  const ordered: Account[] = [];
+  const seen = new Set<string>();
+
+  // Add accounts in specified order
+  for (const id of accountOrder) {
+    const account = accountMap.get(id);
+    if (account) {
+      ordered.push(account);
+      seen.add(id);
+    }
+  }
+
+  // Add remaining accounts by default type order
+  const remaining = accounts.filter((a) => !seen.has(a.id));
+  remaining.sort((a, b) => DEFAULT_TYPE_ORDER.indexOf(a.type) - DEFAULT_TYPE_ORDER.indexOf(b.type));
+  ordered.push(...remaining);
+
+  return ordered;
+}
+
+/**
+ * Calculate total contributions made to an account from now until retirement.
+ */
+function calculateTotalContributed(account: Account, yearsToRetirement: number): number {
+  let total = account.currentBalance;
+  let monthlyContrib = account.monthlyContribution;
+  for (let year = 0; year < yearsToRetirement; year++) {
+    total += monthlyContrib * 12;
+    if (account.annualContributionIncrease > 0) {
+      monthlyContrib *= 1 + account.annualContributionIncrease / 100;
+    }
+  }
+  return total;
+}
+
+/**
+ * Simulate drawdown from retirement through planning horizon.
+ */
+export function simulateDrawdown(
+  accounts: Account[],
+  profile: UserProfile,
+  config: DrawdownConfig
+): DrawdownSimulationResult {
+  const yearsToRetirement = Math.max(0, profile.retirementAge - profile.currentAge);
+  const retirementYears = Math.max(0, config.planningHorizon - profile.retirementAge);
+
+  if (accounts.length === 0 || retirementYears <= 0) {
+    return {
+      years: [],
+      depletionAge: null,
+      totalNetIncomeGenerated: 0,
+      totalTaxPaid: 0,
+      accountDepletionAges: {},
+    };
+  }
+
+  // Calculate projected balances at retirement (real terms)
+  const months = yearsToRetirement * 12;
+  const accountBalances: Record<string, number> = {};
+  const accountTotalContributed: Record<string, number> = {};
+  const accountRetirementBalances: Record<string, number> = {}; // Snapshot for tax calc reference
+
+  for (const account of accounts) {
+    const realReturn = Math.max(0, account.annualReturnRate - profile.expectedInflation);
+    const balance = calculateFutureValue(
+      account.currentBalance,
+      account.monthlyContribution,
+      realReturn,
+      months,
+      account.annualContributionIncrease ?? 0
+    );
+    accountBalances[account.id] = balance;
+    accountRetirementBalances[account.id] = balance;
+    accountTotalContributed[account.id] = calculateTotalContributed(account, yearsToRetirement);
+  }
+
+  const initialPortfolio = Object.values(accountBalances).reduce((sum, b) => sum + b, 0);
+
+  // Calculate the annual withdrawal amount
+  let annualWithdrawal: number;
+  if (config.strategy === 'fixed') {
+    annualWithdrawal = config.fixedAnnualIncome;
+  } else {
+    // Percentage strategy: lock in initial withdrawal based on portfolio * rate
+    annualWithdrawal = initialPortfolio * (config.withdrawalRate / 100);
+  }
+
+  const annualStatePension = profile.includeStatePension
+    ? calculateAnnualStatePension(profile.statePensionAmount)
+    : 0;
+
+  const orderedAccounts = getOrderedAccounts(accounts, config.accountOrder);
+  const SIPP_ACCESS_AGE = 57;
+
+  const years: DrawdownYearResult[] = [];
+  let depletionAge: number | null = null;
+  let totalNetIncomeGenerated = 0;
+  let totalTaxPaid = 0;
+  const accountDepletionAges: Record<string, number | null> = {};
+  let sippTaxFreeUsed: Record<string, number> = {};
+
+  for (const account of accounts) {
+    accountDepletionAges[account.id] = null;
+  }
+
+  for (let yearIndex = 0; yearIndex < retirementYears; yearIndex++) {
+    const age = profile.retirementAge + yearIndex;
+    const portfolioBalance = Object.values(accountBalances).reduce((sum, b) => sum + b, 0);
+
+    // Check if portfolio already depleted
+    if (portfolioBalance <= 0 && depletionAge === null) {
+      depletionAge = age;
+    }
+
+    // State pension income this year
+    const statePensionThisYear = age >= profile.statePensionAge ? annualStatePension : 0;
+
+    // How much do we need from the portfolio?
+    const portfolioWithdrawalNeeded = Math.max(0, annualWithdrawal - statePensionThisYear);
+
+    // Withdraw from accounts in order
+    let remainingToWithdraw = Math.min(portfolioWithdrawalNeeded, portfolioBalance);
+    const yearWithdrawals: Record<string, number> = {};
+
+    for (const account of orderedAccounts) {
+      if (remainingToWithdraw <= 0) break;
+      const balance = accountBalances[account.id] ?? 0;
+      if (balance <= 0) continue;
+
+      // Block SIPP/pension before access age
+      if ((account.type === 'sipp' || account.type === 'pension') && age < SIPP_ACCESS_AGE) {
+        continue;
+      }
+
+      const withdrawal = Math.min(remainingToWithdraw, balance);
+      yearWithdrawals[account.id] = withdrawal;
+      accountBalances[account.id] = balance - withdrawal;
+      remainingToWithdraw -= withdrawal;
+
+      // Track account depletion
+      if (accountBalances[account.id] <= 0 && accountDepletionAges[account.id] === null) {
+        accountDepletionAges[account.id] = age;
+      }
+    }
+
+    const grossWithdrawal = Object.values(yearWithdrawals).reduce((sum, w) => sum + w, 0);
+
+    // Calculate tax
+    const { taxPaid, updatedSippTaxFreeUsed } = calculateWithdrawalTax(
+      yearWithdrawals,
+      accounts,
+      accountRetirementBalances,
+      accountTotalContributed,
+      sippTaxFreeUsed,
+      statePensionThisYear,
+      config.taxModeling
+    );
+    sippTaxFreeUsed = updatedSippTaxFreeUsed;
+
+    const netWithdrawal = grossWithdrawal - taxPaid;
+    const totalNetIncome = netWithdrawal + statePensionThisYear;
+
+    totalNetIncomeGenerated += totalNetIncome;
+    totalTaxPaid += taxPaid;
+
+    // Apply growth to remaining balances
+    for (const account of accounts) {
+      const balance = accountBalances[account.id] ?? 0;
+      if (balance > 0) {
+        accountBalances[account.id] = balance * (1 + config.drawdownReturnRate / 100);
+      }
+    }
+
+    const endPortfolioBalance = Object.values(accountBalances).reduce((sum, b) => sum + b, 0);
+
+    years.push({
+      age,
+      grossWithdrawal,
+      taxPaid,
+      netWithdrawal,
+      statePensionIncome: statePensionThisYear,
+      totalNetIncome,
+      portfolioBalance: Math.max(0, endPortfolioBalance),
+      accountBalances: { ...accountBalances },
+      accountWithdrawals: yearWithdrawals,
+    });
+  }
+
+  return {
+    years,
+    depletionAge,
+    totalNetIncomeGenerated,
+    totalTaxPaid,
+    accountDepletionAges,
+  };
+}

@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Account, UserProfile, AppState } from '@/types';
-import { loadState, saveState, createAccount } from '@/lib/storage';
+import { Account, UserProfile, AppState, DrawdownConfig } from '@/types';
+import { loadState, saveState, createAccount, DEFAULT_DRAWDOWN_CONFIG } from '@/lib/storage';
 
 export function useRetirementData() {
   const [state, setState] = useState<AppState>(() => ({
@@ -16,6 +16,7 @@ export function useRetirementData() {
       includeStatePension: true,
     },
     accounts: [],
+    drawdownConfig: DEFAULT_DRAWDOWN_CONFIG,
   }));
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -38,12 +39,23 @@ export function useRetirementData() {
     }));
   }, []);
 
+  const updateDrawdownConfig = useCallback((updates: Partial<DrawdownConfig>) => {
+    setState((prev) => ({
+      ...prev,
+      drawdownConfig: { ...(prev.drawdownConfig ?? DEFAULT_DRAWDOWN_CONFIG), ...updates },
+    }));
+  }, []);
+
   const addAccount = useCallback(
     (accountData: Omit<Account, 'id'>) => {
       const newAccount = createAccount(accountData as Account);
       setState((prev) => ({
         ...prev,
         accounts: [...prev.accounts, newAccount],
+        drawdownConfig: {
+          ...(prev.drawdownConfig ?? DEFAULT_DRAWDOWN_CONFIG),
+          accountOrder: [...(prev.drawdownConfig?.accountOrder ?? []), newAccount.id],
+        },
       }));
       return newAccount;
     },
@@ -63,16 +75,22 @@ export function useRetirementData() {
     setState((prev) => ({
       ...prev,
       accounts: prev.accounts.filter((account) => account.id !== id),
+      drawdownConfig: {
+        ...(prev.drawdownConfig ?? DEFAULT_DRAWDOWN_CONFIG),
+        accountOrder: (prev.drawdownConfig?.accountOrder ?? []).filter((accId) => accId !== id),
+      },
     }));
   }, []);
 
   return {
     profile: state.profile,
     accounts: state.accounts,
+    drawdownConfig: state.drawdownConfig ?? DEFAULT_DRAWDOWN_CONFIG,
     isLoaded,
     updateProfile,
     addAccount,
     updateAccount,
     deleteAccount,
+    updateDrawdownConfig,
   };
 }

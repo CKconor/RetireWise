@@ -1,4 +1,4 @@
-import { AppState, Account, UserProfile } from '@/types';
+import { AppState, Account, UserProfile, DrawdownConfig } from '@/types';
 
 const STORAGE_KEY = 'retirewise-data';
 
@@ -12,9 +12,20 @@ const DEFAULT_PROFILE: UserProfile = {
   includeStatePension: true,
 };
 
+export const DEFAULT_DRAWDOWN_CONFIG: DrawdownConfig = {
+  strategy: 'percentage',
+  fixedAnnualIncome: 40000,
+  withdrawalRate: 4,
+  drawdownReturnRate: 3,
+  accountOrder: [],
+  planningHorizon: 90,
+  taxModeling: true,
+};
+
 const DEFAULT_STATE: AppState = {
   profile: DEFAULT_PROFILE,
   accounts: [],
+  drawdownConfig: DEFAULT_DRAWDOWN_CONFIG,
 };
 
 export function loadState(): AppState {
@@ -29,6 +40,7 @@ export function loadState(): AppState {
       return {
         profile: { ...DEFAULT_PROFILE, ...parsed.profile },
         accounts: parsed.accounts || [],
+        drawdownConfig: { ...DEFAULT_DRAWDOWN_CONFIG, ...parsed.drawdownConfig },
       };
     }
   } catch (error) {

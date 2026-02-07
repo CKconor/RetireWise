@@ -23,6 +23,7 @@ export interface UserProfile {
 export interface AppState {
   profile: UserProfile;
   accounts: Account[];
+  drawdownConfig?: DrawdownConfig;
 }
 
 export interface ProjectionDataPoint {
@@ -88,4 +89,37 @@ export interface StressTestResult {
   postDropTotal: number;
   recoveryYears: number;
   stillMeetsTarget: boolean;
+}
+
+// Drawdown types
+export type WithdrawalStrategy = 'fixed' | 'percentage';
+
+export interface DrawdownConfig {
+  strategy: WithdrawalStrategy;
+  fixedAnnualIncome: number;
+  withdrawalRate: number; // percentage, e.g., 4 for 4%
+  drawdownReturnRate: number; // percentage, e.g., 3 for 3% (conservative growth during retirement)
+  accountOrder: string[]; // account IDs in withdrawal priority order
+  planningHorizon: number; // age to plan to, e.g., 90
+  taxModeling: boolean;
+}
+
+export interface DrawdownYearResult {
+  age: number;
+  grossWithdrawal: number;
+  taxPaid: number;
+  netWithdrawal: number;
+  statePensionIncome: number;
+  totalNetIncome: number;
+  portfolioBalance: number;
+  accountBalances: Record<string, number>;
+  accountWithdrawals: Record<string, number>;
+}
+
+export interface DrawdownSimulationResult {
+  years: DrawdownYearResult[];
+  depletionAge: number | null;
+  totalNetIncomeGenerated: number;
+  totalTaxPaid: number;
+  accountDepletionAges: Record<string, number | null>;
 }
