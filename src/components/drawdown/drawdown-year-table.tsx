@@ -58,7 +58,7 @@ export function DrawdownYearTable({ simulation, accounts }: DrawdownYearTablePro
       action={<span className="badge-teal">In today&apos;s money</span>}
     >
       <div className="overflow-x-auto -mx-5 px-5">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[800px] text-sm">
           <thead>
             <tr className="border-b border-border/60">
               <th className="pb-3 pr-4 text-left font-semibold text-muted-foreground">Age</th>
