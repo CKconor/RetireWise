@@ -11,6 +11,9 @@ import { calculateFutureValue, calculateAnnualStatePension } from '@/lib/calcula
 // Default withdrawal order by account type priority
 const DEFAULT_TYPE_ORDER: AccountType[] = ['isa', 'gia', 'savings', 'sipp', 'pension'];
 
+// UK tax constants
+const PERSONAL_ALLOWANCE = 12570;
+
 /**
  * Calculate tax on withdrawals for a given year.
  * Simplified UK tax rules.
@@ -34,7 +37,6 @@ function calculateWithdrawalTax(
   const newSippTaxFreeUsed = { ...sippTaxFreeUsed };
 
   const CGT_ALLOWANCE = 3000;
-  const PERSONAL_ALLOWANCE = 12570;
   const BASIC_LIMIT = 50270;
   const HIGHER_LIMIT = 125140;
 
@@ -225,28 +227,100 @@ export function simulateDrawdown(
     // How much do we need from the portfolio?
     const portfolioWithdrawalNeeded = Math.max(0, annualWithdrawal - statePensionThisYear);
 
-    // Withdraw from accounts in order
+    // Withdraw from accounts
     let remainingToWithdraw = Math.min(portfolioWithdrawalNeeded, portfolioBalance);
     const yearWithdrawals: Record<string, number> = {};
 
-    for (const account of orderedAccounts) {
-      if (remainingToWithdraw <= 0) break;
-      const balance = accountBalances[account.id] ?? 0;
-      if (balance <= 0) continue;
+    const isPensionAccessible = age >= SIPP_ACCESS_AGE;
+    const isPensionType = (t: AccountType) => t === 'sipp' || t === 'pension';
 
-      // Block SIPP/pension before access age
-      if ((account.type === 'sipp' || account.type === 'pension') && age < SIPP_ACCESS_AGE) {
-        continue;
+    if (config.taxModeling && isPensionAccessible) {
+      // Tax-efficient strategy: prioritize pension/SIPP withdrawals within the
+      // personal allowance so they incur zero income tax, then use tax-free
+      // accounts (ISA/savings) for the remainder.
+      //
+      // Calculate remaining 25% tax-free lump sum across pension accounts
+      let totalRemainingTaxFree = 0;
+      for (const account of accounts) {
+        if (isPensionType(account.type)) {
+          const totalPot = accountRetirementBalances[account.id] ?? 0;
+          const used = sippTaxFreeUsed[account.id] ?? 0;
+          totalRemainingTaxFree += Math.max(0, totalPot * 0.25 - used);
+        }
       }
 
-      const withdrawal = Math.min(remainingToWithdraw, balance);
-      yearWithdrawals[account.id] = withdrawal;
-      accountBalances[account.id] = balance - withdrawal;
-      remainingToWithdraw -= withdrawal;
+      // Max gross pension withdrawal where taxable portion stays within personal allowance
+      const remainingPA = Math.max(0, PERSONAL_ALLOWANCE - statePensionThisYear);
+      const taxEfficientCap = remainingPA + totalRemainingTaxFree;
 
-      // Track account depletion
-      if (accountBalances[account.id] <= 0 && accountDepletionAges[account.id] === null) {
-        accountDepletionAges[account.id] = age;
+      // First pass: withdraw from pension/SIPP up to the tax-efficient cap
+      let pensionWithdrawn = 0;
+      for (const account of orderedAccounts) {
+        if (remainingToWithdraw <= 0 || pensionWithdrawn >= taxEfficientCap) break;
+        if (!isPensionType(account.type)) continue;
+        const balance = accountBalances[account.id] ?? 0;
+        if (balance <= 0) continue;
+
+        const withdrawal = Math.min(remainingToWithdraw, balance, taxEfficientCap - pensionWithdrawn);
+        yearWithdrawals[account.id] = withdrawal;
+        accountBalances[account.id] = balance - withdrawal;
+        remainingToWithdraw -= withdrawal;
+        pensionWithdrawn += withdrawal;
+
+        if (accountBalances[account.id] <= 0 && accountDepletionAges[account.id] === null) {
+          accountDepletionAges[account.id] = age;
+        }
+      }
+
+      // Second pass: withdraw remainder from non-pension accounts in configured order
+      for (const account of orderedAccounts) {
+        if (remainingToWithdraw <= 0) break;
+        if (isPensionType(account.type)) continue;
+        const balance = accountBalances[account.id] ?? 0;
+        if (balance <= 0) continue;
+
+        const withdrawal = Math.min(remainingToWithdraw, balance);
+        yearWithdrawals[account.id] = withdrawal;
+        accountBalances[account.id] = balance - withdrawal;
+        remainingToWithdraw -= withdrawal;
+
+        if (accountBalances[account.id] <= 0 && accountDepletionAges[account.id] === null) {
+          accountDepletionAges[account.id] = age;
+        }
+      }
+
+      // Third pass: if still short, draw beyond the cap from pension (taxed but necessary)
+      for (const account of orderedAccounts) {
+        if (remainingToWithdraw <= 0) break;
+        if (!isPensionType(account.type)) continue;
+        const balance = accountBalances[account.id] ?? 0;
+        if (balance <= 0) continue;
+
+        const withdrawal = Math.min(remainingToWithdraw, balance);
+        yearWithdrawals[account.id] = (yearWithdrawals[account.id] ?? 0) + withdrawal;
+        accountBalances[account.id] = balance - withdrawal;
+        remainingToWithdraw -= withdrawal;
+
+        if (accountBalances[account.id] <= 0 && accountDepletionAges[account.id] === null) {
+          accountDepletionAges[account.id] = age;
+        }
+      }
+    } else {
+      // Standard withdrawal: follow configured account order
+      for (const account of orderedAccounts) {
+        if (remainingToWithdraw <= 0) break;
+        const balance = accountBalances[account.id] ?? 0;
+        if (balance <= 0) continue;
+        if (isPensionType(account.type) && !isPensionAccessible) continue;
+
+        const withdrawal = Math.min(remainingToWithdraw, balance);
+        yearWithdrawals[account.id] = withdrawal;
+        accountBalances[account.id] = balance - withdrawal;
+        remainingToWithdraw -= withdrawal;
+
+        if (accountBalances[account.id] <= 0 && accountDepletionAges[account.id] === null) {
+          accountDepletionAges[account.id] = age;
+        }
       }
     }
 

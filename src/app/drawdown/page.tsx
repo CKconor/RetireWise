@@ -7,6 +7,7 @@ import { DrawdownConfigPanel } from '@/components/drawdown/drawdown-config-panel
 import { DrawdownStatsCards } from '@/components/drawdown/drawdown-stats-cards';
 import { DepletionChart } from '@/components/drawdown/depletion-chart';
 import { IncomeBreakdownChart } from '@/components/drawdown/income-breakdown-chart';
+import { DrawdownYearTable } from '@/components/drawdown/drawdown-year-table';
 import { simulateDrawdown } from '@/lib/drawdown';
 import { calculateFutureValue } from '@/lib/calculations';
 
@@ -93,6 +94,9 @@ export default function DrawdownPage() {
             </div>
             <div className="opacity-0 animate-fade-in stagger-3">
               <IncomeBreakdownChart simulation={simulation} accounts={accounts} />
+            </div>
+            <div className="opacity-0 animate-fade-in stagger-4">
+              <DrawdownYearTable simulation={simulation} accounts={accounts} />
             </div>
           </div>
         </div>
