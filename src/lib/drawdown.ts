@@ -250,9 +250,10 @@ export function simulateDrawdown(
     const isPensionType = (t: AccountType) => t === 'sipp' || t === 'pension';
 
     if (config.taxModeling && isPensionAccessible) {
-      // Tax-efficient strategy: prioritize pension/SIPP withdrawals within the
-      // personal allowance so they incur zero income tax, then use tax-free
-      // accounts (ISA/savings) for the remainder.
+      // Tax-efficient strategy: withdraw from pension/SIPP only up to the amount
+      // that incurs zero income tax this year, then use tax-free accounts (ISA/savings)
+      // for the remainder. The 25% tax-free lump sum is spread evenly across
+      // remaining retirement years rather than front-loaded.
       //
       // Calculate remaining 25% tax-free lump sum across pension accounts
       let totalRemainingTaxFree = 0;
@@ -264,9 +265,13 @@ export function simulateDrawdown(
         }
       }
 
-      // Max gross pension withdrawal where taxable portion stays within personal allowance
+      // Spread the 25% tax-free lump sum across remaining retirement years
+      const remainingYears = Math.max(1, retirementYears - yearIndex);
+      const annualTaxFreePortion = totalRemainingTaxFree / remainingYears;
+
+      // Cap = remaining personal allowance + this year's share of tax-free lump sum
       const remainingPA = Math.max(0, PERSONAL_ALLOWANCE - statePensionThisYear);
-      const taxEfficientCap = remainingPA + totalRemainingTaxFree;
+      const taxEfficientCap = remainingPA + annualTaxFreePortion;
 
       // First pass: withdraw from pension/SIPP up to the tax-efficient cap
       let pensionWithdrawn = 0;
