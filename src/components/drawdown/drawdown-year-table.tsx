@@ -26,6 +26,7 @@ const TableIcon = () => (
 
 export function DrawdownYearTable({ simulation, accounts }: DrawdownYearTableProps) {
   const [expanded, setExpanded] = useState(false);
+  const hasStatePension = simulation.years.some((y) => y.statePensionIncome > 0);
 
   if (simulation.years.length === 0) {
     return (
@@ -64,6 +65,9 @@ export function DrawdownYearTable({ simulation, accounts }: DrawdownYearTablePro
               <th className="pb-3 pr-4 text-left font-semibold text-muted-foreground">Age</th>
               <th className="pb-3 px-4 text-right font-semibold text-muted-foreground">Withdrawn</th>
               <th className="pb-3 px-4 text-right font-semibold text-muted-foreground">Tax</th>
+              {hasStatePension && (
+                <th className="pb-3 px-4 text-right font-semibold text-muted-foreground whitespace-nowrap">State Pension</th>
+              )}
               {activeAccounts.map((account) => (
                 <th key={account.id} className="pb-3 px-4 text-right font-semibold text-muted-foreground whitespace-nowrap">
                   <div className="flex items-center justify-end gap-1.5">
@@ -96,8 +100,13 @@ export function DrawdownYearTable({ simulation, accounts }: DrawdownYearTablePro
                     {formatCurrency(year.grossWithdrawal)}
                   </td>
                   <td className="py-2.5 px-4 text-right font-mono text-rose-500 dark:text-rose-400">
-                    {year.taxPaid > 0 ? formatCurrency(year.taxPaid) : '-'}
+                    {year.withdrawalTax > 0 ? formatCurrency(year.withdrawalTax) : '-'}
                   </td>
+                  {hasStatePension && (
+                    <td className="py-2.5 px-4 text-right font-mono text-emerald-600 dark:text-emerald-400">
+                      {year.statePensionIncome > 0 ? formatCurrency(Math.round(year.statePensionIncome)) : '-'}
+                    </td>
+                  )}
                   {activeAccounts.map((account) => {
                     const balance = Math.max(0, year.accountBalances[account.id] ?? 0);
                     return (

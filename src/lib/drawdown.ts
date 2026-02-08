@@ -13,10 +13,34 @@ const DEFAULT_TYPE_ORDER: AccountType[] = ['isa', 'gia', 'savings', 'sipp', 'pen
 
 // UK tax constants
 const PERSONAL_ALLOWANCE = 12570;
+const BASIC_LIMIT = 50270;
+const HIGHER_LIMIT = 125140;
+const CGT_ALLOWANCE = 3000;
+
+/**
+ * Calculate UK income tax on a given total income, applying personal allowance and tax bands.
+ */
+function calculateIncomeTax(totalIncome: number): number {
+  if (totalIncome <= PERSONAL_ALLOWANCE) return 0;
+  const taxable = totalIncome - PERSONAL_ALLOWANCE;
+  const basicBand = BASIC_LIMIT - PERSONAL_ALLOWANCE;
+  const higherBand = HIGHER_LIMIT - BASIC_LIMIT;
+
+  if (taxable <= basicBand) {
+    return taxable * 0.2;
+  } else if (taxable <= basicBand + higherBand) {
+    return basicBand * 0.2 + (taxable - basicBand) * 0.4;
+  }
+  return basicBand * 0.2 + higherBand * 0.4 + (taxable - basicBand - higherBand) * 0.45;
+}
 
 /**
  * Calculate tax on withdrawals for a given year.
- * Simplified UK tax rules.
+ * Properly allocates tax between state pension and portfolio withdrawals:
+ * - ISA/savings withdrawals are completely tax-free
+ * - Pension/SIPP withdrawals: 25% tax-free lump sum, rest taxed as income
+ * - GIA withdrawals: CGT on gains only (annual allowance applied once across all GIAs)
+ * - State pension uses personal allowance first; remaining allowance applies to pension withdrawals
  */
 function calculateWithdrawalTax(
   withdrawals: Record<string, number>,
@@ -26,19 +50,15 @@ function calculateWithdrawalTax(
   sippTaxFreeUsed: Record<string, number>,
   statePensionIncome: number,
   taxModeling: boolean
-): { taxPaid: number; updatedSippTaxFreeUsed: Record<string, number> } {
+): { totalTax: number; withdrawalTax: number; updatedSippTaxFreeUsed: Record<string, number> } {
   if (!taxModeling) {
-    return { taxPaid: 0, updatedSippTaxFreeUsed: sippTaxFreeUsed };
+    return { totalTax: 0, withdrawalTax: 0, updatedSippTaxFreeUsed: sippTaxFreeUsed };
   }
 
   const accountMap = new Map(accounts.map((a) => [a.id, a]));
-  let taxableIncome = statePensionIncome; // State pension counts toward income tax bands
-  let totalCgt = 0;
+  let taxableIncome = statePensionIncome;
+  let totalGiaGains = 0;
   const newSippTaxFreeUsed = { ...sippTaxFreeUsed };
-
-  const CGT_ALLOWANCE = 3000;
-  const BASIC_LIMIT = 50270;
-  const HIGHER_LIMIT = 125140;
 
   for (const [accountId, withdrawal] of Object.entries(withdrawals)) {
     if (withdrawal <= 0) continue;
@@ -48,18 +68,15 @@ function calculateWithdrawalTax(
     switch (account.type) {
       case 'isa':
       case 'savings':
-        // Tax-free
+        // Completely tax-free
         break;
 
       case 'gia': {
-        // CGT on gains portion only
+        // CGT on gains portion only — accumulate across all GIAs
         const projectedValue = accountRetirementBalances[accountId] ?? 0;
         const totalContributed = accountTotalContributed[accountId] ?? 0;
         const gainPct = projectedValue > 0 ? Math.max(0, (projectedValue - totalContributed) / projectedValue) : 0;
-        const gains = withdrawal * gainPct;
-        const taxableGains = Math.max(0, gains - CGT_ALLOWANCE);
-        // Simplified: assume basic rate CGT (10%)
-        totalCgt += taxableGains * 0.1;
+        totalGiaGains += withdrawal * gainPct;
         break;
       }
 
@@ -79,24 +96,22 @@ function calculateWithdrawalTax(
     }
   }
 
-  // Calculate income tax on taxable income (SIPP/pension withdrawals + state pension)
-  let incomeTax = 0;
-  if (taxableIncome > PERSONAL_ALLOWANCE) {
-    const taxable = taxableIncome - PERSONAL_ALLOWANCE;
-    if (taxable <= BASIC_LIMIT - PERSONAL_ALLOWANCE) {
-      incomeTax = taxable * 0.2;
-    } else if (taxable <= HIGHER_LIMIT - PERSONAL_ALLOWANCE) {
-      incomeTax = (BASIC_LIMIT - PERSONAL_ALLOWANCE) * 0.2 + (taxable - (BASIC_LIMIT - PERSONAL_ALLOWANCE)) * 0.4;
-    } else {
-      incomeTax =
-        (BASIC_LIMIT - PERSONAL_ALLOWANCE) * 0.2 +
-        (HIGHER_LIMIT - BASIC_LIMIT) * 0.4 +
-        (taxable - (HIGHER_LIMIT - PERSONAL_ALLOWANCE)) * 0.45;
-    }
-  }
+  // Apply CGT annual allowance once across all GIA gains
+  const taxableGains = Math.max(0, totalGiaGains - CGT_ALLOWANCE);
+  const totalCgt = taxableGains * 0.1;
+
+  // Income tax on combined taxable income (state pension + pension/SIPP taxable portions)
+  const totalIncomeTax = calculateIncomeTax(taxableIncome);
+
+  // Tax attributable to state pension alone (so we can properly allocate)
+  const statePensionTax = calculateIncomeTax(statePensionIncome);
+
+  // Withdrawal tax = marginal income tax from withdrawals + CGT
+  const withdrawalTax = (totalIncomeTax - statePensionTax) + totalCgt;
 
   return {
-    taxPaid: incomeTax + totalCgt,
+    totalTax: totalIncomeTax + totalCgt,
+    withdrawalTax,
     updatedSippTaxFreeUsed: newSippTaxFreeUsed,
   };
 }
@@ -326,8 +341,8 @@ export function simulateDrawdown(
 
     const grossWithdrawal = Object.values(yearWithdrawals).reduce((sum, w) => sum + w, 0);
 
-    // Calculate tax
-    const { taxPaid, updatedSippTaxFreeUsed } = calculateWithdrawalTax(
+    // Calculate tax — properly allocates between state pension and withdrawals
+    const { totalTax, withdrawalTax, updatedSippTaxFreeUsed } = calculateWithdrawalTax(
       yearWithdrawals,
       accounts,
       accountRetirementBalances,
@@ -338,11 +353,12 @@ export function simulateDrawdown(
     );
     sippTaxFreeUsed = updatedSippTaxFreeUsed;
 
-    const netWithdrawal = grossWithdrawal - taxPaid;
-    const totalNetIncome = netWithdrawal + statePensionThisYear;
+    const statePensionTax = totalTax - withdrawalTax;
+    const netWithdrawal = grossWithdrawal - withdrawalTax;
+    const totalNetIncome = netWithdrawal + (statePensionThisYear - statePensionTax);
 
     totalNetIncomeGenerated += totalNetIncome;
-    totalTaxPaid += taxPaid;
+    totalTaxPaid += totalTax;
 
     // Apply growth to remaining balances
     for (const account of accounts) {
@@ -357,7 +373,8 @@ export function simulateDrawdown(
     years.push({
       age,
       grossWithdrawal,
-      taxPaid,
+      taxPaid: totalTax,
+      withdrawalTax,
       netWithdrawal,
       statePensionIncome: statePensionThisYear,
       totalNetIncome,

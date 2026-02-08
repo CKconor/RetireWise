@@ -107,8 +107,9 @@ export interface DrawdownConfig {
 export interface DrawdownYearResult {
   age: number;
   grossWithdrawal: number;
-  taxPaid: number;
-  netWithdrawal: number;
+  taxPaid: number;          // total tax for the year (income tax + CGT)
+  withdrawalTax: number;    // tax on portfolio withdrawals only (excludes state pension tax)
+  netWithdrawal: number;    // grossWithdrawal - withdrawalTax
   statePensionIncome: number;
   totalNetIncome: number;
   portfolioBalance: number;
