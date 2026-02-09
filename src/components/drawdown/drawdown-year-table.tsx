@@ -4,19 +4,12 @@ import { useState } from 'react';
 import { Account, DrawdownSimulationResult } from '@/types';
 import { SectionCard } from '@/components/ui/section-card';
 import { formatCurrency } from '@/lib/calculations';
+import { ACCOUNT_TYPE_DOT_COLORS } from '@/lib/constants';
 
 interface DrawdownYearTableProps {
   simulation: DrawdownSimulationResult;
   accounts: Account[];
 }
-
-const ACCOUNT_TYPE_DOT_COLORS: Record<string, string> = {
-  isa: '#10b981',
-  sipp: '#f43f5e',
-  pension: '#8b5cf6',
-  gia: '#0ea5e9',
-  savings: '#f59e0b',
-};
 
 const TableIcon = () => (
   <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -11,7 +11,7 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from 'recharts';
-import { Settings2 } from 'lucide-react';
+import { BarChart3, Settings2, Table2 } from 'lucide-react';
 import { Account, UserProfile } from '@/types';
 import { SectionCard } from '@/components/ui/section-card';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -19,6 +19,7 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { Checkbox } from '@/components/ui/checkbox';
 import { generateProjection, formatCurrency, formatCurrencyCompact, calculateCoastFireNumber, findCoastFireYear, calculateAverageReturnRate } from '@/lib/calculations';
 import { useChartColors } from '@/hooks/use-chart-colors';
+import { MonthlyBreakdownTable } from '@/components/monthly-breakdown-table';
 
 interface ProjectionChartProps {
   accounts: Account[];
@@ -38,6 +39,7 @@ const EmptyChartIcon = () => (
 );
 
 export function ProjectionChart({ accounts, profile }: ProjectionChartProps) {
+  const [view, setView] = useState<'chart' | 'table'>('chart');
   const [showOptimistic, setShowOptimistic] = useState(true);
   const [showConservative, setShowConservative] = useState(true);
   const [showCoastFire, setShowCoastFire] = useState(true);
@@ -87,55 +89,84 @@ export function ProjectionChart({ accounts, profile }: ProjectionChartProps) {
       action={
         <div className="flex items-center gap-2">
           <span className="badge-teal">
-            In today's money
+            In today&apos;s money
           </span>
-          <Popover>
-            <PopoverTrigger asChild>
-              <button className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-                <Settings2 className="h-4 w-4" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-52">
-              <div className="space-y-3">
-                <p className="text-sm font-medium text-foreground">Display Options</p>
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 text-sm cursor-pointer">
-                    <Checkbox
-                      checked={showOptimistic}
-                      onCheckedChange={(checked) => setShowOptimistic(checked === true)}
-                    />
-                    <span className="flex items-center gap-1.5">
-                      <span className="h-2 w-2 rounded-full bg-[#22c55e]" />
-                      Optimistic
-                    </span>
-                  </label>
-                  <label className="flex items-center gap-2 text-sm cursor-pointer">
-                    <Checkbox
-                      checked={showConservative}
-                      onCheckedChange={(checked) => setShowConservative(checked === true)}
-                    />
-                    <span className="flex items-center gap-1.5">
-                      <span className="h-2 w-2 rounded-full bg-[#f59e0b]" />
-                      Conservative
-                    </span>
-                  </label>
-                  <label className="flex items-center gap-2 text-sm cursor-pointer">
-                    <Checkbox
-                      checked={showCoastFire}
-                      onCheckedChange={(checked) => setShowCoastFire(checked === true)}
-                    />
-                    <span className="flex items-center gap-1.5">
-                      <span className="h-2 w-2 rounded-full bg-[#2c7a7b]" />
-                      Coast FIRE
-                    </span>
-                  </label>
+          <div className="flex items-center rounded-lg border border-border/60 p-0.5">
+            <button
+              onClick={() => setView('chart')}
+              className={`flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors cursor-pointer ${
+                view === 'chart'
+                  ? 'bg-muted text-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <BarChart3 className="h-3.5 w-3.5" />
+              Chart
+            </button>
+            <button
+              onClick={() => setView('table')}
+              className={`flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors cursor-pointer ${
+                view === 'table'
+                  ? 'bg-muted text-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Table2 className="h-3.5 w-3.5" />
+              Table
+            </button>
+          </div>
+          {view === 'chart' && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+                  <Settings2 className="h-4 w-4" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-52">
+                <div className="space-y-3">
+                  <p className="text-sm font-medium text-foreground">Display Options</p>
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm cursor-pointer">
+                      <Checkbox
+                        checked={showOptimistic}
+                        onCheckedChange={(checked) => setShowOptimistic(checked === true)}
+                      />
+                      <span className="flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-full bg-[#22c55e]" />
+                        Optimistic
+                      </span>
+                    </label>
+                    <label className="flex items-center gap-2 text-sm cursor-pointer">
+                      <Checkbox
+                        checked={showConservative}
+                        onCheckedChange={(checked) => setShowConservative(checked === true)}
+                      />
+                      <span className="flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-full bg-[#f59e0b]" />
+                        Conservative
+                      </span>
+                    </label>
+                    <label className="flex items-center gap-2 text-sm cursor-pointer">
+                      <Checkbox
+                        checked={showCoastFire}
+                        onCheckedChange={(checked) => setShowCoastFire(checked === true)}
+                      />
+                      <span className="flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-full bg-[#2c7a7b]" />
+                        Coast FIRE
+                      </span>
+                    </label>
+                  </div>
                 </div>
-              </div>
-            </PopoverContent>
-          </Popover>
+              </PopoverContent>
+            </Popover>
+          )}
         </div>
       }
     >
+      {view === 'table' ? (
+        <MonthlyBreakdownTable accounts={accounts} profile={profile} />
+      ) : (
       <div className="h-[350px]">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 25 }}>
@@ -374,6 +405,7 @@ export function ProjectionChart({ accounts, profile }: ProjectionChartProps) {
           </AreaChart>
         </ResponsiveContainer>
       </div>
+      )}
     </SectionCard>
   );
 }

@@ -1,4 +1,4 @@
-import { Account, UserProfile, ProjectionDataPoint, AccountProjection, Milestone, StressTestResult } from '@/types';
+import { Account, UserProfile, ProjectionDataPoint, MonthlyProjectionDataPoint, AccountProjection, Milestone, StressTestResult } from '@/types';
 
 /**
  * Calculate the future value of an account with monthly compounding
@@ -790,4 +790,60 @@ export function calculateIsaBridgeProgress(
     bridgeYears,
     annualExpenses,
   };
+}
+
+/**
+ * Generate monthly projection data points for the accumulation phase.
+ * Uses real returns (nominal - inflation) so values are in today's money.
+ */
+export function generateMonthlyProjection(
+  accounts: Account[],
+  profile: UserProfile,
+  startDate?: { month: number; year: number } // month: 1-12
+): MonthlyProjectionDataPoint[] {
+  const yearsToRetirement = profile.retirementAge - profile.currentAge;
+  if (yearsToRetirement <= 0 || accounts.length === 0) return [];
+
+  const totalMonths = yearsToRetirement * 12;
+  const now = new Date();
+  const startYear = startDate?.year ?? now.getFullYear();
+  const startMonth = startDate ? startDate.month - 1 : now.getMonth(); // 0-indexed
+
+  const reducedTarget = calculateReducedTarget(profile);
+  const points: MonthlyProjectionDataPoint[] = [];
+
+  for (let m = 0; m <= totalMonths; m++) {
+    const calMonth = (startMonth + m) % 12; // 0-11
+    const calYear = startYear + Math.floor((startMonth + m) / 12);
+
+    let totalReal = 0;
+    const accountBalances: Record<string, number> = {};
+
+    for (const account of accounts) {
+      const realReturn = Math.max(0, account.annualReturnRate - profile.expectedInflation);
+      const value = calculateFutureValue(
+        account.currentBalance,
+        account.monthlyContribution,
+        realReturn,
+        m,
+        account.annualContributionIncrease ?? 0
+      );
+      const rounded = Math.round(value);
+      accountBalances[account.id] = rounded;
+      totalReal += rounded;
+    }
+
+    points.push({
+      month: m,
+      year: calYear,
+      monthOfYear: calMonth + 1, // 1-12
+      age: profile.currentAge + Math.floor(m / 12),
+      ageMonths: m % 12,
+      totalReal,
+      targetPercent: reducedTarget > 0 ? Math.round((totalReal / reducedTarget) * 100) : 0,
+      accountBalances,
+    });
+  }
+
+  return points;
 }

@@ -37,6 +37,17 @@ export interface ProjectionDataPoint {
   [accountId: string]: number | string;
 }
 
+export interface MonthlyProjectionDataPoint {
+  month: number;        // absolute month index (0, 1, 2, ...)
+  year: number;         // calendar year
+  monthOfYear: number;  // 1-12
+  age: number;          // whole years
+  ageMonths: number;    // months past last birthday
+  totalReal: number;    // inflation-adjusted total
+  targetPercent: number; // % of target achieved
+  accountBalances: Record<string, number>; // account id → real balance
+}
+
 export interface AccountProjection {
   accountId: string;
   accountName: string;
