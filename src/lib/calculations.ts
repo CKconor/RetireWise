@@ -794,7 +794,8 @@ export function calculateIsaBridgeProgress(
 
 /**
  * Generate monthly projection data points for the accumulation phase.
- * Uses real returns (nominal - inflation) so values are in today's money.
+ * Uses nominal returns so values match real account statements.
+ * Target % inflates the target to keep the comparison meaningful.
  */
 export function generateMonthlyProjection(
   accounts: Account[],
@@ -810,28 +811,31 @@ export function generateMonthlyProjection(
   const startMonth = startDate ? startDate.month - 1 : now.getMonth(); // 0-indexed
 
   const reducedTarget = calculateReducedTarget(profile);
+  const monthlyInflation = profile.expectedInflation / 100 / 12;
   const points: MonthlyProjectionDataPoint[] = [];
 
   for (let m = 0; m <= totalMonths; m++) {
     const calMonth = (startMonth + m) % 12; // 0-11
     const calYear = startYear + Math.floor((startMonth + m) / 12);
 
-    let totalReal = 0;
+    let total = 0;
     const accountBalances: Record<string, number> = {};
 
     for (const account of accounts) {
-      const realReturn = Math.max(0, account.annualReturnRate - profile.expectedInflation);
       const value = calculateFutureValue(
         account.currentBalance,
         account.monthlyContribution,
-        realReturn,
+        account.annualReturnRate,
         m,
         account.annualContributionIncrease ?? 0
       );
       const rounded = Math.round(value);
       accountBalances[account.id] = rounded;
-      totalReal += rounded;
+      total += rounded;
     }
+
+    // Inflate the target so nominal total vs inflated target is an apples-to-apples comparison
+    const inflatedTarget = reducedTarget * Math.pow(1 + monthlyInflation, m);
 
     points.push({
       month: m,
@@ -839,8 +843,8 @@ export function generateMonthlyProjection(
       monthOfYear: calMonth + 1, // 1-12
       age: profile.currentAge + Math.floor(m / 12),
       ageMonths: m % 12,
-      totalReal,
-      targetPercent: reducedTarget > 0 ? Math.round((totalReal / reducedTarget) * 100) : 0,
+      total,
+      targetPercent: inflatedTarget > 0 ? Math.round((total / inflatedTarget) * 100) : 0,
       accountBalances,
     });
   }

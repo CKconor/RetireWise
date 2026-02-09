@@ -89,7 +89,7 @@ export function ProjectionChart({ accounts, profile }: ProjectionChartProps) {
       action={
         <div className="flex items-center gap-2">
           <span className="badge-teal">
-            In today&apos;s money
+            {view === 'table' ? 'Nominal values' : "In today\u0027s money"}
           </span>
           <div className="flex items-center rounded-lg border border-border/60 p-0.5">
             <button

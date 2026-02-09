@@ -202,7 +202,7 @@ function YearSection({ group, summary, isExpanded, onToggle, accounts }: YearSec
           </td>
         ))}
         <td className="py-2.5 px-4 text-right font-mono font-semibold text-foreground">
-          {formatCurrency(summary.totalReal)}
+          {formatCurrency(summary.total)}
         </td>
         <td className={`py-2.5 pl-4 text-right font-mono font-semibold ${targetPercentColor(summary.targetPercent)}`}>
           {summary.targetPercent}%
@@ -228,7 +228,7 @@ function YearSection({ group, summary, isExpanded, onToggle, accounts }: YearSec
               </td>
             ))}
             <td className="py-2 px-4 text-right font-mono text-foreground">
-              {formatCurrency(row.totalReal)}
+              {formatCurrency(row.total)}
             </td>
             <td className={`py-2 pl-4 text-right font-mono ${targetPercentColor(row.targetPercent)}`}>
               {row.targetPercent}%

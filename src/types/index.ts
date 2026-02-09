@@ -43,9 +43,9 @@ export interface MonthlyProjectionDataPoint {
   monthOfYear: number;  // 1-12
   age: number;          // whole years
   ageMonths: number;    // months past last birthday
-  totalReal: number;    // inflation-adjusted total
-  targetPercent: number; // % of target achieved
-  accountBalances: Record<string, number>; // account id → real balance
+  total: number;        // nominal (not inflation-adjusted) total
+  targetPercent: number; // % of inflation-adjusted target achieved
+  accountBalances: Record<string, number>; // account id → nominal balance
 }
 
 export interface AccountProjection {
