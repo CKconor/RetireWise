@@ -6,6 +6,7 @@ import {
   calculateIsaBridgeProgress,
   formatCurrency,
 } from '@/lib/calculations';
+import { PRIVATE_PENSION_ACCESS_AGE } from '@/lib/constants';
 
 interface IsaBridgeCardProps {
   accounts: Account[];
@@ -25,7 +26,7 @@ const InfoTooltip = () => (
     </svg>
     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-64 p-3 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-xs rounded-lg shadow-lg z-10">
       <p className="font-medium mb-1">ISA Bridge</p>
-      <p>The amount you need in accessible accounts (ISAs, GIAs, Savings) to fund your retirement before your State Pension starts. Pensions (SIPP/workplace) can't be accessed before age 55-57.</p>
+      <p>The amount you need in accessible accounts (ISAs, GIAs, Savings) to fund your retirement until you can access your private pension at age {PRIVATE_PENSION_ACCESS_AGE}.</p>
       <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900 dark:border-t-slate-100" />
     </div>
   </div>
@@ -64,7 +65,7 @@ export function IsaBridgeCard({ accounts, profile }: IsaBridgeCardProps) {
           <div className="text-right">
             <p className="text-xs text-muted-foreground">Ages</p>
             <p className="font-display text-lg text-foreground">
-              {profile.retirementAge} - {profile.statePensionAge}
+              {profile.retirementAge} - {PRIVATE_PENSION_ACCESS_AGE}
             </p>
           </div>
         </div>

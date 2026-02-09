@@ -1,3 +1,6 @@
+/** Minimum age to access private pensions (SIPP / workplace) in the UK */
+export const PRIVATE_PENSION_ACCESS_AGE = 57;
+
 /** Dot colors used in tables for each account type */
 export const ACCOUNT_TYPE_DOT_COLORS: Record<string, string> = {
   isa: '#10b981',

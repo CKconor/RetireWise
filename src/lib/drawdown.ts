@@ -7,6 +7,7 @@ import {
   AccountType,
 } from '@/types';
 import { calculateFutureValue, calculateAnnualStatePension } from '@/lib/calculations';
+import { PRIVATE_PENSION_ACCESS_AGE } from '@/lib/constants';
 
 // Default withdrawal order by account type priority
 const DEFAULT_TYPE_ORDER: AccountType[] = ['isa', 'gia', 'savings', 'sipp', 'pension'];
@@ -214,7 +215,7 @@ export function simulateDrawdown(
     : 0;
 
   const orderedAccounts = getOrderedAccounts(accounts, config.accountOrder);
-  const SIPP_ACCESS_AGE = 57;
+  const SIPP_ACCESS_AGE = PRIVATE_PENSION_ACCESS_AGE;
 
   const years: DrawdownYearResult[] = [];
   let depletionAge: number | null = null;

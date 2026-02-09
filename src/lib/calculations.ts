@@ -1,4 +1,5 @@
 import { Account, UserProfile, ProjectionDataPoint, MonthlyProjectionDataPoint, AccountProjection, Milestone, StressTestResult } from '@/types';
+import { PRIVATE_PENSION_ACCESS_AGE } from '@/lib/constants';
 
 /**
  * Calculate the future value of an account with monthly compounding
@@ -692,10 +693,10 @@ export function calculateAnnualRetirementExpenses(profile: UserProfile): number 
 }
 
 /**
- * Calculate the number of years between retirement age and state pension age
+ * Calculate the number of years between retirement age and private pension access age (58)
  */
 export function calculateBridgePeriodYears(profile: UserProfile): number {
-  return Math.max(0, profile.statePensionAge - profile.retirementAge);
+  return Math.max(0, PRIVATE_PENSION_ACCESS_AGE - profile.retirementAge);
 }
 
 /**
