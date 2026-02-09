@@ -800,15 +800,23 @@ export function calculateIsaBridgeProgress(
 export function generateMonthlyProjection(
   accounts: Account[],
   profile: UserProfile,
-  startDate?: { month: number; year: number } // month: 1-12
+  startDate?: { month: number; year: number }, // month: 1-12
+  endDate?: { month: number; year: number }    // month: 1-12
 ): MonthlyProjectionDataPoint[] {
   const yearsToRetirement = profile.retirementAge - profile.currentAge;
   if (yearsToRetirement <= 0 || accounts.length === 0) return [];
 
-  const totalMonths = yearsToRetirement * 12;
+  const maxMonths = yearsToRetirement * 12;
   const now = new Date();
   const startYear = startDate?.year ?? now.getFullYear();
   const startMonth = startDate ? startDate.month - 1 : now.getMonth(); // 0-indexed
+
+  // Cap at end date if provided
+  let totalMonths = maxMonths;
+  if (endDate) {
+    const endMonthsFromStart = (endDate.year - startYear) * 12 + (endDate.month - 1 - startMonth);
+    totalMonths = Math.min(maxMonths, Math.max(0, endMonthsFromStart));
+  }
 
   const reducedTarget = calculateReducedTarget(profile);
   const monthlyInflation = profile.expectedInflation / 100 / 12;

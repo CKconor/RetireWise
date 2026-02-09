@@ -38,12 +38,15 @@ function targetPercentColor(pct: number): string {
   return 'text-muted-foreground';
 }
 
+type MonthYear = { month: number; year: number };
+
 export function MonthlyBreakdownTable({ accounts, profile }: MonthlyBreakdownTableProps) {
-  const [startDate, setStartDate] = useState<{ month: number; year: number } | null>(null);
+  const [startDate, setStartDate] = useState<MonthYear | null>(null);
+  const [endDate, setEndDate] = useState<MonthYear | null>(null);
 
   const data = useMemo(
-    () => generateMonthlyProjection(accounts, profile, startDate ?? undefined),
-    [accounts, profile, startDate]
+    () => generateMonthlyProjection(accounts, profile, startDate ?? undefined, endDate ?? undefined),
+    [accounts, profile, startDate, endDate]
   );
 
   const yearGroups = useMemo(() => groupByYear(data), [data]);
@@ -75,49 +78,28 @@ export function MonthlyBreakdownTable({ accounts, profile }: MonthlyBreakdownTab
     (_, i) => currentYear + i
   );
 
+  const retirementYear = currentYear + (profile.retirementAge - profile.currentAge);
+
   return (
     <div>
-      {/* Start date picker */}
-      <div className="mb-4 flex items-center gap-2">
-        {startDate === null ? (
-          <button
-            onClick={() => setStartDate({ month: new Date().getMonth() + 1, year: currentYear })}
-            className="flex items-center gap-1.5 rounded-lg border border-border/60 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/30 hover:text-foreground cursor-pointer"
-          >
-            <CalendarDays className="h-3.5 w-3.5" />
-            Set start date
-          </button>
-        ) : (
-          <div className="flex items-center gap-2 rounded-lg border border-border/60 px-3 py-1.5">
-            <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-xs font-medium text-muted-foreground">From</span>
-            <select
-              value={startDate.month}
-              onChange={(e) => setStartDate({ ...startDate, month: Number(e.target.value) })}
-              className="rounded-md border border-border/60 bg-background px-2 py-0.5 text-xs font-medium text-foreground cursor-pointer"
-            >
-              {MONTH_OPTIONS.map((m) => (
-                <option key={m.value} value={m.value}>{m.label}</option>
-              ))}
-            </select>
-            <select
-              value={startDate.year}
-              onChange={(e) => setStartDate({ ...startDate, year: Number(e.target.value) })}
-              className="rounded-md border border-border/60 bg-background px-2 py-0.5 text-xs font-medium text-foreground cursor-pointer"
-            >
-              {yearRange.map((y) => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
-            <button
-              onClick={() => setStartDate(null)}
-              className="ml-1 flex h-5 w-5 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground cursor-pointer"
-              title="Reset to current month"
-            >
-              <X className="h-3 w-3" />
-            </button>
-          </div>
-        )}
+      {/* Date range pickers */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <DatePicker
+          label="From"
+          buttonLabel="Set start date"
+          value={startDate}
+          onChange={setStartDate}
+          yearRange={yearRange}
+          defaultValue={{ month: new Date().getMonth() + 1, year: currentYear }}
+        />
+        <DatePicker
+          label="To"
+          buttonLabel="Set end date"
+          value={endDate}
+          onChange={setEndDate}
+          yearRange={yearRange}
+          defaultValue={{ month: 12, year: retirementYear }}
+        />
       </div>
 
       <div className="overflow-x-auto -mx-5 px-5">
@@ -236,5 +218,60 @@ function YearSection({ group, summary, isExpanded, onToggle, accounts }: YearSec
           </tr>
         ))}
     </>
+  );
+}
+
+interface DatePickerProps {
+  label: string;
+  buttonLabel: string;
+  value: MonthYear | null;
+  onChange: (v: MonthYear | null) => void;
+  yearRange: number[];
+  defaultValue: MonthYear;
+}
+
+function DatePicker({ label, buttonLabel, value, onChange, yearRange, defaultValue }: DatePickerProps) {
+  if (value === null) {
+    return (
+      <button
+        onClick={() => onChange(defaultValue)}
+        className="flex items-center gap-1.5 rounded-lg border border-border/60 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/30 hover:text-foreground cursor-pointer"
+      >
+        <CalendarDays className="h-3.5 w-3.5" />
+        {buttonLabel}
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 rounded-lg border border-border/60 px-3 py-1.5">
+      <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
+      <span className="text-xs font-medium text-muted-foreground">{label}</span>
+      <select
+        value={value.month}
+        onChange={(e) => onChange({ ...value, month: Number(e.target.value) })}
+        className="rounded-md border border-border/60 bg-background px-2 py-0.5 text-xs font-medium text-foreground cursor-pointer"
+      >
+        {MONTH_OPTIONS.map((m) => (
+          <option key={m.value} value={m.value}>{m.label}</option>
+        ))}
+      </select>
+      <select
+        value={value.year}
+        onChange={(e) => onChange({ ...value, year: Number(e.target.value) })}
+        className="rounded-md border border-border/60 bg-background px-2 py-0.5 text-xs font-medium text-foreground cursor-pointer"
+      >
+        {yearRange.map((y) => (
+          <option key={y} value={y}>{y}</option>
+        ))}
+      </select>
+      <button
+        onClick={() => onChange(null)}
+        className="ml-1 flex h-5 w-5 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground cursor-pointer"
+        title="Clear"
+      >
+        <X className="h-3 w-3" />
+      </button>
+    </div>
   );
 }
