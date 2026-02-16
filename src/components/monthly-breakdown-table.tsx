@@ -40,9 +40,37 @@ function targetPercentColor(pct: number): string {
 
 type MonthYear = { month: number; year: number };
 
+const TABLE_DATES_KEY = 'retirewise-table-dates';
+
+function loadTableDates(): { startDate: MonthYear | null; endDate: MonthYear | null } {
+  if (typeof window === 'undefined') return { startDate: null, endDate: null };
+  try {
+    const saved = localStorage.getItem(TABLE_DATES_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch { /* ignore */ }
+  return { startDate: null, endDate: null };
+}
+
+function saveTableDates(startDate: MonthYear | null, endDate: MonthYear | null) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(TABLE_DATES_KEY, JSON.stringify({ startDate, endDate }));
+  } catch { /* ignore */ }
+}
+
 export function MonthlyBreakdownTable({ accounts, profile }: MonthlyBreakdownTableProps) {
-  const [startDate, setStartDate] = useState<MonthYear | null>(null);
-  const [endDate, setEndDate] = useState<MonthYear | null>(null);
+  const [startDate, setStartDate] = useState<MonthYear | null>(() => loadTableDates().startDate);
+  const [endDate, setEndDate] = useState<MonthYear | null>(() => loadTableDates().endDate);
+
+  const handleStartDate = useCallback((v: MonthYear | null) => {
+    setStartDate(v);
+    setEndDate((prev) => { saveTableDates(v, prev); return prev; });
+  }, []);
+
+  const handleEndDate = useCallback((v: MonthYear | null) => {
+    setEndDate(v);
+    setStartDate((prev) => { saveTableDates(prev, v); return prev; });
+  }, []);
 
   const data = useMemo(
     () => generateMonthlyProjection(accounts, profile, startDate ?? undefined, endDate ?? undefined),
@@ -88,7 +116,7 @@ export function MonthlyBreakdownTable({ accounts, profile }: MonthlyBreakdownTab
           label="From"
           buttonLabel="Set start date"
           value={startDate}
-          onChange={setStartDate}
+          onChange={handleStartDate}
           yearRange={yearRange}
           defaultValue={{ month: new Date().getMonth() + 1, year: currentYear }}
         />
@@ -96,7 +124,7 @@ export function MonthlyBreakdownTable({ accounts, profile }: MonthlyBreakdownTab
           label="To"
           buttonLabel="Set end date"
           value={endDate}
-          onChange={setEndDate}
+          onChange={handleEndDate}
           yearRange={yearRange}
           defaultValue={{ month: 12, year: retirementYear }}
         />
