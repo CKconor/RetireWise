@@ -861,12 +861,23 @@ export function generateMonthlyProjection(
     // Inflate the target so nominal total vs inflated target is an apples-to-apples comparison
     const inflatedTarget = reducedTarget * Math.pow(1 + monthlyInflation, m);
 
+    // Compute precise age from birthday at this calendar month
+    const birth = new Date(profile.birthday);
+    const pointDate = new Date(calYear, calMonth, birth.getDate());
+    let ageYears = calYear - birth.getFullYear();
+    let ageMonthsPart = calMonth - birth.getMonth();
+    if (ageMonthsPart < 0 || (ageMonthsPart === 0 && pointDate.getDate() < birth.getDate())) {
+      ageYears--;
+      ageMonthsPart += 12;
+    }
+    if (ageMonthsPart < 0) ageMonthsPart += 12;
+
     points.push({
       month: m,
       year: calYear,
       monthOfYear: calMonth + 1, // 1-12
-      age: profile.currentAge + Math.floor(m / 12),
-      ageMonths: m % 12,
+      age: ageYears,
+      ageMonths: ageMonthsPart,
       total,
       targetPercent: inflatedTarget > 0 ? Math.round((total / inflatedTarget) * 100) : 0,
       accountBalances,

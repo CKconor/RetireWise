@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SectionCard } from '@/components/ui/section-card';
 import { FormField } from '@/components/ui/form-field';
+import { DatePicker } from '@/components/ui/date-picker';
 import { getYearsToRetirement, formatCurrency } from '@/lib/calculations';
 
 interface ProfileFormProps {
@@ -44,7 +45,6 @@ const PensionIcon = () => (
 );
 
 export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
-  const [birthday, setBirthday] = useState(profile.birthday);
   const [retirementAge, setRetirementAge] = useState(String(profile.retirementAge));
   const [targetAmount, setTargetAmount] = useState(String(profile.targetAmount));
   const [expectedInflation, setExpectedInflation] = useState(String(profile.expectedInflation));
@@ -53,13 +53,12 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
 
   // Sync local state when profile changes externally
   useEffect(() => {
-    setBirthday(profile.birthday);
     setRetirementAge(String(profile.retirementAge));
     setTargetAmount(String(profile.targetAmount));
     setExpectedInflation(String(profile.expectedInflation));
     setStatePensionAmount(String(profile.statePensionAmount));
     setStatePensionAge(String(profile.statePensionAge));
-  }, [profile.birthday, profile.retirementAge, profile.targetAmount, profile.expectedInflation, profile.statePensionAmount, profile.statePensionAge]);
+  }, [profile.retirementAge, profile.targetAmount, profile.expectedInflation, profile.statePensionAmount, profile.statePensionAge]);
 
   const handleBlur = (field: keyof UserProfile, value: string) => {
     const useFloat = field === 'expectedInflation' || field === 'statePensionAmount';
@@ -88,18 +87,10 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
     >
       <div className="grid grid-cols-2 gap-3">
         <FormField id="birthday" label="Date of Birth" icon={<CalendarIcon />}>
-          <Input
-            id="birthday"
-            type="date"
+          <DatePicker
+            value={profile.birthday}
             max={new Date().toISOString().split('T')[0]}
-            value={birthday}
-            onChange={(e) => {
-              setBirthday(e.target.value);
-              if (e.target.value) {
-                onUpdate({ birthday: e.target.value });
-              }
-            }}
-            className="bg-secondary/30 transition-colors focus:bg-white dark:focus:bg-secondary"
+            onChange={(date) => onUpdate({ birthday: date })}
           />
           <p className="text-xs text-muted-foreground mt-1">
             Age: <span className="font-semibold text-foreground">{profile.currentAge}</span>
