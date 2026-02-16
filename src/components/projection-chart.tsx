@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import {
   AreaChart,
   Area,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -12,18 +13,19 @@ import {
   ReferenceLine,
 } from 'recharts';
 import { BarChart3, Settings2, Table2 } from 'lucide-react';
-import { Account, UserProfile } from '@/types';
+import { Account, UserProfile, NetWorthSnapshot } from '@/types';
 import { SectionCard } from '@/components/ui/section-card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
-import { generateProjection, formatCurrency, formatCurrencyCompact, calculateCoastFireNumber, findCoastFireYear, calculateAverageReturnRate } from '@/lib/calculations';
+import { generateProjection, formatCurrency, formatCurrencyCompact, calculateCoastFireNumber, findCoastFireYear, calculateAverageReturnRate, calculateAgeFromDate } from '@/lib/calculations';
 import { useChartColors } from '@/hooks/use-chart-colors';
 import { MonthlyBreakdownTable } from '@/components/monthly-breakdown-table';
 
 interface ProjectionChartProps {
   accounts: Account[];
   profile: UserProfile;
+  netWorthHistory?: NetWorthSnapshot[];
 }
 
 const ChartIcon = () => (
@@ -38,33 +40,64 @@ const EmptyChartIcon = () => (
   </svg>
 );
 
-export function ProjectionChart({ accounts, profile }: ProjectionChartProps) {
+export function ProjectionChart({ accounts, profile, netWorthHistory }: ProjectionChartProps) {
   const [view, setView] = useState<'chart' | 'table'>('chart');
   const [showOptimistic, setShowOptimistic] = useState(true);
   const [showConservative, setShowConservative] = useState(true);
   const [showCoastFire, setShowCoastFire] = useState(true);
+  const [showActual, setShowActual] = useState(true);
   const chartColors = useChartColors();
 
-  const data = useMemo(
+  const projectionData = useMemo(
     () => generateProjection(accounts, profile),
     [accounts, profile]
   );
 
+  type ChartDataPoint = Record<string, number | string | undefined>;
+
+  const data = useMemo((): ChartDataPoint[] => {
+    if (!netWorthHistory || netWorthHistory.length === 0 || !profile.birthday) {
+      return projectionData;
+    }
+
+    const merged: ChartDataPoint[] = projectionData.map((p) => ({ ...p }));
+
+    for (const snapshot of netWorthHistory) {
+      const decimalAge = calculateAgeFromDate(profile.birthday, snapshot.date);
+      const roundedAge = Math.round(decimalAge);
+
+      // Try to attach to an existing projection point within ±0.5 year
+      const match = merged.find((p) => p.age === roundedAge && p.actual === undefined);
+      if (match) {
+        match.actual = Math.round(snapshot.totalBalance);
+      } else {
+        // Insert as standalone point (only actual data)
+        merged.push({
+          age: roundedAge,
+          actual: Math.round(snapshot.totalBalance),
+        });
+      }
+    }
+
+    merged.sort((a, b) => (a.age as number) - (b.age as number));
+    return merged;
+  }, [projectionData, netWorthHistory, profile.birthday]);
+
   const coastFireInfo = useMemo(() => {
-    if (accounts.length === 0 || data.length === 0) return null;
+    if (accounts.length === 0 || projectionData.length === 0) return null;
 
     const avgReturn = calculateAverageReturnRate(accounts);
     const realReturn = Math.max(0, avgReturn - profile.expectedInflation);
     const coastFireNumber = calculateCoastFireNumber(profile, realReturn);
-    const coastFireYearIndex = findCoastFireYear(data, coastFireNumber);
+    const coastFireYearIndex = findCoastFireYear(projectionData, coastFireNumber);
 
     if (coastFireYearIndex === null) return null;
 
     return {
-      age: data[coastFireYearIndex].age,
+      age: projectionData[coastFireYearIndex].age,
       amount: coastFireNumber,
     };
-  }, [accounts, profile, data]);
+  }, [accounts, profile, projectionData]);
 
   if (accounts.length === 0) {
     return (
@@ -156,6 +189,18 @@ export function ProjectionChart({ accounts, profile }: ProjectionChartProps) {
                         Coast FIRE
                       </span>
                     </label>
+                    {netWorthHistory && netWorthHistory.length > 0 && (
+                      <label className="flex items-center gap-2 text-sm cursor-pointer">
+                        <Checkbox
+                          checked={showActual}
+                          onCheckedChange={(checked) => setShowActual(checked === true)}
+                        />
+                        <span className="flex items-center gap-1.5">
+                          <span className="h-2 w-2 rounded-full bg-[#14b8a6]" />
+                          Actual
+                        </span>
+                      </label>
+                    )}
                   </div>
                 </div>
               </PopoverContent>
@@ -208,6 +253,7 @@ export function ProjectionChart({ accounts, profile }: ProjectionChartProps) {
                   totalReal: { label: 'Expected', color: '#3b82f6' },
                   overperformanceReal: { label: 'Optimistic (+2%)', color: '#22c55e' },
                   underperformanceReal: { label: 'Conservative (-2%)', color: '#f59e0b' },
+                  actual: { label: 'Actual', color: '#14b8a6' },
                 };
 
                 const showTargets = showCoastFire && coastFireInfo;
@@ -402,6 +448,18 @@ export function ProjectionChart({ accounts, profile }: ProjectionChartProps) {
               dot={false}
               activeDot={{ r: 6, fill: '#3b82f6', stroke: chartColors.activeDotStroke, strokeWidth: 2 }}
             />
+            {showActual && (
+              <Line
+                type="monotone"
+                dataKey="actual"
+                name="actual"
+                stroke="#14b8a6"
+                strokeWidth={2}
+                connectNulls
+                dot={{ r: 4, fill: '#14b8a6', stroke: chartColors.activeDotStroke, strokeWidth: 2 }}
+                activeDot={{ r: 6, fill: '#14b8a6', stroke: chartColors.activeDotStroke, strokeWidth: 2 }}
+              />
+            )}
           </AreaChart>
         </ResponsiveContainer>
       </div>
