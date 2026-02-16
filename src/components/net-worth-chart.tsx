@@ -4,13 +4,14 @@ import { useMemo, useState } from 'react';
 import {
   AreaChart,
   Area,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { TrendingUp, Plus, Trash2, Pencil } from 'lucide-react';
+import { TrendingUp, Plus, Trash2, Pencil, ArrowRight } from 'lucide-react';
 import { Account, AccountType, NetWorthSnapshot, ACCOUNT_TYPE_LABELS } from '@/types';
 import { SectionCard } from '@/components/ui/section-card';
 import { Button } from '@/components/ui/button';
@@ -25,7 +26,7 @@ import {
   DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { formatCurrency, formatCurrencyCompact } from '@/lib/calculations';
+import { formatCurrency, formatCurrencyCompact, calculateNetWorthForecast } from '@/lib/calculations';
 import { useChartColors } from '@/hooks/use-chart-colors';
 
 // Hex colors for each account type (for Recharts fills/strokes)
@@ -64,6 +65,7 @@ export function NetWorthChart({
   onClearHistory,
 }: NetWorthChartProps) {
   const chartColors = useChartColors();
+  const [showForecast, setShowForecast] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingDate, setEditingDate] = useState<string | null>(null); // null = adding new, string = editing existing
   const [snapshotDate, setSnapshotDate] = useState(() => new Date().toISOString().split('T')[0]);
@@ -83,8 +85,8 @@ export function NetWorthChart({
 
   // Build chart data: one row per snapshot, one key per account
   const chartData = useMemo(() => {
-    return netWorthHistory.map((snap) => {
-      const row: Record<string, number | string> = {
+    const rows = netWorthHistory.map((snap) => {
+      const row: Record<string, number | string | undefined> = {
         date: snap.date,
         dateLabel: formatDateLabel(snap.date),
         total: snap.totalBalance,
@@ -94,7 +96,33 @@ export function NetWorthChart({
       }
       return row;
     });
-  }, [netWorthHistory, allAccountKeys]);
+
+    if (!showForecast || netWorthHistory.length < 2) return rows;
+
+    const forecastPoints = calculateNetWorthForecast(netWorthHistory, 12);
+    if (forecastPoints.length === 0) return rows;
+
+    // Bridge: set forecast on last actual point so the line connects
+    if (rows.length > 0) {
+      rows[rows.length - 1].forecast = rows[rows.length - 1].total as number;
+    }
+
+    // Append forecast rows (account keys zeroed, only forecast + total set)
+    for (const pt of forecastPoints) {
+      const row: Record<string, number | string | undefined> = {
+        date: pt.date,
+        dateLabel: formatDateLabel(pt.date),
+        total: undefined, // don't stack in area
+        forecast: pt.total,
+      };
+      for (const id of allAccountKeys.keys()) {
+        row[id] = undefined; // no stacked area for forecast points
+      }
+      rows.push(row);
+    }
+
+    return rows;
+  }, [netWorthHistory, allAccountKeys, showForecast]);
 
   const openAddDialog = () => {
     setEditingDate(null);
@@ -144,6 +172,17 @@ export function NetWorthChart({
         title="Net Worth History"
         action={
           <div className="flex items-center gap-2">
+            {hasEnoughData && (
+              <button
+                onClick={() => setShowForecast(!showForecast)}
+                className={`flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors cursor-pointer ${
+                  showForecast ? 'text-foreground bg-muted' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <ArrowRight className="h-3 w-3" />
+                Forecast
+              </button>
+            )}
             {netWorthHistory.length > 0 && (
               <button
                 onClick={() => setShowList(!showList)}
@@ -240,7 +279,9 @@ export function NetWorthChart({
                   content={({ active, payload }) => {
                     if (!active || !payload || payload.length === 0) return null;
                     const dataPoint = payload[0]?.payload;
-                    const total = dataPoint?.total as number;
+                    const total = dataPoint?.total as number | undefined;
+                    const forecastVal = dataPoint?.forecast as number | undefined;
+                    const isForecastOnly = total == null && forecastVal != null;
 
                     return (
                       <div
@@ -255,29 +296,40 @@ export function NetWorthChart({
                         <p style={{ color: chartColors.tooltipMuted, fontWeight: 600, marginBottom: '8px', fontSize: '13px' }}>
                           {formatDateLabel(dataPoint?.date as string)}
                         </p>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', marginBottom: '8px' }}>
-                          <span style={{ color: chartColors.tooltipMuted, fontSize: '13px' }}>Total</span>
-                          <span style={{ color: chartColors.tooltipText, fontSize: '13px', fontWeight: 700 }}>
-                            {formatCurrency(total)}
-                          </span>
-                        </div>
-                        <div style={{ borderTop: `1px solid ${chartColors.tooltipBorder}`, paddingTop: '8px' }}>
-                          {Array.from(allAccountKeys.entries()).map(([id, info]) => {
-                            const val = (dataPoint?.[id] as number) ?? 0;
-                            if (val === 0) return null;
-                            return (
-                              <div key={id} style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', marginBottom: '2px' }}>
-                                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                  <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: ACCOUNT_TYPE_HEX[info.type], flexShrink: 0 }} />
-                                  <span style={{ color: chartColors.tooltipMuted, fontSize: '12px' }}>{info.name}</span>
-                                </span>
-                                <span style={{ color: chartColors.tooltipText, fontSize: '12px', fontWeight: 500 }}>
-                                  {formatCurrency(val)}
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
+                        {isForecastOnly ? (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
+                            <span style={{ color: '#94a3b8', fontSize: '13px' }}>Forecast</span>
+                            <span style={{ color: chartColors.tooltipText, fontSize: '13px', fontWeight: 700 }}>
+                              {formatCurrency(forecastVal)}
+                            </span>
+                          </div>
+                        ) : (
+                          <>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', marginBottom: '8px' }}>
+                              <span style={{ color: chartColors.tooltipMuted, fontSize: '13px' }}>Total</span>
+                              <span style={{ color: chartColors.tooltipText, fontSize: '13px', fontWeight: 700 }}>
+                                {formatCurrency(total ?? 0)}
+                              </span>
+                            </div>
+                            <div style={{ borderTop: `1px solid ${chartColors.tooltipBorder}`, paddingTop: '8px' }}>
+                              {Array.from(allAccountKeys.entries()).map(([id, info]) => {
+                                const val = (dataPoint?.[id] as number) ?? 0;
+                                if (val === 0) return null;
+                                return (
+                                  <div key={id} style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', marginBottom: '2px' }}>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                      <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: ACCOUNT_TYPE_HEX[info.type], flexShrink: 0 }} />
+                                      <span style={{ color: chartColors.tooltipMuted, fontSize: '12px' }}>{info.name}</span>
+                                    </span>
+                                    <span style={{ color: chartColors.tooltipText, fontSize: '12px', fontWeight: 500 }}>
+                                      {formatCurrency(val)}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </>
+                        )}
                       </div>
                     );
                   }}
@@ -297,6 +349,19 @@ export function NetWorthChart({
                     activeDot={{ r: 4, fill: ACCOUNT_TYPE_HEX[info.type], stroke: chartColors.activeDotStroke, strokeWidth: 2 }}
                   />
                 ))}
+                {showForecast && (
+                  <Line
+                    type="monotone"
+                    dataKey="forecast"
+                    name="Forecast"
+                    stroke="#94a3b8"
+                    strokeWidth={2}
+                    strokeDasharray="6 3"
+                    dot={false}
+                    activeDot={{ r: 4, fill: '#94a3b8', stroke: chartColors.activeDotStroke, strokeWidth: 2 }}
+                    connectNulls={false}
+                  />
+                )}
               </AreaChart>
             </ResponsiveContainer>
             {/* Legend */}
@@ -308,6 +373,12 @@ export function NetWorthChart({
                   <span className="text-[10px] opacity-60">({ACCOUNT_TYPE_LABELS[info.type]})</span>
                 </div>
               ))}
+              {showForecast && (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span className="h-0.5 w-4 rounded-full" style={{ backgroundColor: '#94a3b8', borderTop: '2px dashed #94a3b8' }} />
+                  Forecast
+                </div>
+              )}
             </div>
           </div>
         )}

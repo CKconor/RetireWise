@@ -1,4 +1,4 @@
-import { Account, UserProfile, ProjectionDataPoint, MonthlyProjectionDataPoint, AccountProjection, Milestone, StressTestResult } from '@/types';
+import { Account, UserProfile, ProjectionDataPoint, MonthlyProjectionDataPoint, AccountProjection, Milestone, StressTestResult, NetWorthSnapshot } from '@/types';
 import { PRIVATE_PENSION_ACCESS_AGE } from '@/lib/constants';
 
 /**
@@ -885,4 +885,57 @@ export function generateMonthlyProjection(
   }
 
   return points;
+}
+
+/**
+ * Forecast net worth using linear regression on historical snapshots.
+ * Returns monthly forecast points starting from the last snapshot.
+ * Returns empty array if fewer than 2 snapshots.
+ */
+export function calculateNetWorthForecast(
+  history: NetWorthSnapshot[],
+  monthsAhead: number = 12
+): { date: string; total: number }[] {
+  if (history.length < 2) return [];
+
+  // Convert dates to days since first snapshot for regression
+  const firstDate = new Date(history[0].date + 'T00:00:00').getTime();
+  const points = history.map((snap) => ({
+    x: (new Date(snap.date + 'T00:00:00').getTime() - firstDate) / (1000 * 60 * 60 * 24),
+    y: snap.totalBalance,
+  }));
+
+  // Simple linear regression: y = mx + b
+  const n = points.length;
+  const sumX = points.reduce((s, p) => s + p.x, 0);
+  const sumY = points.reduce((s, p) => s + p.y, 0);
+  const sumXY = points.reduce((s, p) => s + p.x * p.y, 0);
+  const sumX2 = points.reduce((s, p) => s + p.x * p.x, 0);
+
+  const denom = n * sumX2 - sumX * sumX;
+  if (denom === 0) return [];
+
+  const m = (n * sumXY - sumX * sumY) / denom;
+  const b = (sumY - m * sumX) / n;
+
+  // Generate monthly forecast points from last snapshot
+  const lastSnap = history[history.length - 1];
+  const lastDate = new Date(lastSnap.date + 'T00:00:00');
+  const lastDays = (lastDate.getTime() - firstDate) / (1000 * 60 * 60 * 24);
+
+  const forecast: { date: string; total: number }[] = [];
+  for (let i = 1; i <= monthsAhead; i++) {
+    const futureDate = new Date(lastDate);
+    futureDate.setMonth(futureDate.getMonth() + i);
+    const futureDays = lastDays + (futureDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24);
+    const projected = Math.round(m * futureDays + b);
+
+    const yyyy = futureDate.getFullYear();
+    const mm = String(futureDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(futureDate.getDate()).padStart(2, '0');
+
+    forecast.push({ date: `${yyyy}-${mm}-${dd}`, total: projected });
+  }
+
+  return forecast;
 }
