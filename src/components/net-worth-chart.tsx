@@ -10,7 +10,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { TrendingUp, Plus, Trash2 } from 'lucide-react';
+import { TrendingUp, Plus, Trash2, Pencil } from 'lucide-react';
 import { Account, AccountType, NetWorthSnapshot, ACCOUNT_TYPE_LABELS } from '@/types';
 import { SectionCard } from '@/components/ui/section-card';
 import { Button } from '@/components/ui/button';
@@ -65,6 +65,7 @@ export function NetWorthChart({
 }: NetWorthChartProps) {
   const chartColors = useChartColors();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingDate, setEditingDate] = useState<string | null>(null); // null = adding new, string = editing existing
   const [snapshotDate, setSnapshotDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [balanceInputs, setBalanceInputs] = useState<Record<string, string>>({});
   const [showList, setShowList] = useState(false);
@@ -95,12 +96,23 @@ export function NetWorthChart({
     });
   }, [netWorthHistory, allAccountKeys]);
 
-  const openDialog = () => {
-    const today = new Date().toISOString().split('T')[0];
-    setSnapshotDate(today);
+  const openAddDialog = () => {
+    setEditingDate(null);
+    setSnapshotDate(new Date().toISOString().split('T')[0]);
     const inputs: Record<string, string> = {};
     for (const acc of accounts) {
       inputs[acc.id] = String(acc.currentBalance);
+    }
+    setBalanceInputs(inputs);
+    setDialogOpen(true);
+  };
+
+  const openEditDialog = (snap: NetWorthSnapshot) => {
+    setEditingDate(snap.date);
+    setSnapshotDate(snap.date);
+    const inputs: Record<string, string> = {};
+    for (const acc of accounts) {
+      inputs[acc.id] = String(snap.accountBalances[acc.id]?.balance ?? 0);
     }
     setBalanceInputs(inputs);
     setDialogOpen(true);
@@ -114,6 +126,10 @@ export function NetWorthChart({
         name: acc.name,
         type: acc.type,
       };
+    }
+    // If editing and the date changed, remove the old snapshot first
+    if (editingDate && editingDate !== snapshotDate) {
+      onDeleteSnapshot(editingDate);
     }
     onAddManualSnapshot(snapshotDate, accountBalances);
     setDialogOpen(false);
@@ -136,7 +152,7 @@ export function NetWorthChart({
                 {showList ? 'Chart' : `${netWorthHistory.length} snapshots`}
               </button>
             )}
-            <Button variant="outline" size="sm" onClick={openDialog} className="gap-1.5">
+            <Button variant="outline" size="sm" onClick={openAddDialog} className="gap-1.5">
               <Plus className="h-3.5 w-3.5" />
               Add Snapshot
             </Button>
@@ -170,6 +186,12 @@ export function NetWorthChart({
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-semibold font-mono">{formatCurrency(snap.totalBalance)}</span>
+                  <button
+                    onClick={() => openEditDialog(snap)}
+                    className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
                   <button
                     onClick={() => onDeleteSnapshot(snap.date)}
                     className="text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
@@ -295,9 +317,9 @@ export function NetWorthChart({
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="font-display">Add Past Snapshot</DialogTitle>
+            <DialogTitle className="font-display">{editingDate ? 'Edit Snapshot' : 'Add Past Snapshot'}</DialogTitle>
             <DialogDescription>
-              Record your account balances for a specific date.
+              {editingDate ? 'Update the account balances for this snapshot.' : 'Record your account balances for a specific date.'}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -332,7 +354,7 @@ export function NetWorthChart({
               Cancel
             </Button>
             <Button onClick={handleSaveSnapshot} disabled={accounts.length === 0}>
-              Save Snapshot
+              {editingDate ? 'Update Snapshot' : 'Save Snapshot'}
             </Button>
           </DialogFooter>
         </DialogContent>
