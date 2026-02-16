@@ -26,6 +26,7 @@ export default function Home() {
     addAccount,
     updateAccount,
     deleteAccount,
+    saveSnapshot,
     addManualSnapshot,
     deleteSnapshot,
     clearHistory,
@@ -92,6 +93,7 @@ export default function Home() {
                 onAdd={addAccount}
                 onUpdate={updateAccount}
                 onDelete={deleteAccount}
+                onSaveSnapshot={saveSnapshot}
               />
             </div>
 

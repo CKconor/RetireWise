@@ -72,49 +72,44 @@ export function useRetirementData() {
   const addAccount = useCallback(
     (accountData: Omit<Account, 'id'>) => {
       const newAccount = createAccount(accountData as Account);
-      setState((prev) => {
-        const newAccounts = [...prev.accounts, newAccount];
-        const snapshot = buildSnapshot(newAccounts);
-        return {
-          ...prev,
-          accounts: newAccounts,
-          drawdownConfig: {
-            ...(prev.drawdownConfig ?? DEFAULT_DRAWDOWN_CONFIG),
-            accountOrder: [...(prev.drawdownConfig?.accountOrder ?? []), newAccount.id],
-          },
-          netWorthHistory: upsertSnapshot(prev.netWorthHistory, snapshot),
-        };
-      });
+      setState((prev) => ({
+        ...prev,
+        accounts: [...prev.accounts, newAccount],
+        drawdownConfig: {
+          ...(prev.drawdownConfig ?? DEFAULT_DRAWDOWN_CONFIG),
+          accountOrder: [...(prev.drawdownConfig?.accountOrder ?? []), newAccount.id],
+        },
+      }));
       return newAccount;
     },
-    [buildSnapshot, upsertSnapshot]
+    []
   );
 
   const updateAccount = useCallback((id: string, updates: Partial<Account>) => {
-    setState((prev) => {
-      const newAccounts = prev.accounts.map((account) =>
+    setState((prev) => ({
+      ...prev,
+      accounts: prev.accounts.map((account) =>
         account.id === id ? { ...account, ...updates } : account
-      );
-      const snapshot = buildSnapshot(newAccounts);
-      return {
-        ...prev,
-        accounts: newAccounts,
-        netWorthHistory: upsertSnapshot(prev.netWorthHistory, snapshot),
-      };
-    });
-  }, [buildSnapshot, upsertSnapshot]);
+      ),
+    }));
+  }, []);
 
   const deleteAccount = useCallback((id: string) => {
+    setState((prev) => ({
+      ...prev,
+      accounts: prev.accounts.filter((account) => account.id !== id),
+      drawdownConfig: {
+        ...(prev.drawdownConfig ?? DEFAULT_DRAWDOWN_CONFIG),
+        accountOrder: (prev.drawdownConfig?.accountOrder ?? []).filter((accId) => accId !== id),
+      },
+    }));
+  }, []);
+
+  const saveSnapshot = useCallback(() => {
     setState((prev) => {
-      const newAccounts = prev.accounts.filter((account) => account.id !== id);
-      const snapshot = buildSnapshot(newAccounts);
+      const snapshot = buildSnapshot(prev.accounts);
       return {
         ...prev,
-        accounts: newAccounts,
-        drawdownConfig: {
-          ...(prev.drawdownConfig ?? DEFAULT_DRAWDOWN_CONFIG),
-          accountOrder: (prev.drawdownConfig?.accountOrder ?? []).filter((accId) => accId !== id),
-        },
         netWorthHistory: upsertSnapshot(prev.netWorthHistory, snapshot),
       };
     });
@@ -154,6 +149,7 @@ export function useRetirementData() {
     updateAccount,
     deleteAccount,
     updateDrawdownConfig,
+    saveSnapshot,
     addManualSnapshot,
     deleteSnapshot,
     clearHistory,

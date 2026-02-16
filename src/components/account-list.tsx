@@ -5,6 +5,9 @@ import { Account, UserProfile } from '@/types';
 import { AccountCard } from '@/components/account-card';
 import { AccountForm } from '@/components/account-form';
 import { Card } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Camera } from 'lucide-react';
 
 interface AccountListProps {
   accounts: Account[];
@@ -12,6 +15,7 @@ interface AccountListProps {
   onAdd: (account: Omit<Account, 'id'>) => void;
   onUpdate: (id: string, updates: Partial<Account>) => void;
   onDelete: (id: string) => void;
+  onSaveSnapshot?: () => void;
 }
 
 const PlusIcon = ({ className = "h-6 w-6" }: { className?: string }) => (
@@ -20,9 +24,10 @@ const PlusIcon = ({ className = "h-6 w-6" }: { className?: string }) => (
   </svg>
 );
 
-export function AccountList({ accounts, profile, onAdd, onUpdate, onDelete }: AccountListProps) {
+export function AccountList({ accounts, profile, onAdd, onUpdate, onDelete, onSaveSnapshot }: AccountListProps) {
   const [formOpen, setFormOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
+  const [snapshotPromptOpen, setSnapshotPromptOpen] = useState(false);
 
   const handleEdit = (account: Account) => {
     setEditingAccount(account);
@@ -30,12 +35,16 @@ export function AccountList({ accounts, profile, onAdd, onUpdate, onDelete }: Ac
   };
 
   const handleSave = (accountData: Omit<Account, 'id'>) => {
+    const wasEditing = !!editingAccount;
     if (editingAccount) {
       onUpdate(editingAccount.id, accountData);
     } else {
       onAdd(accountData);
     }
     setEditingAccount(null);
+    if (wasEditing && onSaveSnapshot) {
+      setSnapshotPromptOpen(true);
+    }
   };
 
   const handleOpenChange = (open: boolean) => {
@@ -98,6 +107,28 @@ export function AccountList({ accounts, profile, onAdd, onUpdate, onDelete }: Ac
         account={editingAccount}
         onSave={handleSave}
       />
+
+      <Dialog open={snapshotPromptOpen} onOpenChange={setSnapshotPromptOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-display flex items-center gap-2">
+              <Camera className="h-5 w-5 text-muted-foreground" />
+              Save Snapshot?
+            </DialogTitle>
+            <DialogDescription>
+              Would you like to record today&apos;s balances as a net worth snapshot?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setSnapshotPromptOpen(false)}>
+              Skip
+            </Button>
+            <Button onClick={() => { onSaveSnapshot?.(); setSnapshotPromptOpen(false); }}>
+              Save Snapshot
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
