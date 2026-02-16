@@ -3,10 +3,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Account, UserProfile, AppState, DrawdownConfig } from '@/types';
 import { loadState, saveState, createAccount, DEFAULT_DRAWDOWN_CONFIG } from '@/lib/storage';
+import { calculateAgeFromBirthday } from '@/lib/calculations';
 
 export function useRetirementData() {
   const [state, setState] = useState<AppState>(() => ({
     profile: {
+      birthday: `${new Date().getFullYear() - 30}-01-01`,
       currentAge: 30,
       retirementAge: 57,
       targetAmount: 1000000,
@@ -33,10 +35,13 @@ export function useRetirementData() {
   }, [state, isLoaded]);
 
   const updateProfile = useCallback((updates: Partial<UserProfile>) => {
-    setState((prev) => ({
-      ...prev,
-      profile: { ...prev.profile, ...updates },
-    }));
+    setState((prev) => {
+      const newProfile = { ...prev.profile, ...updates };
+      if (updates.birthday) {
+        newProfile.currentAge = calculateAgeFromBirthday(updates.birthday);
+      }
+      return { ...prev, profile: newProfile };
+    });
   }, []);
 
   const updateDrawdownConfig = useCallback((updates: Partial<DrawdownConfig>) => {

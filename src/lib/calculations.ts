@@ -2,6 +2,21 @@ import { Account, UserProfile, ProjectionDataPoint, MonthlyProjectionDataPoint, 
 import { PRIVATE_PENSION_ACCESS_AGE } from '@/lib/constants';
 
 /**
+ * Calculate age in whole years from a birthday string (YYYY-MM-DD).
+ * Returns the floor — age increments on the birthday each year.
+ */
+export function calculateAgeFromBirthday(birthday: string): number {
+  const birth = new Date(birthday);
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+  return age;
+}
+
+/**
  * Calculate the future value of an account with monthly compounding
  */
 export function calculateFutureValue(

@@ -11,7 +11,8 @@ export interface Account {
 }
 
 export interface UserProfile {
-  currentAge: number;
+  birthday: string; // ISO format YYYY-MM-DD
+  currentAge: number; // derived from birthday
   retirementAge: number;
   targetAmount: number;
   expectedInflation: number; // percentage, e.g., 2.5 for 2.5%

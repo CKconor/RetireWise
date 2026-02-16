@@ -1,8 +1,12 @@
 import { AppState, Account, UserProfile, DrawdownConfig } from '@/types';
+import { calculateAgeFromBirthday } from '@/lib/calculations';
 
 const STORAGE_KEY = 'retirewise-data';
 
+const currentYear = new Date().getFullYear();
+
 const DEFAULT_PROFILE: UserProfile = {
+  birthday: `${currentYear - 30}-01-01`,
   currentAge: 30,
   retirementAge: 57,
   targetAmount: 1000000,
@@ -37,8 +41,18 @@ export function loadState(): AppState {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved) as AppState;
+      const profile = { ...DEFAULT_PROFILE, ...parsed.profile };
+
+      // Migration: synthesize birthday from currentAge if missing
+      if (!parsed.profile?.birthday) {
+        profile.birthday = `${currentYear - profile.currentAge}-01-01`;
+      }
+
+      // Always derive currentAge from birthday
+      profile.currentAge = calculateAgeFromBirthday(profile.birthday);
+
       return {
-        profile: { ...DEFAULT_PROFILE, ...parsed.profile },
+        profile,
         accounts: parsed.accounts || [],
         drawdownConfig: { ...DEFAULT_DRAWDOWN_CONFIG, ...parsed.drawdownConfig },
       };

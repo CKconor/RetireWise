@@ -44,7 +44,7 @@ const PensionIcon = () => (
 );
 
 export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
-  const [currentAge, setCurrentAge] = useState(String(profile.currentAge));
+  const [birthday, setBirthday] = useState(profile.birthday);
   const [retirementAge, setRetirementAge] = useState(String(profile.retirementAge));
   const [targetAmount, setTargetAmount] = useState(String(profile.targetAmount));
   const [expectedInflation, setExpectedInflation] = useState(String(profile.expectedInflation));
@@ -53,13 +53,13 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
 
   // Sync local state when profile changes externally
   useEffect(() => {
-    setCurrentAge(String(profile.currentAge));
+    setBirthday(profile.birthday);
     setRetirementAge(String(profile.retirementAge));
     setTargetAmount(String(profile.targetAmount));
     setExpectedInflation(String(profile.expectedInflation));
     setStatePensionAmount(String(profile.statePensionAmount));
     setStatePensionAge(String(profile.statePensionAge));
-  }, [profile.currentAge, profile.retirementAge, profile.targetAmount, profile.expectedInflation, profile.statePensionAmount, profile.statePensionAge]);
+  }, [profile.birthday, profile.retirementAge, profile.targetAmount, profile.expectedInflation, profile.statePensionAmount, profile.statePensionAge]);
 
   const handleBlur = (field: keyof UserProfile, value: string) => {
     const useFloat = field === 'expectedInflation' || field === 'statePensionAmount';
@@ -68,7 +68,6 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
       onUpdate({ [field]: numValue });
     } else {
       // Reset to profile value if invalid
-      if (field === 'currentAge') setCurrentAge(String(profile.currentAge));
       if (field === 'retirementAge') setRetirementAge(String(profile.retirementAge));
       if (field === 'targetAmount') setTargetAmount(String(profile.targetAmount));
       if (field === 'expectedInflation') setExpectedInflation(String(profile.expectedInflation));
@@ -88,17 +87,23 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
       contentClassName="space-y-4"
     >
       <div className="grid grid-cols-2 gap-3">
-        <FormField id="currentAge" label="Current Age" icon={<CalendarIcon />}>
+        <FormField id="birthday" label="Date of Birth" icon={<CalendarIcon />}>
           <Input
-            id="currentAge"
-            type="number"
-            min={18}
-            max={100}
-            value={currentAge}
-            onChange={(e) => setCurrentAge(e.target.value)}
-            onBlur={() => handleBlur('currentAge', currentAge)}
+            id="birthday"
+            type="date"
+            max={new Date().toISOString().split('T')[0]}
+            value={birthday}
+            onChange={(e) => {
+              setBirthday(e.target.value);
+              if (e.target.value) {
+                onUpdate({ birthday: e.target.value });
+              }
+            }}
             className="bg-secondary/30 transition-colors focus:bg-white dark:focus:bg-secondary"
           />
+          <p className="text-xs text-muted-foreground mt-1">
+            Age: <span className="font-semibold text-foreground">{profile.currentAge}</span>
+          </p>
         </FormField>
         <FormField id="retirementAge" label="Retirement Age" icon={<CalendarIcon />}>
           <Input
