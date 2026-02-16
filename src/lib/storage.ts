@@ -1,4 +1,4 @@
-import { AppState, Account, UserProfile, DrawdownConfig } from '@/types';
+import { AppState, Account, UserProfile, DrawdownConfig, NetWorthSnapshot } from '@/types';
 import { calculateAgeFromBirthday } from '@/lib/calculations';
 
 const STORAGE_KEY = 'retirewise-data';
@@ -30,6 +30,7 @@ const DEFAULT_STATE: AppState = {
   profile: DEFAULT_PROFILE,
   accounts: [],
   drawdownConfig: DEFAULT_DRAWDOWN_CONFIG,
+  netWorthHistory: [],
 };
 
 export function loadState(): AppState {
@@ -55,6 +56,7 @@ export function loadState(): AppState {
         profile,
         accounts: parsed.accounts || [],
         drawdownConfig: { ...DEFAULT_DRAWDOWN_CONFIG, ...parsed.drawdownConfig },
+        netWorthHistory: parsed.netWorthHistory || [],
       };
     }
   } catch (error) {

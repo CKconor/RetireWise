@@ -12,6 +12,7 @@ import { IsaBridgeCard } from '@/components/isa-bridge-card';
 import { MilestoneTracker } from '@/components/milestone-tracker';
 import { WhatIfScenarios } from '@/components/what-if-scenarios';
 import { generatePdfReport } from '@/lib/pdf-report';
+import { NetWorthChart } from '@/components/net-worth-chart';
 import { Header } from '@/components/header';
 import { Account } from '@/types';
 
@@ -19,11 +20,15 @@ export default function Home() {
   const {
     profile,
     accounts,
+    netWorthHistory,
     isLoaded,
     updateProfile,
     addAccount,
     updateAccount,
     deleteAccount,
+    addManualSnapshot,
+    deleteSnapshot,
+    clearHistory,
   } = useRetirementData();
 
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
@@ -95,17 +100,28 @@ export default function Home() {
               <ProjectionChart accounts={accounts} profile={profile} />
             </div>
 
-            {/* Milestone Tracker */}
+            {/* Net Worth History */}
             <div className="opacity-0 animate-fade-in stagger-4">
+              <NetWorthChart
+                accounts={accounts}
+                netWorthHistory={netWorthHistory}
+                onAddManualSnapshot={addManualSnapshot}
+                onDeleteSnapshot={deleteSnapshot}
+                onClearHistory={clearHistory}
+              />
+            </div>
+
+            {/* Milestone Tracker */}
+            <div className="opacity-0 animate-fade-in stagger-5">
               <MilestoneTracker accounts={accounts} profile={profile} />
             </div>
 
             {/* What-If Scenarios & ISA Bridge */}
             <div className="grid gap-6 lg:grid-cols-2">
-              <div className="opacity-0 animate-fade-in stagger-5">
+              <div className="opacity-0 animate-fade-in stagger-6">
                 <WhatIfScenarios accounts={accounts} profile={profile} />
               </div>
-              <div className="opacity-0 animate-fade-in stagger-6">
+              <div className="opacity-0 animate-fade-in stagger-7">
                 <IsaBridgeCard accounts={accounts} profile={profile} />
               </div>
             </div>

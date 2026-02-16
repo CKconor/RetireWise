@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Account, UserProfile, AppState, DrawdownConfig } from '@/types';
+import { Account, UserProfile, AppState, DrawdownConfig, NetWorthSnapshot } from '@/types';
 import { loadState, saveState, createAccount, DEFAULT_DRAWDOWN_CONFIG } from '@/lib/storage';
 import { calculateAgeFromBirthday } from '@/lib/calculations';
 
@@ -19,6 +19,7 @@ export function useRetirementData() {
     },
     accounts: [],
     drawdownConfig: DEFAULT_DRAWDOWN_CONFIG,
+    netWorthHistory: [],
   }));
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -33,6 +34,23 @@ export function useRetirementData() {
       saveState(state);
     }
   }, [state, isLoaded]);
+
+  const buildSnapshot = useCallback((accounts: Account[], date?: string): NetWorthSnapshot => {
+    const now = new Date();
+    const snapshotDate = date || now.toISOString().split('T')[0];
+    const accountBalances: NetWorthSnapshot['accountBalances'] = {};
+    let totalBalance = 0;
+    for (const acc of accounts) {
+      accountBalances[acc.id] = { balance: acc.currentBalance, name: acc.name, type: acc.type };
+      totalBalance += acc.currentBalance;
+    }
+    return { date: snapshotDate, timestamp: now.getTime(), totalBalance, accountBalances };
+  }, []);
+
+  const upsertSnapshot = useCallback((history: NetWorthSnapshot[], snapshot: NetWorthSnapshot): NetWorthSnapshot[] => {
+    const filtered = history.filter((s) => s.date !== snapshot.date);
+    return [...filtered, snapshot].sort((a, b) => a.date.localeCompare(b.date));
+  }, []);
 
   const updateProfile = useCallback((updates: Partial<UserProfile>) => {
     setState((prev) => {
@@ -54,48 +72,90 @@ export function useRetirementData() {
   const addAccount = useCallback(
     (accountData: Omit<Account, 'id'>) => {
       const newAccount = createAccount(accountData as Account);
-      setState((prev) => ({
-        ...prev,
-        accounts: [...prev.accounts, newAccount],
-        drawdownConfig: {
-          ...(prev.drawdownConfig ?? DEFAULT_DRAWDOWN_CONFIG),
-          accountOrder: [...(prev.drawdownConfig?.accountOrder ?? []), newAccount.id],
-        },
-      }));
+      setState((prev) => {
+        const newAccounts = [...prev.accounts, newAccount];
+        const snapshot = buildSnapshot(newAccounts);
+        return {
+          ...prev,
+          accounts: newAccounts,
+          drawdownConfig: {
+            ...(prev.drawdownConfig ?? DEFAULT_DRAWDOWN_CONFIG),
+            accountOrder: [...(prev.drawdownConfig?.accountOrder ?? []), newAccount.id],
+          },
+          netWorthHistory: upsertSnapshot(prev.netWorthHistory, snapshot),
+        };
+      });
       return newAccount;
     },
-    []
+    [buildSnapshot, upsertSnapshot]
   );
 
   const updateAccount = useCallback((id: string, updates: Partial<Account>) => {
+    setState((prev) => {
+      const newAccounts = prev.accounts.map((account) =>
+        account.id === id ? { ...account, ...updates } : account
+      );
+      const snapshot = buildSnapshot(newAccounts);
+      return {
+        ...prev,
+        accounts: newAccounts,
+        netWorthHistory: upsertSnapshot(prev.netWorthHistory, snapshot),
+      };
+    });
+  }, [buildSnapshot, upsertSnapshot]);
+
+  const deleteAccount = useCallback((id: string) => {
+    setState((prev) => {
+      const newAccounts = prev.accounts.filter((account) => account.id !== id);
+      const snapshot = buildSnapshot(newAccounts);
+      return {
+        ...prev,
+        accounts: newAccounts,
+        drawdownConfig: {
+          ...(prev.drawdownConfig ?? DEFAULT_DRAWDOWN_CONFIG),
+          accountOrder: (prev.drawdownConfig?.accountOrder ?? []).filter((accId) => accId !== id),
+        },
+        netWorthHistory: upsertSnapshot(prev.netWorthHistory, snapshot),
+      };
+    });
+  }, [buildSnapshot, upsertSnapshot]);
+
+  const addManualSnapshot = useCallback((date: string, accountBalances: NetWorthSnapshot['accountBalances']) => {
+    let totalBalance = 0;
+    for (const entry of Object.values(accountBalances)) {
+      totalBalance += entry.balance;
+    }
+    const snapshot: NetWorthSnapshot = { date, timestamp: Date.now(), totalBalance, accountBalances };
     setState((prev) => ({
       ...prev,
-      accounts: prev.accounts.map((account) =>
-        account.id === id ? { ...account, ...updates } : account
-      ),
+      netWorthHistory: upsertSnapshot(prev.netWorthHistory, snapshot),
+    }));
+  }, [upsertSnapshot]);
+
+  const deleteSnapshot = useCallback((date: string) => {
+    setState((prev) => ({
+      ...prev,
+      netWorthHistory: prev.netWorthHistory.filter((s) => s.date !== date),
     }));
   }, []);
 
-  const deleteAccount = useCallback((id: string) => {
-    setState((prev) => ({
-      ...prev,
-      accounts: prev.accounts.filter((account) => account.id !== id),
-      drawdownConfig: {
-        ...(prev.drawdownConfig ?? DEFAULT_DRAWDOWN_CONFIG),
-        accountOrder: (prev.drawdownConfig?.accountOrder ?? []).filter((accId) => accId !== id),
-      },
-    }));
+  const clearHistory = useCallback(() => {
+    setState((prev) => ({ ...prev, netWorthHistory: [] }));
   }, []);
 
   return {
     profile: state.profile,
     accounts: state.accounts,
     drawdownConfig: state.drawdownConfig ?? DEFAULT_DRAWDOWN_CONFIG,
+    netWorthHistory: state.netWorthHistory,
     isLoaded,
     updateProfile,
     addAccount,
     updateAccount,
     deleteAccount,
     updateDrawdownConfig,
+    addManualSnapshot,
+    deleteSnapshot,
+    clearHistory,
   };
 }

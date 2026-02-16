@@ -25,6 +25,7 @@ export interface AppState {
   profile: UserProfile;
   accounts: Account[];
   drawdownConfig?: DrawdownConfig;
+  netWorthHistory: NetWorthSnapshot[];
 }
 
 export interface ProjectionDataPoint {
@@ -101,6 +102,14 @@ export interface StressTestResult {
   postDropTotal: number;
   recoveryYears: number;
   stillMeetsTarget: boolean;
+}
+
+// Net worth history types
+export interface NetWorthSnapshot {
+  date: string; // ISO YYYY-MM-DD
+  timestamp: number;
+  totalBalance: number;
+  accountBalances: Record<string, { balance: number; name: string; type: AccountType }>;
 }
 
 // Drawdown types
