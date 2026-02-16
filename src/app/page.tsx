@@ -97,7 +97,7 @@ export default function Home() {
 
             {/* Projection Chart */}
             <div className="opacity-0 animate-fade-in stagger-3">
-              <ProjectionChart accounts={accounts} profile={profile} netWorthHistory={netWorthHistory} />
+              <ProjectionChart accounts={accounts} profile={profile} />
             </div>
 
             {/* Net Worth History */}

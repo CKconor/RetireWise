@@ -17,17 +17,6 @@ export function calculateAgeFromBirthday(birthday: string): number {
 }
 
 /**
- * Calculate decimal age at an arbitrary date given a birthday.
- * E.g. returns 30.5 if the date is 6 months after the 30th birthday.
- */
-export function calculateAgeFromDate(birthday: string, date: string): number {
-  const birth = new Date(birthday);
-  const d = new Date(date);
-  const diffMs = d.getTime() - birth.getTime();
-  return diffMs / (365.25 * 24 * 60 * 60 * 1000);
-}
-
-/**
  * Calculate the future value of an account with monthly compounding
  */
 export function calculateFutureValue(
