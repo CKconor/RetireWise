@@ -38,9 +38,25 @@ const ACCOUNT_TYPE_HEX: Record<AccountType, string> = {
   savings: '#f59e0b',
 };
 
+const TABLE_DATES_KEY = 'retirewise-table-dates';
+
+function getProjectionEndDate(): { month: number; year: number } | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const saved = localStorage.getItem(TABLE_DATES_KEY);
+    if (saved) {
+      const { endDate } = JSON.parse(saved);
+      if (endDate?.month && endDate?.year) return endDate;
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
 interface NetWorthChartProps {
   accounts: Account[];
   netWorthHistory: NetWorthSnapshot[];
+  currentAge: number;
+  retirementAge: number;
   onAddManualSnapshot: (date: string, accountBalances: NetWorthSnapshot['accountBalances']) => void;
   onDeleteSnapshot: (date: string) => void;
   onClearHistory: () => void;
@@ -60,6 +76,8 @@ function formatDateLabel(iso: string) {
 export function NetWorthChart({
   accounts,
   netWorthHistory,
+  currentAge,
+  retirementAge,
   onAddManualSnapshot,
   onDeleteSnapshot,
   onClearHistory,
@@ -99,7 +117,18 @@ export function NetWorthChart({
 
     if (!showForecast || netWorthHistory.length < 2) return rows;
 
-    const forecastPoints = calculateNetWorthForecast(netWorthHistory, 12);
+    // Use growth projection end date if set, otherwise fall back to retirement age
+    const projectionEnd = getProjectionEndDate();
+    let forecastMonths: number;
+    if (projectionEnd) {
+      const now = new Date();
+      forecastMonths = (projectionEnd.year - now.getFullYear()) * 12 + (projectionEnd.month - (now.getMonth() + 1));
+    } else {
+      forecastMonths = Math.max(1, retirementAge - currentAge) * 12;
+    }
+    forecastMonths = Math.max(12, forecastMonths);
+
+    const forecastPoints = calculateNetWorthForecast(netWorthHistory, forecastMonths, 12);
     if (forecastPoints.length === 0) return rows;
 
     // Bridge: set forecast on last actual point so the line connects
@@ -122,7 +151,7 @@ export function NetWorthChart({
     }
 
     return rows;
-  }, [netWorthHistory, allAccountKeys, showForecast]);
+  }, [netWorthHistory, allAccountKeys, showForecast, currentAge, retirementAge]);
 
   const openAddDialog = () => {
     setEditingDate(null);

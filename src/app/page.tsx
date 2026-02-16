@@ -107,6 +107,8 @@ export default function Home() {
               <NetWorthChart
                 accounts={accounts}
                 netWorthHistory={netWorthHistory}
+                currentAge={profile.currentAge}
+                retirementAge={profile.retirementAge}
                 onAddManualSnapshot={addManualSnapshot}
                 onDeleteSnapshot={deleteSnapshot}
                 onClearHistory={clearHistory}

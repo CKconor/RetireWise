@@ -894,7 +894,8 @@ export function generateMonthlyProjection(
  */
 export function calculateNetWorthForecast(
   history: NetWorthSnapshot[],
-  monthsAhead: number = 12
+  monthsAhead: number = 12,
+  intervalMonths: number = 1
 ): { date: string; total: number }[] {
   if (history.length < 2) return [];
 
@@ -918,13 +919,13 @@ export function calculateNetWorthForecast(
   const m = (n * sumXY - sumX * sumY) / denom;
   const b = (sumY - m * sumX) / n;
 
-  // Generate monthly forecast points from last snapshot
+  // Generate forecast points from last snapshot at the given interval
   const lastSnap = history[history.length - 1];
   const lastDate = new Date(lastSnap.date + 'T00:00:00');
   const lastDays = (lastDate.getTime() - firstDate) / (1000 * 60 * 60 * 24);
 
   const forecast: { date: string; total: number }[] = [];
-  for (let i = 1; i <= monthsAhead; i++) {
+  for (let i = intervalMonths; i <= monthsAhead; i += intervalMonths) {
     const futureDate = new Date(lastDate);
     futureDate.setMonth(futureDate.getMonth() + i);
     const futureDays = lastDays + (futureDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24);
