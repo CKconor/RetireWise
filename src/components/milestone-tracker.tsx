@@ -10,6 +10,7 @@ import {
   formatCurrency,
   formatCurrencyCompact,
   calculateTargetReachAge,
+  calculateRequiredBalanceNow,
 } from '@/lib/calculations';
 
 interface MilestoneTrackerProps {
@@ -30,7 +31,10 @@ export function MilestoneTracker({ accounts, profile }: MilestoneTrackerProps) {
 
   const currentProgress = calculatePercentageOfTarget(currentBalance, profile.targetAmount, false);
   const isOnTarget = projectedTotal >= profile.targetAmount;
-  const surplus = projectedTotal - profile.targetAmount;
+
+  // How much ahead/behind in current value vs required balance to be on track
+  const requiredBalanceNow = calculateRequiredBalanceNow(accounts, profile, profile.targetAmount);
+  const currentValueGap = currentBalance - requiredBalanceNow;
 
   // Build milestones
   const percentageMilestones = [10, 25, 50, 75, 100].map(percentage => ({
@@ -199,8 +203,10 @@ export function MilestoneTracker({ accounts, profile }: MilestoneTrackerProps) {
                   ? `${Math.abs(scheduleGapYears!)} year${Math.abs(scheduleGapYears!) !== 1 ? 's' : ''} ahead of schedule`
                   : `${Math.abs(scheduleGapYears!)} year${Math.abs(scheduleGapYears!) !== 1 ? 's' : ''} behind schedule`
                 }
-                {isAheadOfSchedule && surplus > 0 && (
-                  <span className="ml-2 font-normal opacity-80">· {formatCurrency(surplus)} above target</span>
+                {currentValueGap !== 0 && (
+                  <span className="ml-2 font-normal opacity-80">
+                    · {formatCurrency(Math.abs(currentValueGap))} {currentValueGap >= 0 ? 'ahead' : 'behind'} now
+                  </span>
                 )}
               </p>
               <p className={`text-xs ${

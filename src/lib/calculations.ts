@@ -467,6 +467,43 @@ export function calculateMilestones(
 }
 
 /**
+ * Calculate the required total balance right now to hit targetAmount at retirement,
+ * given each account's current contributions and real return rates.
+ *
+ * Derivation: scale all balances by k so that
+ *   k × fvBalanceOnly + fvContributionsOnly = targetAmount
+ * requiredBalance = k × totalCurrentBalance
+ *
+ * Returns 0 if contributions alone exceed the target.
+ */
+export function calculateRequiredBalanceNow(
+  accounts: Account[],
+  profile: UserProfile,
+  targetAmount: number,
+): number {
+  const yearsToRetirement = profile.retirementAge - profile.currentAge;
+  if (yearsToRetirement <= 0) return targetAmount;
+
+  const months = yearsToRetirement * 12;
+  let fvContributionsOnly = 0;
+  let fvBalanceOnly = 0;
+
+  for (const account of accounts) {
+    const realReturn = Math.max(0, account.annualReturnRate - profile.expectedInflation);
+    fvContributionsOnly += calculateFutureValue(0, account.monthlyContribution, realReturn, months, account.annualContributionIncrease ?? 0);
+    fvBalanceOnly += calculateFutureValue(account.currentBalance, 0, realReturn, months, 0);
+  }
+
+  if (fvBalanceOnly <= 0) return 0;
+
+  const k = (targetAmount - fvContributionsOnly) / fvBalanceOnly;
+  if (k <= 0) return 0;
+
+  const totalCurrentBalance = accounts.reduce((sum, a) => sum + a.currentBalance, 0);
+  return Math.max(0, k * totalCurrentBalance);
+}
+
+/**
  * Calculate the age at which the portfolio will reach the target amount (in real terms).
  * Extends projection beyond retirement if needed, searching up to 50 years from now.
  * Returns null if the target is never reached within the search window.
