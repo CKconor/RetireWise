@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { Account, UserProfile, NetWorthSnapshot } from '@/types';
+import { Account, UserProfile } from '@/types';
 import { SectionCard } from '@/components/ui/section-card';
 import {
   calculateTotalBalance,
@@ -16,7 +15,6 @@ import {
 interface MilestoneTrackerProps {
   accounts: Account[];
   profile: UserProfile;
-  netWorthHistory: NetWorthSnapshot[];
 }
 
 const BadgeIcon = () => (
@@ -25,48 +23,14 @@ const BadgeIcon = () => (
   </svg>
 );
 
-function getSnapshotComparison(
-  snapshot: NetWorthSnapshot,
-  currentBalance: number,
-  projection: ReturnType<typeof generateProjection>,
-  profile: UserProfile,
-) {
-  const snapshotDate = new Date(snapshot.date);
-  const now = new Date();
-
-  // Calculate age at snapshot time using birthday
-  const birthday = new Date(profile.birthday);
-  const snapshotAge = snapshotDate.getFullYear() - birthday.getFullYear() -
-    (snapshotDate < new Date(birthday.getFullYear() + (snapshotDate.getFullYear() - birthday.getFullYear()), birthday.getMonth(), birthday.getDate()) ? 1 : 0);
-  const currentAge = now.getFullYear() - birthday.getFullYear() -
-    (now < new Date(birthday.getFullYear() + (now.getFullYear() - birthday.getFullYear()), birthday.getMonth(), birthday.getDate()) ? 1 : 0);
-
-  // Find closest projection points for snapshot age and current age
-  const snapshotPoint = projection.reduce((closest, point) =>
-    Math.abs(point.age - snapshotAge) < Math.abs(closest.age - snapshotAge) ? point : closest
-  , projection[0]);
-  const currentPoint = projection.reduce((closest, point) =>
-    Math.abs(point.age - currentAge) < Math.abs(closest.age - currentAge) ? point : closest
-  , projection[0]);
-
-  const expectedGrowth = currentPoint.totalReal - snapshotPoint.totalReal;
-  const actualGrowth = currentBalance - snapshot.totalBalance;
-  const delta = actualGrowth - expectedGrowth;
-
-  const label = snapshotDate.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
-
-  return { delta, snapshotBalance: snapshot.totalBalance, label };
-}
-
-export function MilestoneTracker({ accounts, profile, netWorthHistory }: MilestoneTrackerProps) {
-  const [selectedSnapshotDate, setSelectedSnapshotDate] = useState<string | null>(null);
-
+export function MilestoneTracker({ accounts, profile }: MilestoneTrackerProps) {
   const currentBalance = calculateTotalBalance(accounts);
   const projectedTotal = calculateProjectedTotalReal(accounts, profile);
   const projection = generateProjection(accounts, profile);
 
   const currentProgress = calculatePercentageOfTarget(currentBalance, profile.targetAmount, false);
   const isOnTarget = projectedTotal >= profile.targetAmount;
+  const surplus = projectedTotal - profile.targetAmount;
 
   // Build milestones
   const percentageMilestones = [10, 25, 50, 75, 100].map(percentage => ({
@@ -102,14 +66,6 @@ export function MilestoneTracker({ accounts, profile, netWorthHistory }: Milesto
   const scheduleGapYears = targetReachAge !== null ? profile.retirementAge - targetReachAge : null;
   const isAheadOfSchedule = scheduleGapYears !== null && scheduleGapYears > 0;
 
-  // Snapshot comparison
-  const selectedSnapshot = selectedSnapshotDate
-    ? netWorthHistory.find(s => s.date === selectedSnapshotDate) ?? null
-    : null;
-  const comparison = selectedSnapshot && projection.length > 0
-    ? getSnapshotComparison(selectedSnapshot, currentBalance, projection, profile)
-    : null;
-
   if (accounts.length === 0) {
     return (
       <SectionCard icon={<BadgeIcon />} title="Milestones">
@@ -131,63 +87,12 @@ export function MilestoneTracker({ accounts, profile, netWorthHistory }: Milesto
       icon={<BadgeIcon />}
       title="Milestones"
       action={
-        <div className="flex items-center gap-2">
-          {netWorthHistory.length > 0 && (
-            <select
-              value={selectedSnapshotDate ?? ''}
-              onChange={e => setSelectedSnapshotDate(e.target.value || null)}
-              className="rounded-lg border border-border bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-[#1e3a5f] dark:focus:ring-amber-400"
-            >
-              <option value="">Compare snapshot...</option>
-              {netWorthHistory.map(s => (
-                <option key={s.date} value={s.date}>
-                  {new Date(s.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} — {formatCurrencyCompact(s.totalBalance)}
-                </option>
-              ))}
-            </select>
-          )}
-          <span className="badge-gold">
-            {reachedCount}/{milestones.length} reached
-          </span>
-        </div>
+        <span className="badge-gold">
+          {reachedCount}/{milestones.length} reached
+        </span>
       }
       contentClassName="space-y-5"
     >
-      {/* Snapshot Comparison Banner */}
-      {comparison && (
-        <div className={`rounded-xl p-4 ring-1 ${
-          comparison.delta >= 0
-            ? 'bg-gradient-to-r from-teal-50 to-emerald-50/50 dark:from-teal-900/30 dark:to-emerald-900/30 ring-teal-200 dark:ring-teal-700'
-            : 'bg-gradient-to-r from-rose-50 to-red-50/50 dark:from-rose-900/30 dark:to-red-900/30 ring-rose-200 dark:ring-rose-700'
-        }`}>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className={`text-sm font-semibold ${
-                comparison.delta >= 0 ? 'text-teal-800 dark:text-teal-200' : 'text-rose-800 dark:text-rose-200'
-              }`}>
-                {comparison.delta >= 0 ? 'Ahead' : 'Behind'} by {formatCurrency(Math.abs(comparison.delta))}
-              </p>
-              <p className={`text-xs ${
-                comparison.delta >= 0 ? 'text-teal-600 dark:text-teal-400' : 'text-rose-600 dark:text-rose-400'
-              }`}>
-                vs projected growth since {comparison.label}
-              </p>
-            </div>
-            <div className={`rounded-lg px-3 py-1.5 ${
-              comparison.delta >= 0 ? 'bg-teal-100/80 dark:bg-teal-900/50' : 'bg-rose-100/80 dark:bg-rose-900/50'
-            }`}>
-              <p className={`text-xs ${
-                comparison.delta >= 0 ? 'text-teal-600 dark:text-teal-400' : 'text-rose-600 dark:text-rose-400'
-              }`}>
-                <span className="font-medium">{formatCurrencyCompact(comparison.snapshotBalance)}</span>
-                {' → '}
-                <span className="font-medium">{formatCurrencyCompact(currentBalance)}</span>
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Progress Bar with Milestones */}
       <div className="relative pt-2">
         {/* Track */}
@@ -294,6 +199,9 @@ export function MilestoneTracker({ accounts, profile, netWorthHistory }: Milesto
                   ? `${Math.abs(scheduleGapYears!)} year${Math.abs(scheduleGapYears!) !== 1 ? 's' : ''} ahead of schedule`
                   : `${Math.abs(scheduleGapYears!)} year${Math.abs(scheduleGapYears!) !== 1 ? 's' : ''} behind schedule`
                 }
+                {isAheadOfSchedule && surplus > 0 && (
+                  <span className="ml-2 font-normal opacity-80">· {formatCurrency(surplus)} above target</span>
+                )}
               </p>
               <p className={`text-xs ${
                 isAheadOfSchedule ? 'text-teal-600 dark:text-teal-400' : 'text-amber-600 dark:text-amber-400'
