@@ -117,7 +117,7 @@ export default function Home() {
 
             {/* Milestone Tracker */}
             <div className="opacity-0 animate-fade-in stagger-5">
-              <MilestoneTracker accounts={accounts} profile={profile} />
+              <MilestoneTracker accounts={accounts} profile={profile} netWorthHistory={netWorthHistory} />
             </div>
 
             {/* What-If Scenarios & ISA Bridge */}
