@@ -467,6 +467,40 @@ export function calculateMilestones(
 }
 
 /**
+ * Calculate the age at which the portfolio will reach the target amount (in real terms).
+ * Extends projection beyond retirement if needed, searching up to 50 years from now.
+ * Returns null if the target is never reached within the search window.
+ */
+export function calculateTargetReachAge(
+  accounts: Account[],
+  profile: UserProfile,
+): number | null {
+  const maxSearchYears = 50;
+
+  for (let year = 1; year <= maxSearchYears; year++) {
+    const months = year * 12;
+    let totalReal = 0;
+
+    for (const account of accounts) {
+      const realReturn = Math.max(0, account.annualReturnRate - profile.expectedInflation);
+      totalReal += calculateFutureValue(
+        account.currentBalance,
+        account.monthlyContribution,
+        realReturn,
+        months,
+        account.annualContributionIncrease ?? 0
+      );
+    }
+
+    if (totalReal >= profile.targetAmount) {
+      return profile.currentAge + year;
+    }
+  }
+
+  return null;
+}
+
+/**
  * Calculate projected total with different monthly contribution
  * Uses real returns for proper inflation adjustment
  */

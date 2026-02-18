@@ -10,6 +10,7 @@ import {
   generateProjection,
   formatCurrency,
   formatCurrencyCompact,
+  calculateTargetReachAge,
 } from '@/lib/calculations';
 
 interface MilestoneTrackerProps {
@@ -95,6 +96,11 @@ export function MilestoneTracker({ accounts, profile, netWorthHistory }: Milesto
 
   const nextMilestone = milestones.find(m => !m.reached);
   const reachedCount = milestones.filter(m => m.reached).length;
+
+  // Schedule gap: how many years ahead/behind of retirement are they to hit the target
+  const targetReachAge = calculateTargetReachAge(accounts, profile);
+  const scheduleGapYears = targetReachAge !== null ? profile.retirementAge - targetReachAge : null;
+  const isAheadOfSchedule = scheduleGapYears !== null && scheduleGapYears > 0;
 
   // Snapshot comparison
   const selectedSnapshot = selectedSnapshotDate
@@ -271,6 +277,47 @@ export function MilestoneTracker({ accounts, profile, netWorthHistory }: Milesto
           </div>
         ))}
       </div>
+
+      {/* Schedule Gap */}
+      {targetReachAge !== null ? (
+        <div className={`rounded-xl p-4 ring-1 ${
+          isAheadOfSchedule
+            ? 'bg-gradient-to-r from-teal-50 to-emerald-50/50 dark:from-teal-900/30 dark:to-emerald-900/30 ring-teal-200 dark:ring-teal-700'
+            : 'bg-gradient-to-r from-amber-50 to-orange-50/50 dark:from-amber-900/30 dark:to-orange-900/30 ring-amber-200 dark:ring-amber-700'
+        }`}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className={`text-sm font-semibold ${
+                isAheadOfSchedule ? 'text-teal-800 dark:text-teal-200' : 'text-amber-800 dark:text-amber-200'
+              }`}>
+                {isAheadOfSchedule
+                  ? `${Math.abs(scheduleGapYears!)} year${Math.abs(scheduleGapYears!) !== 1 ? 's' : ''} ahead of schedule`
+                  : `${Math.abs(scheduleGapYears!)} year${Math.abs(scheduleGapYears!) !== 1 ? 's' : ''} behind schedule`
+                }
+              </p>
+              <p className={`text-xs ${
+                isAheadOfSchedule ? 'text-teal-600 dark:text-teal-400' : 'text-amber-600 dark:text-amber-400'
+              }`}>
+                On track to hit target at age {targetReachAge}, retirement at {profile.retirementAge}
+              </p>
+            </div>
+            <div className={`rounded-lg px-3 py-1.5 ${
+              isAheadOfSchedule ? 'bg-teal-100/80 dark:bg-teal-900/50' : 'bg-amber-100/80 dark:bg-amber-900/50'
+            }`}>
+              <p className={`text-xs font-medium ${
+                isAheadOfSchedule ? 'text-teal-700 dark:text-teal-300' : 'text-amber-700 dark:text-amber-300'
+              }`}>
+                Age {targetReachAge}
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-xl p-4 ring-1 bg-gradient-to-r from-rose-50 to-red-50/50 dark:from-rose-900/30 dark:to-red-900/30 ring-rose-200 dark:ring-rose-700">
+          <p className="text-sm font-semibold text-rose-800 dark:text-rose-200">Target may not be reached</p>
+          <p className="text-xs text-rose-600 dark:text-rose-400">Consider increasing contributions or adjusting your target</p>
+        </div>
+      )}
 
       {/* Next Milestone Message */}
       {nextMilestone ? (
