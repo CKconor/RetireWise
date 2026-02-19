@@ -145,3 +145,15 @@ export interface DrawdownSimulationResult {
   totalTaxPaid: number;
   accountDepletionAges: Record<string, number | null>;
 }
+
+export interface MonteCarloYearData {
+  age: number;
+  p10: number; p25: number; p50: number; p75: number; p90: number;
+}
+
+export interface MonteCarloResult {
+  years: MonteCarloYearData[];
+  successRate: number;
+  medianDepletionAge: number | null;
+  numSimulations: number;
+}

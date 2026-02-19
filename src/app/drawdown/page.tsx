@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useRetirementData } from '@/hooks/use-retirement-data';
 import { Header } from '@/components/header';
 import { DrawdownConfigPanel } from '@/components/drawdown/drawdown-config-panel';
@@ -8,7 +8,8 @@ import { DrawdownStatsCards } from '@/components/drawdown/drawdown-stats-cards';
 import { DepletionChart } from '@/components/drawdown/depletion-chart';
 import { IncomeBreakdownChart } from '@/components/drawdown/income-breakdown-chart';
 import { DrawdownYearTable } from '@/components/drawdown/drawdown-year-table';
-import { simulateDrawdown } from '@/lib/drawdown';
+import { MonteCarloChart } from '@/components/drawdown/monte-carlo-chart';
+import { simulateDrawdown, runMonteCarloSimulation } from '@/lib/drawdown';
 import { calculateFutureValue } from '@/lib/calculations';
 
 export default function DrawdownPage() {
@@ -19,6 +20,9 @@ export default function DrawdownPage() {
     isLoaded,
     updateDrawdownConfig,
   } = useRetirementData();
+
+  const [mcNumSimulations, setMcNumSimulations] = useState(1000);
+  const [mcVolatility, setMcVolatility] = useState(10);
 
   // Calculate projected retirement balances per account (real terms)
   const retirementBalances = useMemo(() => {
@@ -46,6 +50,11 @@ export default function DrawdownPage() {
   const simulation = useMemo(
     () => simulateDrawdown(accounts, profile, drawdownConfig),
     [accounts, profile, drawdownConfig]
+  );
+
+  const mcResult = useMemo(
+    () => runMonteCarloSimulation(accounts, profile, drawdownConfig, mcNumSimulations, mcVolatility),
+    [accounts, profile, drawdownConfig, mcNumSimulations, mcVolatility]
   );
 
   if (!isLoaded) {
@@ -97,6 +106,16 @@ export default function DrawdownPage() {
             </div>
             <div className="opacity-0 animate-fade-in stagger-4">
               <DrawdownYearTable simulation={simulation} accounts={accounts} />
+            </div>
+            <div className="opacity-0 animate-fade-in stagger-5">
+              <MonteCarloChart
+                mcResult={mcResult}
+                deterministicResult={simulation}
+                numSimulations={mcNumSimulations}
+                volatility={mcVolatility}
+                onNumSimulationsChange={setMcNumSimulations}
+                onVolatilityChange={setMcVolatility}
+              />
             </div>
           </div>
         </div>

@@ -4,6 +4,7 @@ import {
   DrawdownConfig,
   DrawdownYearResult,
   DrawdownSimulationResult,
+  MonteCarloResult,
   AccountType,
 } from '@/types';
 import { calculateFutureValue, calculateAnnualStatePension } from '@/lib/calculations';
@@ -164,7 +165,8 @@ function calculateTotalContributed(account: Account, yearsToRetirement: number):
 export function simulateDrawdown(
   accounts: Account[],
   profile: UserProfile,
-  config: DrawdownConfig
+  config: DrawdownConfig,
+  getReturnRate?: () => number
 ): DrawdownSimulationResult {
   const yearsToRetirement = Math.max(0, profile.retirementAge - profile.currentAge);
   const retirementYears = Math.max(0, config.planningHorizon - profile.retirementAge);
@@ -355,7 +357,8 @@ export function simulateDrawdown(
     for (const account of accounts) {
       const balance = accountBalances[account.id] ?? 0;
       if (balance > 0) {
-        accountBalances[account.id] = balance * (1 + config.drawdownReturnRate / 100);
+        const rate = getReturnRate ? getReturnRate() : config.drawdownReturnRate;
+        accountBalances[account.id] = balance * (1 + rate / 100);
       }
     }
 
@@ -381,5 +384,61 @@ export function simulateDrawdown(
     totalNetIncomeGenerated,
     totalTaxPaid,
     accountDepletionAges,
+  };
+}
+
+function normalRandom(mean: number, stdDev: number): number {
+  const u1 = Math.max(1e-10, Math.random());
+  const u2 = Math.random();
+  return mean + Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2) * stdDev;
+}
+
+function percentile(sorted: number[], p: number): number {
+  const idx = (p / 100) * (sorted.length - 1);
+  const lo = Math.floor(idx), hi = Math.ceil(idx);
+  return lo === hi ? sorted[lo] : sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+}
+
+export function runMonteCarloSimulation(
+  accounts: Account[],
+  profile: UserProfile,
+  config: DrawdownConfig,
+  numSimulations = 1000,
+  volatility = 10
+): MonteCarloResult {
+  const retirementYears = Math.max(0, config.planningHorizon - profile.retirementAge);
+  if (accounts.length === 0 || retirementYears <= 0)
+    return { years: [], successRate: 0, medianDepletionAge: null, numSimulations };
+
+  const balancesByYear: number[][] = Array.from({ length: retirementYears }, () => []);
+  let successCount = 0;
+  const depletionAges: number[] = [];
+
+  for (let i = 0; i < numSimulations; i++) {
+    const result = simulateDrawdown(accounts, profile, config,
+      () => normalRandom(config.drawdownReturnRate, volatility));
+    result.years.forEach((yr, idx) => balancesByYear[idx].push(yr.portfolioBalance));
+    if (result.depletionAge === null) successCount++;
+    else depletionAges.push(result.depletionAge);
+  }
+
+  const years = balancesByYear.map((balances, idx) => {
+    const s = [...balances].sort((a, b) => a - b);
+    return {
+      age: profile.retirementAge + idx,
+      p10: percentile(s, 10),
+      p25: percentile(s, 25),
+      p50: percentile(s, 50),
+      p75: percentile(s, 75),
+      p90: percentile(s, 90),
+    };
+  });
+
+  const sortedDA = [...depletionAges].sort((a, b) => a - b);
+  return {
+    years,
+    successRate: (successCount / numSimulations) * 100,
+    medianDepletionAge: sortedDA.length ? sortedDA[Math.floor(sortedDA.length / 2)] : null,
+    numSimulations,
   };
 }
