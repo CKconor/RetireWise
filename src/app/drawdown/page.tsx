@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useRetirementData } from '@/hooks/use-retirement-data';
 import { Header } from '@/components/header';
 import { DrawdownConfigPanel } from '@/components/drawdown/drawdown-config-panel';
@@ -52,10 +52,19 @@ export default function DrawdownPage() {
     [accounts, profile, drawdownConfig]
   );
 
-  const mcResult = useMemo(
-    () => runMonteCarloSimulation(accounts, profile, drawdownConfig, mcNumSimulations, mcVolatility),
-    [accounts, profile, drawdownConfig, mcNumSimulations, mcVolatility]
+  const [mcResult, setMcResult] = useState(() =>
+    runMonteCarloSimulation(accounts, profile, drawdownConfig, mcNumSimulations, mcVolatility)
   );
+  const [mcLoading, setMcLoading] = useState(false);
+
+  useEffect(() => {
+    setMcLoading(true);
+    const timer = setTimeout(() => {
+      setMcResult(runMonteCarloSimulation(accounts, profile, drawdownConfig, mcNumSimulations, mcVolatility));
+      setMcLoading(false);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [accounts, profile, drawdownConfig, mcNumSimulations, mcVolatility]);
 
   if (!isLoaded) {
     return (
@@ -113,6 +122,7 @@ export default function DrawdownPage() {
                 deterministicResult={simulation}
                 numSimulations={mcNumSimulations}
                 volatility={mcVolatility}
+                isLoading={mcLoading}
                 onNumSimulationsChange={setMcNumSimulations}
                 onVolatilityChange={setMcVolatility}
               />

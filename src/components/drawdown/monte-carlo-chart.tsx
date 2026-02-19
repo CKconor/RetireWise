@@ -24,6 +24,7 @@ interface MonteCarloChartProps {
   deterministicResult: DrawdownSimulationResult;
   numSimulations: number;
   volatility: number;
+  isLoading: boolean;
   onNumSimulationsChange: (n: number) => void;
   onVolatilityChange: (n: number) => void;
 }
@@ -39,6 +40,7 @@ export function MonteCarloChart({
   deterministicResult,
   numSimulations,
   volatility,
+  isLoading,
   onNumSimulationsChange,
   onVolatilityChange,
 }: MonteCarloChartProps) {
@@ -78,6 +80,18 @@ export function MonteCarloChart({
 
   return (
     <SectionCard icon={<MCIcon />} title="Monte Carlo Simulation">
+      {/* Stats + chart with loading overlay */}
+      <div className="relative">
+      {isLoading && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-xl bg-background/70 backdrop-blur-sm">
+          <div className="relative h-10 w-10">
+            <div className="absolute inset-0 animate-ping rounded-full bg-[#6366f1]/30" />
+            <div className="absolute inset-2 animate-spin rounded-full border-2 border-transparent border-t-[#6366f1]" />
+          </div>
+          <p className="mt-3 text-sm font-medium text-muted-foreground">Running simulations…</p>
+        </div>
+      )}
+
       {/* Stats row */}
       <div className="mb-6 grid grid-cols-3 gap-4">
         <div className="rounded-xl border border-border/50 bg-background/60 p-4 text-center">
@@ -184,6 +198,7 @@ export function MonteCarloChart({
           </ComposedChart>
         </ResponsiveContainer>
       </div>
+      </div>{/* end relative overlay wrapper */}
 
       {/* Config inputs */}
       <div className="mt-4 grid grid-cols-2 gap-4 border-t border-border/50 pt-4">
