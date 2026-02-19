@@ -187,8 +187,9 @@ export function MonteCarloChart({
 
       {/* Config inputs */}
       <div className="mt-4 grid grid-cols-2 gap-4 border-t border-border/50 pt-4">
-        <FormField label="Simulations" hint="100–5000">
+        <FormField id="mc-simulations" label="Simulations" hint="100–5000">
           <Input
+            id="mc-simulations"
             type="number"
             value={simInput}
             min={100}
@@ -202,8 +203,9 @@ export function MonteCarloChart({
             }}
           />
         </FormField>
-        <FormField label="Volatility (%)" hint="Annual std dev, 1–30">
+        <FormField id="mc-volatility" label="Volatility (%)" hint="Annual std dev, 1–30">
           <Input
+            id="mc-volatility"
             type="number"
             value={volInput}
             min={1}
