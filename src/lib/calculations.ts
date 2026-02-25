@@ -486,21 +486,24 @@ export function calculateRequiredBalanceNow(
 
   const months = yearsToRetirement * 12;
   let fvContributionsOnly = 0;
-  let fvBalanceOnly = 0;
+  let totalBalance = 0;
+  let weightedGrowthFactor = 0;
 
   for (const account of accounts) {
     const realReturn = Math.max(0, account.annualReturnRate - profile.expectedInflation);
     fvContributionsOnly += calculateFutureValue(0, account.monthlyContribution, realReturn, months, account.annualContributionIncrease ?? 0);
-    fvBalanceOnly += calculateFutureValue(account.currentBalance, 0, realReturn, months, 0);
+    // Growth factor for £1 invested in this account over the full period
+    weightedGrowthFactor += calculateFutureValue(1, 0, realReturn, months, 0) * account.currentBalance;
+    totalBalance += account.currentBalance;
   }
 
-  if (fvBalanceOnly <= 0) return 0;
+  if (totalBalance <= 0 || weightedGrowthFactor <= 0) return 0;
 
-  const k = (targetAmount - fvContributionsOnly) / fvBalanceOnly;
-  if (k <= 0) return 0;
+  const effectiveGrowthFactor = weightedGrowthFactor / totalBalance;
+  const requiredFuture = targetAmount - fvContributionsOnly;
+  if (requiredFuture <= 0) return 0;
 
-  const totalCurrentBalance = accounts.reduce((sum, a) => sum + a.currentBalance, 0);
-  return Math.max(0, k * totalCurrentBalance);
+  return requiredFuture / effectiveGrowthFactor;
 }
 
 /**
