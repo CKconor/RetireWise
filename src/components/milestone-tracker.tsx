@@ -10,7 +10,6 @@ import {
   formatCurrency,
   formatCurrencyCompact,
   calculateTargetReachAge,
-  calculateRequiredBalanceNow,
 } from '@/lib/calculations';
 
 interface MilestoneTrackerProps {
@@ -32,9 +31,8 @@ export function MilestoneTracker({ accounts, profile }: MilestoneTrackerProps) {
   const currentProgress = calculatePercentageOfTarget(currentBalance, profile.targetAmount, false);
   const isOnTarget = projectedTotal >= profile.targetAmount;
 
-  // How much ahead/behind in current value vs required balance to be on track
-  const requiredBalanceNow = calculateRequiredBalanceNow(accounts, profile, profile.targetAmount);
-  const currentValueGap = currentBalance - requiredBalanceNow;
+  // Projected surplus/shortfall at retirement in today's money (real returns used throughout)
+  const currentValueGap = projectedTotal - profile.targetAmount;
 
   // Build milestones
   const percentageMilestones = [10, 25, 50, 75, 100].map(percentage => ({
@@ -205,7 +203,7 @@ export function MilestoneTracker({ accounts, profile }: MilestoneTrackerProps) {
                 }
                 {currentValueGap !== 0 && (
                   <span className="ml-2 font-normal opacity-80">
-                    · {formatCurrency(Math.abs(currentValueGap))} {currentValueGap >= 0 ? 'ahead' : 'behind'} now
+                    · {formatCurrency(Math.abs(currentValueGap))} projected {currentValueGap >= 0 ? 'surplus' : 'shortfall'}
                   </span>
                 )}
               </p>
