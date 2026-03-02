@@ -896,16 +896,28 @@ export function generateMonthlyProjection(
   const yearsToRetirement = profile.retirementAge - profile.currentAge;
   if (yearsToRetirement <= 0 || accounts.length === 0) return [];
 
-  const maxMonths = yearsToRetirement * 12;
+  const maxRetirementMonths = yearsToRetirement * 12;
   const now = new Date();
   const startYear = startDate?.year ?? now.getFullYear();
   const startMonth = startDate ? startDate.month - 1 : now.getMonth(); // 0-indexed
 
-  // Cap at end date if provided
-  let totalMonths = maxMonths;
+  // Allow end date past retirement — no cap at maxRetirementMonths
+  let totalMonths = maxRetirementMonths;
   if (endDate) {
     const endMonthsFromStart = (endDate.year - startYear) * 12 + (endDate.month - 1 - startMonth);
-    totalMonths = Math.min(maxMonths, Math.max(0, endMonthsFromStart));
+    totalMonths = Math.max(0, endMonthsFromStart);
+  }
+
+  // Pre-compute each account's balance at retirement for post-retirement compounding
+  const balancesAtRetirement: Record<string, number> = {};
+  for (const account of accounts) {
+    balancesAtRetirement[account.id] = calculateFutureValue(
+      account.currentBalance,
+      account.monthlyContribution,
+      account.annualReturnRate,
+      maxRetirementMonths,
+      account.annualContributionIncrease ?? 0
+    );
   }
 
   const reducedTarget = calculateReducedTarget(profile);
@@ -920,13 +932,25 @@ export function generateMonthlyProjection(
     const accountBalances: Record<string, number> = {};
 
     for (const account of accounts) {
-      const value = calculateFutureValue(
-        account.currentBalance,
-        account.monthlyContribution,
-        account.annualReturnRate,
-        m,
-        account.annualContributionIncrease ?? 0
-      );
+      let value: number;
+      if (m <= maxRetirementMonths) {
+        value = calculateFutureValue(
+          account.currentBalance,
+          account.monthlyContribution,
+          account.annualReturnRate,
+          m,
+          account.annualContributionIncrease ?? 0
+        );
+      } else {
+        // Post-retirement: compound from retirement balance with no new contributions
+        value = calculateFutureValue(
+          balancesAtRetirement[account.id],
+          0,
+          account.annualReturnRate,
+          m - maxRetirementMonths,
+          0
+        );
+      }
       const rounded = Math.round(value);
       accountBalances[account.id] = rounded;
       total += rounded;

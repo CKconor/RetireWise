@@ -103,8 +103,9 @@ export function MonthlyBreakdownTable({ accounts, profile }: MonthlyBreakdownTab
   const currentYear = new Date().getFullYear();
   const birthYear = new Date(profile.birthday).getFullYear();
   const retirementYear = birthYear + profile.retirementAge;
+  const endYear = Math.min(retirementYear + 30, birthYear + 100);
   const yearRange = Array.from(
-    { length: Math.max(1, retirementYear - currentYear + 1) },
+    { length: Math.max(1, endYear - currentYear + 1) },
     (_, i) => currentYear + i
   );
 
