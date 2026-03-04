@@ -96,6 +96,12 @@ export function PeaceOfMindCard({ accounts, profile }: PeaceOfMindCardProps) {
 
   const colors = getScoreColor();
 
+  const totalMonthlyContributions = accounts.reduce((sum, a) => sum + a.monthlyContribution, 0);
+  const annualSalary = profile.annualSalary ?? 0;
+  const savingsRate = annualSalary > 0
+    ? Math.round((totalMonthlyContributions * 12 / annualSalary) * 100)
+    : null;
+
   return (
     <SectionCard
       icon={<HeartIcon />}
@@ -160,6 +166,15 @@ export function PeaceOfMindCard({ accounts, profile }: PeaceOfMindCardProps) {
               <span className="text-sm text-white/60 dark:text-[#0c1929]/60"> of goal</span>
             </p>
           </div>
+          {savingsRate !== null && (
+            <div className="col-span-2 rounded-xl bg-slate-50 dark:bg-slate-800 ring-1 ring-slate-200 dark:ring-slate-700 p-3 flex items-center justify-between">
+              <p className="text-xs font-medium text-muted-foreground">Savings Rate</p>
+              <p className="font-display text-xl text-foreground">
+                {savingsRate}%
+                <span className="text-sm text-muted-foreground font-sans"> of salary</span>
+              </p>
+            </div>
+          )}
         </div>
       )}
     </SectionCard>

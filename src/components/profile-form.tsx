@@ -48,6 +48,7 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
   const [retirementAge, setRetirementAge] = useState(String(profile.retirementAge));
   const [targetAmount, setTargetAmount] = useState(String(profile.targetAmount));
   const [expectedInflation, setExpectedInflation] = useState(String(profile.expectedInflation));
+  const [annualSalary, setAnnualSalary] = useState(String(profile.annualSalary ?? 0));
   const [statePensionAmount, setStatePensionAmount] = useState(String(profile.statePensionAmount));
   const [statePensionAge, setStatePensionAge] = useState(String(profile.statePensionAge));
 
@@ -56,12 +57,13 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
     setRetirementAge(String(profile.retirementAge));
     setTargetAmount(String(profile.targetAmount));
     setExpectedInflation(String(profile.expectedInflation));
+    setAnnualSalary(String(profile.annualSalary ?? 0));
     setStatePensionAmount(String(profile.statePensionAmount));
     setStatePensionAge(String(profile.statePensionAge));
-  }, [profile.retirementAge, profile.targetAmount, profile.expectedInflation, profile.statePensionAmount, profile.statePensionAge]);
+  }, [profile.retirementAge, profile.targetAmount, profile.expectedInflation, profile.annualSalary, profile.statePensionAmount, profile.statePensionAge]);
 
   const handleBlur = (field: keyof UserProfile, value: string) => {
-    const useFloat = field === 'expectedInflation' || field === 'statePensionAmount';
+    const useFloat = field === 'expectedInflation' || field === 'statePensionAmount' || field === 'annualSalary';
     const numValue = useFloat ? parseFloat(value) : parseInt(value);
     if (!isNaN(numValue)) {
       onUpdate({ [field]: numValue });
@@ -70,6 +72,7 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
       if (field === 'retirementAge') setRetirementAge(String(profile.retirementAge));
       if (field === 'targetAmount') setTargetAmount(String(profile.targetAmount));
       if (field === 'expectedInflation') setExpectedInflation(String(profile.expectedInflation));
+      if (field === 'annualSalary') setAnnualSalary(String(profile.annualSalary ?? 0));
       if (field === 'statePensionAmount') setStatePensionAmount(String(profile.statePensionAmount));
       if (field === 'statePensionAge') setStatePensionAge(String(profile.statePensionAge));
     }
@@ -151,6 +154,24 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
           value={expectedInflation}
           onChange={(e) => setExpectedInflation(e.target.value)}
           onBlur={() => handleBlur('expectedInflation', expectedInflation)}
+          className="bg-secondary/30 transition-colors focus:bg-white dark:focus:bg-secondary"
+        />
+      </FormField>
+
+      <FormField
+        id="annualSalary"
+        label="Annual Salary (£)"
+        icon={<TrendIcon />}
+        hint="Used to calculate your savings rate"
+      >
+        <Input
+          id="annualSalary"
+          type="number"
+          min={0}
+          step={1000}
+          value={annualSalary}
+          onChange={(e) => setAnnualSalary(e.target.value)}
+          onBlur={() => handleBlur('annualSalary', annualSalary)}
           className="bg-secondary/30 transition-colors focus:bg-white dark:focus:bg-secondary"
         />
       </FormField>

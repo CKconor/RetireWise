@@ -11,6 +11,7 @@ const DEFAULT_PROFILE: UserProfile = {
   retirementAge: 57,
   targetAmount: 1000000,
   expectedInflation: 2.5,
+  annualSalary: 0,
   statePensionAmount: 221.20, // 2024/25 full new State Pension weekly rate
   statePensionAge: 67,
   includeStatePension: true,
