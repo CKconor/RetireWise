@@ -908,21 +908,19 @@ export function generateMonthlyProjection(
     totalMonths = Math.max(0, endMonthsFromStart);
   }
 
-  // Pre-compute each account's balance at retirement for post-retirement compounding
-  const balancesAtRetirement: Record<string, number> = {};
-  for (const account of accounts) {
-    balancesAtRetirement[account.id] = calculateFutureValue(
-      account.currentBalance,
-      account.monthlyContribution,
-      account.annualReturnRate,
-      maxRetirementMonths,
-      account.annualContributionIncrease ?? 0
-    );
-  }
-
   const reducedTarget = calculateReducedTarget(profile);
   const monthlyInflation = profile.expectedInflation / 100 / 12;
+  const targetInflationFactor = 1 + monthlyInflation;
+  const birth = new Date(profile.birthday);
+  const accountStates = accounts.map((account) => ({
+    id: account.id,
+    balance: account.currentBalance,
+    monthlyContribution: account.monthlyContribution,
+    monthlyGrowthFactor: 1 + account.annualReturnRate / 100 / 12,
+    annualIncreaseFactor: 1 + (account.annualContributionIncrease ?? 0) / 100,
+  }));
   const points: MonthlyProjectionDataPoint[] = [];
+  let inflatedTarget = reducedTarget;
 
   for (let m = 0; m <= totalMonths; m++) {
     const calMonth = (startMonth + m) % 12; // 0-11
@@ -931,36 +929,23 @@ export function generateMonthlyProjection(
     let total = 0;
     const accountBalances: Record<string, number> = {};
 
-    for (const account of accounts) {
-      let value: number;
-      if (m <= maxRetirementMonths) {
-        value = calculateFutureValue(
-          account.currentBalance,
-          account.monthlyContribution,
-          account.annualReturnRate,
-          m,
-          account.annualContributionIncrease ?? 0
-        );
-      } else {
-        // Post-retirement: compound from retirement balance with no new contributions
-        value = calculateFutureValue(
-          balancesAtRetirement[account.id],
-          0,
-          account.annualReturnRate,
-          m - maxRetirementMonths,
-          0
-        );
+    for (const accountState of accountStates) {
+      if (m > 0) {
+        if (m <= maxRetirementMonths) {
+          const contributionYear = Math.floor((m - 1) / 12);
+          const contribution = accountState.monthlyContribution * Math.pow(accountState.annualIncreaseFactor, contributionYear);
+          accountState.balance = (accountState.balance + contribution) * accountState.monthlyGrowthFactor;
+        } else {
+          accountState.balance *= accountState.monthlyGrowthFactor;
+        }
       }
-      const rounded = Math.round(value);
-      accountBalances[account.id] = rounded;
+
+      const rounded = Math.round(accountState.balance);
+      accountBalances[accountState.id] = rounded;
       total += rounded;
     }
 
-    // Inflate the target so nominal total vs inflated target is an apples-to-apples comparison
-    const inflatedTarget = reducedTarget * Math.pow(1 + monthlyInflation, m);
-
     // Compute precise age from birthday at this calendar month
-    const birth = new Date(profile.birthday);
     const pointDate = new Date(calYear, calMonth, birth.getDate());
     let ageYears = calYear - birth.getFullYear();
     let ageMonthsPart = calMonth - birth.getMonth();
@@ -980,6 +965,8 @@ export function generateMonthlyProjection(
       targetPercent: inflatedTarget > 0 ? Math.round((total / inflatedTarget) * 100) : 0,
       accountBalances,
     });
+
+    inflatedTarget *= targetInflationFactor;
   }
 
   return points;
