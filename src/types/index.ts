@@ -22,11 +22,20 @@ export interface UserProfile {
   includeStatePension: boolean; // whether to include in projections
 }
 
+export interface LumpSumWithdrawal {
+  id: string;
+  name: string;
+  amount: number;
+  age: number;        // age at which the withdrawal occurs
+  accountId: string;  // which account to draw from
+}
+
 export interface AppState {
   profile: UserProfile;
   accounts: Account[];
   drawdownConfig?: DrawdownConfig;
   netWorthHistory: NetWorthSnapshot[];
+  lumpSumWithdrawals: LumpSumWithdrawal[];
 }
 
 export interface ProjectionDataPoint {

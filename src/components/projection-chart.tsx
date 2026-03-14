@@ -12,7 +12,7 @@ import {
   ReferenceLine,
 } from 'recharts';
 import { BarChart3, Settings2, Table2 } from 'lucide-react';
-import { Account, UserProfile } from '@/types';
+import { Account, UserProfile, LumpSumWithdrawal } from '@/types';
 import { SectionCard } from '@/components/ui/section-card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
@@ -24,6 +24,7 @@ import { MonthlyBreakdownTable } from '@/components/monthly-breakdown-table';
 interface ProjectionChartProps {
   accounts: Account[];
   profile: UserProfile;
+  lumpSumWithdrawals?: LumpSumWithdrawal[];
 }
 
 const ChartIcon = () => (
@@ -38,7 +39,7 @@ const EmptyChartIcon = () => (
   </svg>
 );
 
-export function ProjectionChart({ accounts, profile }: ProjectionChartProps) {
+export function ProjectionChart({ accounts, profile, lumpSumWithdrawals = [] }: ProjectionChartProps) {
   const [view, setView] = useState<'chart' | 'table'>('chart');
   const [showOptimistic, setShowOptimistic] = useState(true);
   const [showConservative, setShowConservative] = useState(true);
@@ -46,8 +47,8 @@ export function ProjectionChart({ accounts, profile }: ProjectionChartProps) {
   const chartColors = useChartColors();
 
   const data = useMemo(
-    () => generateProjection(accounts, profile),
-    [accounts, profile]
+    () => generateProjection(accounts, profile, lumpSumWithdrawals),
+    [accounts, profile, lumpSumWithdrawals]
   );
 
   const coastFireInfo = useMemo(() => {

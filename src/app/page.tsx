@@ -14,6 +14,7 @@ import { WhatIfScenarios } from '@/components/what-if-scenarios';
 import { generatePdfReport } from '@/lib/pdf-report';
 import { NetWorthChart } from '@/components/net-worth-chart';
 import { Header } from '@/components/header';
+import { LumpSumWithdrawals } from '@/components/lump-sum-withdrawals';
 import { Account } from '@/types';
 
 export default function Home() {
@@ -21,6 +22,7 @@ export default function Home() {
     profile,
     accounts,
     netWorthHistory,
+    lumpSumWithdrawals,
     isLoaded,
     updateProfile,
     addAccount,
@@ -30,6 +32,9 @@ export default function Home() {
     addManualSnapshot,
     deleteSnapshot,
     clearHistory,
+    addWithdrawal,
+    updateWithdrawal,
+    deleteWithdrawal,
   } = useRetirementData();
 
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
@@ -73,13 +78,13 @@ export default function Home() {
               <ProfileForm profile={profile} onUpdate={updateProfile} />
             </div>
             <div className="opacity-0 animate-fade-in stagger-2">
-              <SummaryCard accounts={accounts} profile={profile} />
+              <SummaryCard accounts={accounts} profile={profile} lumpSumWithdrawals={lumpSumWithdrawals} />
             </div>
             <div className="opacity-0 animate-fade-in stagger-3">
               <StatsCards accounts={accounts} profile={profile} />
             </div>
             <div className="opacity-0 animate-fade-in stagger-4">
-              <PeaceOfMindCard accounts={accounts} profile={profile} />
+              <PeaceOfMindCard accounts={accounts} profile={profile} lumpSumWithdrawals={lumpSumWithdrawals} />
             </div>
           </div>
 
@@ -97,9 +102,21 @@ export default function Home() {
               />
             </div>
 
+            {/* Planned Withdrawals */}
+            <div className="opacity-0 animate-fade-in stagger-2">
+              <LumpSumWithdrawals
+                withdrawals={lumpSumWithdrawals}
+                accounts={accounts}
+                profile={profile}
+                onAdd={addWithdrawal}
+                onUpdate={updateWithdrawal}
+                onDelete={deleteWithdrawal}
+              />
+            </div>
+
             {/* Projection Chart */}
             <div className="opacity-0 animate-fade-in stagger-3">
-              <ProjectionChart accounts={accounts} profile={profile} />
+              <ProjectionChart accounts={accounts} profile={profile} lumpSumWithdrawals={lumpSumWithdrawals} />
             </div>
 
             {/* Net Worth History */}
@@ -117,13 +134,13 @@ export default function Home() {
 
             {/* Milestone Tracker */}
             <div className="opacity-0 animate-fade-in stagger-5">
-              <MilestoneTracker accounts={accounts} profile={profile} />
+              <MilestoneTracker accounts={accounts} profile={profile} lumpSumWithdrawals={lumpSumWithdrawals} />
             </div>
 
             {/* What-If Scenarios & ISA Bridge */}
             <div className="grid gap-6 lg:grid-cols-2">
               <div className="opacity-0 animate-fade-in stagger-6">
-                <WhatIfScenarios accounts={accounts} profile={profile} />
+                <WhatIfScenarios accounts={accounts} profile={profile} lumpSumWithdrawals={lumpSumWithdrawals} />
               </div>
               <div className="opacity-0 animate-fade-in stagger-7">
                 <IsaBridgeCard accounts={accounts} profile={profile} />

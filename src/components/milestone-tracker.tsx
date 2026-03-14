@@ -1,6 +1,6 @@
 'use client';
 
-import { Account, UserProfile } from '@/types';
+import { Account, UserProfile, LumpSumWithdrawal } from '@/types';
 import { SectionCard } from '@/components/ui/section-card';
 import {
   calculateTotalBalance,
@@ -16,6 +16,7 @@ import {
 interface MilestoneTrackerProps {
   accounts: Account[];
   profile: UserProfile;
+  lumpSumWithdrawals?: LumpSumWithdrawal[];
 }
 
 const BadgeIcon = () => (
@@ -24,10 +25,10 @@ const BadgeIcon = () => (
   </svg>
 );
 
-export function MilestoneTracker({ accounts, profile }: MilestoneTrackerProps) {
+export function MilestoneTracker({ accounts, profile, lumpSumWithdrawals = [] }: MilestoneTrackerProps) {
   const currentBalance = calculateTotalBalance(accounts);
-  const projectedTotal = calculateProjectedTotalReal(accounts, profile);
-  const projection = generateProjection(accounts, profile);
+  const projectedTotal = calculateProjectedTotalReal(accounts, profile, lumpSumWithdrawals);
+  const projection = generateProjection(accounts, profile, lumpSumWithdrawals);
 
   const currentProgress = calculatePercentageOfTarget(currentBalance, profile.targetAmount, false);
   const isOnTarget = projectedTotal >= profile.targetAmount;

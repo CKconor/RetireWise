@@ -1,4 +1,4 @@
-import { AppState, Account, UserProfile, DrawdownConfig, NetWorthSnapshot } from '@/types';
+import { AppState, Account, UserProfile, DrawdownConfig, NetWorthSnapshot, LumpSumWithdrawal } from '@/types';
 import { calculateAgeFromBirthday } from '@/lib/calculations';
 
 const STORAGE_KEY = 'retirewise-data';
@@ -32,6 +32,7 @@ const DEFAULT_STATE: AppState = {
   accounts: [],
   drawdownConfig: DEFAULT_DRAWDOWN_CONFIG,
   netWorthHistory: [],
+  lumpSumWithdrawals: [],
 };
 
 export function loadState(): AppState {
@@ -58,6 +59,7 @@ export function loadState(): AppState {
         accounts: parsed.accounts || [],
         drawdownConfig: { ...DEFAULT_DRAWDOWN_CONFIG, ...parsed.drawdownConfig },
         netWorthHistory: parsed.netWorthHistory || [],
+        lumpSumWithdrawals: parsed.lumpSumWithdrawals || [],
       };
     }
   } catch (error) {
@@ -79,6 +81,14 @@ export function saveState(state: AppState): void {
 
 export function generateAccountId(): string {
   return `account-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+}
+
+export function generateWithdrawalId(): string {
+  return `withdrawal-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+}
+
+export function createWithdrawal(partial: Omit<LumpSumWithdrawal, 'id'>): LumpSumWithdrawal {
+  return { id: generateWithdrawalId(), ...partial };
 }
 
 export function createAccount(partial: Partial<Account> & { name: string; type: Account['type'] }): Account {

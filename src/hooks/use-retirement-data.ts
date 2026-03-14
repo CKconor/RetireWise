@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Account, UserProfile, AppState, DrawdownConfig, NetWorthSnapshot } from '@/types';
-import { loadState, saveState, createAccount, DEFAULT_DRAWDOWN_CONFIG } from '@/lib/storage';
+import { Account, UserProfile, AppState, DrawdownConfig, NetWorthSnapshot, LumpSumWithdrawal } from '@/types';
+import { loadState, saveState, createAccount, createWithdrawal, DEFAULT_DRAWDOWN_CONFIG } from '@/lib/storage';
 import { calculateAgeFromBirthday } from '@/lib/calculations';
 
 export function useRetirementData() {
@@ -21,6 +21,7 @@ export function useRetirementData() {
     accounts: [],
     drawdownConfig: DEFAULT_DRAWDOWN_CONFIG,
     netWorthHistory: [],
+    lumpSumWithdrawals: [],
   }));
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -139,11 +140,37 @@ export function useRetirementData() {
     setState((prev) => ({ ...prev, netWorthHistory: [] }));
   }, []);
 
+  const addWithdrawal = useCallback((data: Omit<LumpSumWithdrawal, 'id'>) => {
+    const withdrawal = createWithdrawal(data);
+    setState((prev) => ({
+      ...prev,
+      lumpSumWithdrawals: [...(prev.lumpSumWithdrawals ?? []), withdrawal],
+    }));
+    return withdrawal;
+  }, []);
+
+  const updateWithdrawal = useCallback((id: string, updates: Partial<Omit<LumpSumWithdrawal, 'id'>>) => {
+    setState((prev) => ({
+      ...prev,
+      lumpSumWithdrawals: (prev.lumpSumWithdrawals ?? []).map((w) =>
+        w.id === id ? { ...w, ...updates } : w
+      ),
+    }));
+  }, []);
+
+  const deleteWithdrawal = useCallback((id: string) => {
+    setState((prev) => ({
+      ...prev,
+      lumpSumWithdrawals: (prev.lumpSumWithdrawals ?? []).filter((w) => w.id !== id),
+    }));
+  }, []);
+
   return {
     profile: state.profile,
     accounts: state.accounts,
     drawdownConfig: state.drawdownConfig ?? DEFAULT_DRAWDOWN_CONFIG,
     netWorthHistory: state.netWorthHistory,
+    lumpSumWithdrawals: state.lumpSumWithdrawals ?? [],
     isLoaded,
     updateProfile,
     addAccount,
@@ -154,5 +181,8 @@ export function useRetirementData() {
     addManualSnapshot,
     deleteSnapshot,
     clearHistory,
+    addWithdrawal,
+    updateWithdrawal,
+    deleteWithdrawal,
   };
 }

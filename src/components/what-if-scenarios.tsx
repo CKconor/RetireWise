@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Account, UserProfile } from '@/types';
+import { Account, UserProfile, LumpSumWithdrawal } from '@/types';
 import { SectionCard } from '@/components/ui/section-card';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,6 +15,7 @@ import {
 interface WhatIfScenariosProps {
   accounts: Account[];
   profile: UserProfile;
+  lumpSumWithdrawals?: LumpSumWithdrawal[];
 }
 
 const QuestionIcon = () => (
@@ -51,14 +52,14 @@ function ScenarioResult({ label, value, diff }: ScenarioResultProps) {
   );
 }
 
-export function WhatIfScenarios({ accounts, profile }: WhatIfScenariosProps) {
+export function WhatIfScenarios({ accounts, profile, lumpSumWithdrawals = [] }: WhatIfScenariosProps) {
   const [extraContribution, setExtraContribution] = useState(0);
   const [retirementAgeAdjust, setRetirementAgeAdjust] = useState(0);
   const [returnAdjust, setReturnAdjust] = useState(0);
 
   const baseProjection = useMemo(
-    () => calculateProjectedTotalReal(accounts, profile),
-    [accounts, profile]
+    () => calculateProjectedTotalReal(accounts, profile, lumpSumWithdrawals),
+    [accounts, profile, lumpSumWithdrawals]
   );
 
   const contributionProjection = useMemo(

@@ -1,6 +1,6 @@
 'use client';
 
-import { Account, UserProfile } from '@/types';
+import { Account, UserProfile, LumpSumWithdrawal } from '@/types';
 import { SectionCard } from '@/components/ui/section-card';
 import {
   calculateConfidenceScore,
@@ -14,6 +14,7 @@ import {
 interface PeaceOfMindCardProps {
   accounts: Account[];
   profile: UserProfile;
+  lumpSumWithdrawals?: LumpSumWithdrawal[];
 }
 
 const HeartIcon = () => (
@@ -22,7 +23,7 @@ const HeartIcon = () => (
   </svg>
 );
 
-export function PeaceOfMindCard({ accounts, profile }: PeaceOfMindCardProps) {
+export function PeaceOfMindCard({ accounts, profile, lumpSumWithdrawals = [] }: PeaceOfMindCardProps) {
   if (accounts.length === 0) {
     return (
       <SectionCard icon={<HeartIcon />} title="Peace of Mind">
@@ -40,8 +41,8 @@ export function PeaceOfMindCard({ accounts, profile }: PeaceOfMindCardProps) {
   }
 
   const confidenceScore = calculateConfidenceScore(accounts, profile);
-  const projectedReal = calculateProjectedTotalReal(accounts, profile);
-  const projection = generateProjection(accounts, profile);
+  const projectedReal = calculateProjectedTotalReal(accounts, profile, lumpSumWithdrawals);
+  const projection = generateProjection(accounts, profile, lumpSumWithdrawals);
 
   // Account for state pension in target calculation (same as SummaryCard)
   const statePensionEquivalent = calculateStatePensionEquivalent(profile);

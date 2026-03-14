@@ -1,6 +1,6 @@
 'use client';
 
-import { Account, UserProfile } from '@/types';
+import { Account, UserProfile, LumpSumWithdrawal } from '@/types';
 import {
   calculateTotalBalance,
   calculateTotalContributions,
@@ -18,9 +18,10 @@ import {
 interface SummaryCardProps {
   accounts: Account[];
   profile: UserProfile;
+  lumpSumWithdrawals?: LumpSumWithdrawal[];
 }
 
-export function SummaryCard({ accounts, profile }: SummaryCardProps) {
+export function SummaryCard({ accounts, profile, lumpSumWithdrawals = [] }: SummaryCardProps) {
   if (accounts.length === 0) {
     return (
       <div className="card-hero rounded-2xl p-6 text-white dark:text-[#1a1a1a] shadow-xl shadow-[#0c1929]/30 dark:shadow-amber-900/40">
@@ -46,8 +47,8 @@ export function SummaryCard({ accounts, profile }: SummaryCardProps) {
 
   const totalBalance = calculateTotalBalance(accounts);
   const monthlyContributions = calculateTotalContributions(accounts);
-  const projectedTotalReal = calculateProjectedTotalReal(accounts, profile);
-  const projectedTotalNominal = calculateProjectedTotal(accounts, profile);
+  const projectedTotalReal = calculateProjectedTotalReal(accounts, profile, lumpSumWithdrawals);
+  const projectedTotalNominal = calculateProjectedTotal(accounts, profile, lumpSumWithdrawals);
   const yearsToRetirement = getYearsToRetirement(profile);
   const avgReturn = calculateAverageReturnRate(accounts);
 

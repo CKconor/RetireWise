@@ -1,4 +1,4 @@
-import { Account, UserProfile, ProjectionDataPoint, MonthlyProjectionDataPoint, AccountProjection, Milestone, StressTestResult, NetWorthSnapshot } from '@/types';
+import { Account, UserProfile, ProjectionDataPoint, MonthlyProjectionDataPoint, AccountProjection, Milestone, StressTestResult, NetWorthSnapshot, LumpSumWithdrawal } from '@/types';
 import { PRIVATE_PENSION_ACCESS_AGE } from '@/lib/constants';
 
 /**
@@ -35,6 +35,38 @@ export function calculateFutureValue(
       currentContribution = monthlyContribution * Math.pow(1 + annualContributionIncrease / 100, i / 12);
     }
     balance = (balance + currentContribution) * (1 + monthlyRate);
+  }
+
+  return balance;
+}
+
+/**
+ * Simulate an account's balance year-by-year, applying lump sum withdrawals at the correct age.
+ * Returns the final balance at the end of the given number of years.
+ * Uses the correct contribution for each year accounting for annualContributionIncrease.
+ */
+export function simulateAccountFinalBalance(
+  account: Account,
+  yearsToRetirement: number,
+  currentAge: number,
+  annualRate: number,
+  withdrawals: LumpSumWithdrawal[]
+): number {
+  const increase = account.annualContributionIncrease ?? 0;
+  let balance = account.currentBalance;
+
+  for (let year = 1; year <= yearsToRetirement; year++) {
+    const age = currentAge + year;
+    // Contribution for this year — increases by annualContributionIncrease each year
+    const yearlyContrib = account.monthlyContribution * Math.pow(1 + increase / 100, year - 1);
+    balance = calculateFutureValue(balance, yearlyContrib, annualRate, 12, 0);
+
+    // Apply any withdrawals scheduled at this age for this account
+    for (const w of withdrawals) {
+      if (w.age === age && w.accountId === account.id) {
+        balance = Math.max(0, balance - w.amount);
+      }
+    }
   }
 
   return balance;
@@ -117,29 +149,65 @@ export function calculatePercentageOfTarget(value: number, target: number, round
 }
 
 /**
- * Generate projection data points for charting
- * Uses real returns (nominal - inflation) to properly account for contributions over time
+ * Generate projection data points for charting.
+ * Uses year-by-year simulation to correctly apply lump sum withdrawals.
+ * Uses real returns (nominal - inflation) for real/scenario lines.
  */
 export function generateProjection(
   accounts: Account[],
-  profile: UserProfile
+  profile: UserProfile,
+  withdrawals: LumpSumWithdrawal[] = []
 ): ProjectionDataPoint[] {
   const yearsToRetirement = profile.retirementAge - profile.currentAge;
   if (yearsToRetirement <= 0) return [];
 
   const currentYear = new Date().getFullYear();
+  const performanceVariance = 2;
+
+  // Track running balances for 4 scenarios per account
+  const nominalBal: Record<string, number> = {};
+  const realBal: Record<string, number> = {};
+  const overBal: Record<string, number> = {};
+  const underBal: Record<string, number> = {};
+
+  for (const account of accounts) {
+    nominalBal[account.id] = account.currentBalance;
+    realBal[account.id] = account.currentBalance;
+    overBal[account.id] = account.currentBalance;
+    underBal[account.id] = account.currentBalance;
+  }
+
   const dataPoints: ProjectionDataPoint[] = [];
-  const performanceVariance = 2; // ±2% for over/underperformance scenarios
 
   for (let year = 0; year <= yearsToRetirement; year++) {
-    const months = year * 12;
     const age = profile.currentAge + year;
 
-    let total = 0;
-    let totalReal = 0;
-    let totalOverperformanceReal = 0;
-    let totalUnderperformanceReal = 0;
+    if (year > 0) {
+      // Advance each account by 1 year
+      for (const account of accounts) {
+        const increase = account.annualContributionIncrease ?? 0;
+        const realReturn = Math.max(0, account.annualReturnRate - profile.expectedInflation);
+        // Contribution for this year (compounded by annualContributionIncrease)
+        const yearlyContrib = account.monthlyContribution * Math.pow(1 + increase / 100, year - 1);
 
+        nominalBal[account.id] = calculateFutureValue(nominalBal[account.id], yearlyContrib, account.annualReturnRate, 12, 0);
+        realBal[account.id] = calculateFutureValue(realBal[account.id], yearlyContrib, realReturn, 12, 0);
+        overBal[account.id] = calculateFutureValue(overBal[account.id], yearlyContrib, realReturn + performanceVariance, 12, 0);
+        underBal[account.id] = calculateFutureValue(underBal[account.id], yearlyContrib, Math.max(0, realReturn - performanceVariance), 12, 0);
+      }
+
+      // Apply withdrawals for this age
+      for (const w of withdrawals) {
+        if (w.age === age && w.accountId in nominalBal) {
+          nominalBal[w.accountId] = Math.max(0, nominalBal[w.accountId] - w.amount);
+          realBal[w.accountId] = Math.max(0, realBal[w.accountId] - w.amount);
+          overBal[w.accountId] = Math.max(0, overBal[w.accountId] - w.amount);
+          underBal[w.accountId] = Math.max(0, underBal[w.accountId] - w.amount);
+        }
+      }
+    }
+
+    let total = 0, totalReal = 0, totalOver = 0, totalUnder = 0;
     const dataPoint: ProjectionDataPoint = {
       year: currentYear + year,
       age,
@@ -151,52 +219,18 @@ export function generateProjection(
     };
 
     for (const account of accounts) {
-      const increase = account.annualContributionIncrease ?? 0;
-      // Nominal value
-      const value = calculateFutureValue(
-        account.currentBalance,
-        account.monthlyContribution,
-        account.annualReturnRate,
-        months,
-        increase
-      );
-
-      // Real values using real return rate (nominal - inflation)
-      const realReturn = Math.max(0, account.annualReturnRate - profile.expectedInflation);
-      const realValue = calculateFutureValue(
-        account.currentBalance,
-        account.monthlyContribution,
-        realReturn,
-        months,
-        increase
-      );
-      const overRealValue = calculateFutureValue(
-        account.currentBalance,
-        account.monthlyContribution,
-        realReturn + performanceVariance,
-        months,
-        increase
-      );
-      const underRealValue = calculateFutureValue(
-        account.currentBalance,
-        account.monthlyContribution,
-        Math.max(0, realReturn - performanceVariance),
-        months,
-        increase
-      );
-
-      dataPoint[account.id] = Math.round(value);
-      dataPoint[`${account.id}_real`] = Math.round(realValue);
-      total += value;
-      totalReal += realValue;
-      totalOverperformanceReal += overRealValue;
-      totalUnderperformanceReal += underRealValue;
+      dataPoint[account.id] = Math.round(nominalBal[account.id]);
+      dataPoint[`${account.id}_real`] = Math.round(realBal[account.id]);
+      total += nominalBal[account.id];
+      totalReal += realBal[account.id];
+      totalOver += overBal[account.id];
+      totalUnder += underBal[account.id];
     }
 
     dataPoint.total = Math.round(total);
     dataPoint.totalReal = Math.round(totalReal);
-    dataPoint.overperformanceReal = Math.round(totalOverperformanceReal);
-    dataPoint.underperformanceReal = Math.round(totalUnderperformanceReal);
+    dataPoint.overperformanceReal = Math.round(totalOver);
+    dataPoint.underperformanceReal = Math.round(totalUnder);
     dataPoints.push(dataPoint);
   }
 
@@ -204,37 +238,21 @@ export function generateProjection(
 }
 
 /**
- * Calculate projections for each account at retirement
- * Uses real returns (nominal - inflation) to properly account for contributions over time
+ * Calculate projections for each account at retirement.
+ * Uses year-by-year simulation to correctly apply lump sum withdrawals.
  */
 export function calculateAccountProjections(
   accounts: Account[],
-  profile: UserProfile
+  profile: UserProfile,
+  withdrawals: LumpSumWithdrawal[] = []
 ): AccountProjection[] {
   const yearsToRetirement = profile.retirementAge - profile.currentAge;
   if (yearsToRetirement <= 0) return [];
 
-  const months = yearsToRetirement * 12;
-
   return accounts.map((account) => {
-    const increase = account.annualContributionIncrease ?? 0;
-    // Nominal projection
-    const projectedValue = calculateFutureValue(
-      account.currentBalance,
-      account.monthlyContribution,
-      account.annualReturnRate,
-      months,
-      increase
-    );
-    // Real projection using real return rate
     const realReturn = Math.max(0, account.annualReturnRate - profile.expectedInflation);
-    const projectedValueReal = calculateFutureValue(
-      account.currentBalance,
-      account.monthlyContribution,
-      realReturn,
-      months,
-      increase
-    );
+    const projectedValue = simulateAccountFinalBalance(account, yearsToRetirement, profile.currentAge, account.annualReturnRate, withdrawals);
+    const projectedValueReal = simulateAccountFinalBalance(account, yearsToRetirement, profile.currentAge, realReturn, withdrawals);
     const growth = projectedValueReal - account.currentBalance;
     const growthPercentage =
       account.currentBalance > 0
@@ -273,24 +291,16 @@ export function calculateTotalContributions(accounts: Account[]): number {
  */
 export function calculateProjectedTotal(
   accounts: Account[],
-  profile: UserProfile
+  profile: UserProfile,
+  withdrawals: LumpSumWithdrawal[] = []
 ): number {
   const yearsToRetirement = profile.retirementAge - profile.currentAge;
   if (yearsToRetirement <= 0) return calculateTotalBalance(accounts);
 
-  const months = yearsToRetirement * 12;
   let total = 0;
-
   for (const account of accounts) {
-    total += calculateFutureValue(
-      account.currentBalance,
-      account.monthlyContribution,
-      account.annualReturnRate,
-      months,
-      account.annualContributionIncrease ?? 0
-    );
+    total += simulateAccountFinalBalance(account, yearsToRetirement, profile.currentAge, account.annualReturnRate, withdrawals);
   }
-
   return Math.round(total);
 }
 
@@ -300,25 +310,17 @@ export function calculateProjectedTotal(
  */
 export function calculateProjectedTotalReal(
   accounts: Account[],
-  profile: UserProfile
+  profile: UserProfile,
+  withdrawals: LumpSumWithdrawal[] = []
 ): number {
   const yearsToRetirement = profile.retirementAge - profile.currentAge;
   if (yearsToRetirement <= 0) return calculateTotalBalance(accounts);
 
-  const months = yearsToRetirement * 12;
   let total = 0;
-
   for (const account of accounts) {
     const realReturn = Math.max(0, account.annualReturnRate - profile.expectedInflation);
-    total += calculateFutureValue(
-      account.currentBalance,
-      account.monthlyContribution,
-      realReturn,
-      months,
-      account.annualContributionIncrease ?? 0
-    );
+    total += simulateAccountFinalBalance(account, yearsToRetirement, profile.currentAge, realReturn, withdrawals);
   }
-
   return Math.round(total);
 }
 

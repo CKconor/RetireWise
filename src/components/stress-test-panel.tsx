@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { Account, UserProfile } from '@/types';
+import { Account, UserProfile, LumpSumWithdrawal } from '@/types';
 import { SectionCard } from '@/components/ui/section-card';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import {
@@ -14,6 +14,7 @@ import {
 interface StressTestPanelProps {
   accounts: Account[];
   profile: UserProfile;
+  lumpSumWithdrawals?: LumpSumWithdrawal[];
 }
 
 const ShieldIcon = () => (
@@ -22,10 +23,10 @@ const ShieldIcon = () => (
   </svg>
 );
 
-export function StressTestPanel({ accounts, profile }: StressTestPanelProps) {
+export function StressTestPanel({ accounts, profile, lumpSumWithdrawals = [] }: StressTestPanelProps) {
   const baseProjection = useMemo(
-    () => calculateProjectedTotalReal(accounts, profile),
-    [accounts, profile]
+    () => calculateProjectedTotalReal(accounts, profile, lumpSumWithdrawals),
+    [accounts, profile, lumpSumWithdrawals]
   );
 
   const stressTests = useMemo(
