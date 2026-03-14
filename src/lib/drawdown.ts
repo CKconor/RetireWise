@@ -6,8 +6,9 @@ import {
   DrawdownSimulationResult,
   MonteCarloResult,
   AccountType,
+  LumpSumWithdrawal,
 } from '@/types';
-import { calculateFutureValue, calculateAnnualStatePension } from '@/lib/calculations';
+import { calculateFutureValue, calculateAnnualStatePension, simulateAccountFinalBalance } from '@/lib/calculations';
 import { PRIVATE_PENSION_ACCESS_AGE } from '@/lib/constants';
 
 // Default withdrawal order by account type priority
@@ -182,7 +183,8 @@ export function simulateDrawdown(
   accounts: Account[],
   profile: UserProfile,
   config: DrawdownConfig,
-  getReturnRate?: () => number
+  getReturnRate?: () => number,
+  withdrawals: LumpSumWithdrawal[] = []
 ): DrawdownSimulationResult {
   const yearsToRetirement = Math.max(0, profile.retirementAge - profile.currentAge);
   const retirementYears = Math.max(0, config.planningHorizon - profile.retirementAge);
@@ -197,21 +199,14 @@ export function simulateDrawdown(
     };
   }
 
-  // Calculate projected balances at retirement (real terms)
-  const months = yearsToRetirement * 12;
+  // Calculate projected balances at retirement (real terms), applying lump sum withdrawals
   const accountBalances: Record<string, number> = {};
   const accountTotalContributed: Record<string, number> = {};
   const accountRetirementBalances: Record<string, number> = {}; // Snapshot for tax calc reference
 
   for (const account of accounts) {
     const realReturn = Math.max(0, account.annualReturnRate - profile.expectedInflation);
-    const balance = calculateFutureValue(
-      account.currentBalance,
-      account.monthlyContribution,
-      realReturn,
-      months,
-      account.annualContributionIncrease ?? 0
-    );
+    const balance = simulateAccountFinalBalance(account, yearsToRetirement, profile.currentAge, realReturn, withdrawals);
     accountBalances[account.id] = balance;
     accountRetirementBalances[account.id] = balance;
     accountTotalContributed[account.id] = calculateTotalContributed(account, yearsToRetirement);
@@ -428,7 +423,8 @@ export function runMonteCarloSimulation(
   profile: UserProfile,
   config: DrawdownConfig,
   numSimulations = 1000,
-  volatility = 10
+  volatility = 10,
+  withdrawals: LumpSumWithdrawal[] = []
 ): MonteCarloResult {
   const retirementYears = Math.max(0, config.planningHorizon - profile.retirementAge);
   if (accounts.length === 0 || retirementYears <= 0)
@@ -440,7 +436,7 @@ export function runMonteCarloSimulation(
 
   for (let i = 0; i < numSimulations; i++) {
     const result = simulateDrawdown(accounts, profile, config,
-      () => normalRandom(config.drawdownReturnRate, volatility));
+      () => normalRandom(config.drawdownReturnRate, volatility), withdrawals);
     result.years.forEach((yr, idx) => balancesByYear[idx].push(yr.portfolioBalance));
     if (result.depletionAge === null) successCount++;
     else depletionAges.push(result.depletionAge);

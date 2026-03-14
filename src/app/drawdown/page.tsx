@@ -10,13 +10,14 @@ import { IncomeBreakdownChart } from '@/components/drawdown/income-breakdown-cha
 import { DrawdownYearTable } from '@/components/drawdown/drawdown-year-table';
 import { MonteCarloChart } from '@/components/drawdown/monte-carlo-chart';
 import { simulateDrawdown, runMonteCarloSimulation } from '@/lib/drawdown';
-import { calculateFutureValue } from '@/lib/calculations';
+import { simulateAccountFinalBalance } from '@/lib/calculations';
 
 export default function DrawdownPage() {
   const {
     profile,
     accounts,
     drawdownConfig,
+    lumpSumWithdrawals,
     isLoaded,
     updateDrawdownConfig,
   } = useRetirementData();
@@ -24,23 +25,16 @@ export default function DrawdownPage() {
   const [mcNumSimulations, setMcNumSimulations] = useState(1000);
   const [mcVolatility, setMcVolatility] = useState(10);
 
-  // Calculate projected retirement balances per account (real terms)
+  // Calculate projected retirement balances per account (real terms), applying lump sum withdrawals
   const retirementBalances = useMemo(() => {
     const yearsToRetirement = Math.max(0, profile.retirementAge - profile.currentAge);
-    const months = yearsToRetirement * 12;
     const balances: Record<string, number> = {};
     for (const account of accounts) {
       const realReturn = Math.max(0, account.annualReturnRate - profile.expectedInflation);
-      balances[account.id] = calculateFutureValue(
-        account.currentBalance,
-        account.monthlyContribution,
-        realReturn,
-        months,
-        account.annualContributionIncrease ?? 0
-      );
+      balances[account.id] = simulateAccountFinalBalance(account, yearsToRetirement, profile.currentAge, realReturn, lumpSumWithdrawals);
     }
     return balances;
-  }, [accounts, profile]);
+  }, [accounts, profile, lumpSumWithdrawals]);
 
   const initialPortfolio = useMemo(
     () => Object.values(retirementBalances).reduce((sum, b) => sum + b, 0),
@@ -48,23 +42,23 @@ export default function DrawdownPage() {
   );
 
   const simulation = useMemo(
-    () => simulateDrawdown(accounts, profile, drawdownConfig),
-    [accounts, profile, drawdownConfig]
+    () => simulateDrawdown(accounts, profile, drawdownConfig, undefined, lumpSumWithdrawals),
+    [accounts, profile, drawdownConfig, lumpSumWithdrawals]
   );
 
   const [mcResult, setMcResult] = useState(() =>
-    runMonteCarloSimulation(accounts, profile, drawdownConfig, mcNumSimulations, mcVolatility)
+    runMonteCarloSimulation(accounts, profile, drawdownConfig, mcNumSimulations, mcVolatility, lumpSumWithdrawals)
   );
   const [mcLoading, setMcLoading] = useState(false);
 
   useEffect(() => {
     setMcLoading(true);
     const timer = setTimeout(() => {
-      setMcResult(runMonteCarloSimulation(accounts, profile, drawdownConfig, mcNumSimulations, mcVolatility));
+      setMcResult(runMonteCarloSimulation(accounts, profile, drawdownConfig, mcNumSimulations, mcVolatility, lumpSumWithdrawals));
       setMcLoading(false);
     }, 0);
     return () => clearTimeout(timer);
-  }, [accounts, profile, drawdownConfig, mcNumSimulations, mcVolatility]);
+  }, [accounts, profile, drawdownConfig, mcNumSimulations, mcVolatility, lumpSumWithdrawals]);
 
   if (!isLoaded) {
     return (
