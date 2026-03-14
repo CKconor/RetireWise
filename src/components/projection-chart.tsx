@@ -166,7 +166,7 @@ export function ProjectionChart({ accounts, profile, lumpSumWithdrawals = [] }: 
       }
     >
       {view === 'table' ? (
-        <MonthlyBreakdownTable accounts={accounts} profile={profile} />
+        <MonthlyBreakdownTable accounts={accounts} profile={profile} lumpSumWithdrawals={lumpSumWithdrawals} />
       ) : (
       <div className="h-[350px]">
         <ResponsiveContainer width="100%" height="100%">

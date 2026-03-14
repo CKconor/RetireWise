@@ -2,13 +2,14 @@
 
 import { useMemo, useState, useCallback } from 'react';
 import { CalendarDays, X } from 'lucide-react';
-import { Account, UserProfile, MonthlyProjectionDataPoint } from '@/types';
+import { Account, UserProfile, MonthlyProjectionDataPoint, LumpSumWithdrawal } from '@/types';
 import { generateMonthlyProjection, formatCurrency } from '@/lib/calculations';
 import { ACCOUNT_TYPE_DOT_COLORS } from '@/lib/constants';
 
 interface MonthlyBreakdownTableProps {
   accounts: Account[];
   profile: UserProfile;
+  lumpSumWithdrawals?: LumpSumWithdrawal[];
 }
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -58,7 +59,7 @@ function saveTableDates(startDate: MonthYear | null, endDate: MonthYear | null) 
   } catch { /* ignore */ }
 }
 
-export function MonthlyBreakdownTable({ accounts, profile }: MonthlyBreakdownTableProps) {
+export function MonthlyBreakdownTable({ accounts, profile, lumpSumWithdrawals = [] }: MonthlyBreakdownTableProps) {
   const [startDate, setStartDate] = useState<MonthYear | null>(() => loadTableDates().startDate);
   const [endDate, setEndDate] = useState<MonthYear | null>(() => loadTableDates().endDate);
 
@@ -73,8 +74,8 @@ export function MonthlyBreakdownTable({ accounts, profile }: MonthlyBreakdownTab
   }, []);
 
   const data = useMemo(
-    () => generateMonthlyProjection(accounts, profile, startDate ?? undefined, endDate ?? undefined),
-    [accounts, profile, startDate, endDate]
+    () => generateMonthlyProjection(accounts, profile, startDate ?? undefined, endDate ?? undefined, lumpSumWithdrawals),
+    [accounts, profile, startDate, endDate, lumpSumWithdrawals]
   );
 
   const yearGroups = useMemo(() => groupByYear(data), [data]);

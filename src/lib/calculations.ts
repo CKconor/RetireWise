@@ -893,7 +893,8 @@ export function generateMonthlyProjection(
   accounts: Account[],
   profile: UserProfile,
   startDate?: { month: number; year: number }, // month: 1-12
-  endDate?: { month: number; year: number }    // month: 1-12
+  endDate?: { month: number; year: number },   // month: 1-12
+  withdrawals: LumpSumWithdrawal[] = []
 ): MonthlyProjectionDataPoint[] {
   const yearsToRetirement = profile.retirementAge - profile.currentAge;
   if (yearsToRetirement <= 0 || accounts.length === 0) return [];
@@ -928,8 +929,15 @@ export function generateMonthlyProjection(
     const calMonth = (startMonth + m) % 12; // 0-11
     const calYear = startYear + Math.floor((startMonth + m) / 12);
 
-    let total = 0;
-    const accountBalances: Record<string, number> = {};
+    // Compute precise age from birthday at this calendar month
+    const pointDate = new Date(calYear, calMonth, birth.getDate());
+    let ageYears = calYear - birth.getFullYear();
+    let ageMonthsPart = calMonth - birth.getMonth();
+    if (ageMonthsPart < 0 || (ageMonthsPart === 0 && pointDate.getDate() < birth.getDate())) {
+      ageYears--;
+      ageMonthsPart += 12;
+    }
+    if (ageMonthsPart < 0) ageMonthsPart += 12;
 
     for (const accountState of accountStates) {
       if (m > 0) {
@@ -942,20 +950,23 @@ export function generateMonthlyProjection(
         }
       }
 
+      // Apply lump sum withdrawals on the user's birthday month for this age
+      if (ageMonthsPart === 0 && withdrawals.length > 0) {
+        for (const w of withdrawals) {
+          if (w.age === ageYears && w.accountId === accountState.id) {
+            accountState.balance = Math.max(0, accountState.balance - w.amount);
+          }
+        }
+      }
+    }
+
+    let total = 0;
+    const accountBalances: Record<string, number> = {};
+    for (const accountState of accountStates) {
       const rounded = Math.round(accountState.balance);
       accountBalances[accountState.id] = rounded;
       total += rounded;
     }
-
-    // Compute precise age from birthday at this calendar month
-    const pointDate = new Date(calYear, calMonth, birth.getDate());
-    let ageYears = calYear - birth.getFullYear();
-    let ageMonthsPart = calMonth - birth.getMonth();
-    if (ageMonthsPart < 0 || (ageMonthsPart === 0 && pointDate.getDate() < birth.getDate())) {
-      ageYears--;
-      ageMonthsPart += 12;
-    }
-    if (ageMonthsPart < 0) ageMonthsPart += 12;
 
     points.push({
       month: m,
