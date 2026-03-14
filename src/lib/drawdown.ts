@@ -13,6 +13,22 @@ import { PRIVATE_PENSION_ACCESS_AGE } from '@/lib/constants';
 // Default withdrawal order by account type priority
 const DEFAULT_TYPE_ORDER: AccountType[] = ['isa', 'gia', 'savings', 'sipp', 'pension'];
 
+// IRS Uniform Lifetime Table — life expectancy factors used for RMD calculation.
+// For ages below 73 (pre-RMD), we use the factor at 73 as a floor.
+const RMD_FACTORS: Record<number, number> = {
+  73: 26.5, 74: 25.5, 75: 24.6, 76: 23.7, 77: 22.9,
+  78: 22.0, 79: 21.1, 80: 20.2, 81: 19.4, 82: 18.5,
+  83: 17.7, 84: 16.8, 85: 16.0, 86: 15.2, 87: 14.4,
+  88: 13.7, 89: 12.9, 90: 12.2, 91: 11.5, 92: 10.8,
+  93: 10.1, 94: 9.5,  95: 8.9,  96: 8.4,  97: 7.8,
+  98: 7.3,  99: 6.8,  100: 6.4,
+};
+
+function getRmdFactor(age: number): number {
+  if (age < 73) return RMD_FACTORS[73];
+  return RMD_FACTORS[Math.min(age, 100)] ?? 6.4;
+}
+
 // UK tax constants
 const PERSONAL_ALLOWANCE = 12570;
 const BASIC_LIMIT = 50270;
@@ -203,13 +219,16 @@ export function simulateDrawdown(
 
   const initialPortfolio = Object.values(accountBalances).reduce((sum, b) => sum + b, 0);
 
-  // Calculate the annual withdrawal amount
+  // Calculate the annual withdrawal amount (RMD recalculates each year inside the loop)
   let annualWithdrawal: number;
   if (config.strategy === 'fixed') {
     annualWithdrawal = config.fixedAnnualIncome;
-  } else {
+  } else if (config.strategy === 'percentage') {
     // Percentage strategy: lock in initial withdrawal based on portfolio * rate
     annualWithdrawal = initialPortfolio * (config.withdrawalRate / 100);
+  } else {
+    // RMD: placeholder — recalculated each year inside the loop
+    annualWithdrawal = 0;
   }
 
   const annualStatePension = profile.includeStatePension
@@ -237,6 +256,11 @@ export function simulateDrawdown(
     // Check if portfolio already depleted
     if (portfolioBalance <= 0 && depletionAge === null) {
       depletionAge = age;
+    }
+
+    // RMD: recalculate withdrawal each year based on current portfolio balance
+    if (config.strategy === 'rmd') {
+      annualWithdrawal = portfolioBalance / getRmdFactor(age);
     }
 
     // State pension income this year

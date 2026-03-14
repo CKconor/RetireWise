@@ -47,7 +47,7 @@ export function DrawdownConfigPanel({ config, accounts, retirementBalances, onUp
       {/* Strategy toggle */}
       <div className="space-y-2">
         <p className="text-sm font-medium text-muted-foreground">Withdrawal Strategy</p>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           <button
             onClick={() => onUpdate({ strategy: 'fixed' })}
             className={`cursor-pointer rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
@@ -67,6 +67,16 @@ export function DrawdownConfigPanel({ config, accounts, retirementBalances, onUp
             }`}
           >
             % of Portfolio
+          </button>
+          <button
+            onClick={() => onUpdate({ strategy: 'rmd' })}
+            className={`cursor-pointer rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
+              config.strategy === 'rmd'
+                ? 'bg-gradient-to-br from-[#0c1929] to-[#1e3a5f] text-white dark:from-amber-400 dark:to-amber-500 dark:text-[#0c1929] shadow-lg'
+                : 'bg-secondary/50 text-muted-foreground ring-1 ring-border/60 hover:bg-secondary'
+            }`}
+          >
+            RMD
           </button>
         </div>
       </div>
@@ -89,6 +99,10 @@ export function DrawdownConfigPanel({ config, accounts, retirementBalances, onUp
             className="bg-secondary/30 transition-colors focus:bg-white dark:focus:bg-secondary"
           />
         </FormField>
+      ) : config.strategy === 'rmd' ? (
+        <p className="text-sm text-muted-foreground">
+          Withdraws the portfolio balance divided by an IRS life expectancy factor each year — mandatory minimums rise as a share of the pot with age.
+        </p>
       ) : (
         <FormField
           id="withdrawalRate"

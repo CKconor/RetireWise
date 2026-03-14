@@ -123,7 +123,7 @@ export interface NetWorthSnapshot {
 }
 
 // Drawdown types
-export type WithdrawalStrategy = 'fixed' | 'percentage';
+export type WithdrawalStrategy = 'fixed' | 'percentage' | 'rmd';
 
 export interface DrawdownConfig {
   strategy: WithdrawalStrategy;
