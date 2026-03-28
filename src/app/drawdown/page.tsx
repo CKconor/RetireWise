@@ -9,6 +9,7 @@ import { DepletionChart } from '@/components/drawdown/depletion-chart';
 import { IncomeBreakdownChart } from '@/components/drawdown/income-breakdown-chart';
 import { DrawdownYearTable } from '@/components/drawdown/drawdown-year-table';
 import { MonteCarloChart } from '@/components/drawdown/monte-carlo-chart';
+import { AnnuityEstimator } from '@/components/drawdown/annuity-estimator';
 import { simulateDrawdown, runMonteCarloSimulation } from '@/lib/drawdown';
 import { simulateAccountFinalBalance } from '@/lib/calculations';
 
@@ -95,6 +96,12 @@ export default function DrawdownPage() {
                 simulation={simulation}
                 config={drawdownConfig}
                 initialPortfolio={initialPortfolio}
+              />
+            </div>
+            <div className="opacity-0 animate-fade-in stagger-3">
+              <AnnuityEstimator
+                defaultPot={initialPortfolio}
+                defaultPurchaseAge={profile.retirementAge}
               />
             </div>
           </div>
