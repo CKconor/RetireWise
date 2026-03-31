@@ -550,12 +550,12 @@ export function calculateWhatIfContribution(
   accounts: Account[],
   profile: UserProfile,
   extraMonthly: number,
-  inflationAdjusted = true
+  inflationAdjusted = true,
+  withdrawals: LumpSumWithdrawal[] = []
 ): number {
   const yearsToRetirement = profile.retirementAge - profile.currentAge;
   if (yearsToRetirement <= 0) return calculateTotalBalance(accounts);
 
-  const months = yearsToRetirement * 12;
   let total = 0;
 
   const inflationRate = inflationAdjusted ? profile.expectedInflation : 0;
@@ -567,14 +567,9 @@ export function calculateWhatIfContribution(
       : 1 / accounts.length;
     const extraForAccount = extraMonthly * contributionRatio;
     const effectiveReturn = Math.max(0, account.annualReturnRate - inflationRate);
+    const modifiedAccount = { ...account, monthlyContribution: account.monthlyContribution + extraForAccount };
 
-    total += calculateFutureValue(
-      account.currentBalance,
-      account.monthlyContribution + extraForAccount,
-      effectiveReturn,
-      months,
-      account.annualContributionIncrease ?? 0
-    );
+    total += simulateAccountFinalBalance(modifiedAccount, yearsToRetirement, profile.currentAge, effectiveReturn, withdrawals);
   }
 
   return Math.round(total);
@@ -588,12 +583,13 @@ export function calculateWhatIfRetirementAge(
   accounts: Account[],
   profile: UserProfile,
   newRetirementAge: number,
-  inflationAdjusted = true
+  inflationAdjusted = true,
+  withdrawals: LumpSumWithdrawal[] = []
 ): number {
   const modifiedProfile = { ...profile, retirementAge: newRetirementAge };
   return inflationAdjusted
-    ? calculateProjectedTotalReal(accounts, modifiedProfile)
-    : calculateProjectedTotal(accounts, modifiedProfile);
+    ? calculateProjectedTotalReal(accounts, modifiedProfile, withdrawals)
+    : calculateProjectedTotal(accounts, modifiedProfile, withdrawals);
 }
 
 /**
@@ -604,25 +600,19 @@ export function calculateWhatIfReturns(
   accounts: Account[],
   profile: UserProfile,
   returnAdjustment: number,
-  inflationAdjusted = true
+  inflationAdjusted = true,
+  withdrawals: LumpSumWithdrawal[] = []
 ): number {
   const yearsToRetirement = profile.retirementAge - profile.currentAge;
   if (yearsToRetirement <= 0) return calculateTotalBalance(accounts);
 
-  const months = yearsToRetirement * 12;
   let total = 0;
 
   const inflationRate = inflationAdjusted ? profile.expectedInflation : 0;
 
   for (const account of accounts) {
     const effectiveReturn = Math.max(0, account.annualReturnRate - inflationRate + returnAdjustment);
-    total += calculateFutureValue(
-      account.currentBalance,
-      account.monthlyContribution,
-      effectiveReturn,
-      months,
-      account.annualContributionIncrease ?? 0
-    );
+    total += simulateAccountFinalBalance(account, yearsToRetirement, profile.currentAge, effectiveReturn, withdrawals);
   }
 
   return Math.round(total);

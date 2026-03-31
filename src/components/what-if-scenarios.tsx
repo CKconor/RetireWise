@@ -84,33 +84,33 @@ export function WhatIfScenarios({ accounts, profile, lumpSumWithdrawals = [] }: 
   );
 
   const contributionProjectionReal = useMemo(
-    () => calculateWhatIfContribution(accounts, profile, extraContribution, true),
-    [accounts, profile, extraContribution]
+    () => calculateWhatIfContribution(accounts, profile, extraContribution, true, lumpSumWithdrawals),
+    [accounts, profile, extraContribution, lumpSumWithdrawals]
   );
 
   const contributionProjectionNominal = useMemo(
-    () => calculateWhatIfContribution(accounts, profile, extraContribution, false),
-    [accounts, profile, extraContribution]
+    () => calculateWhatIfContribution(accounts, profile, extraContribution, false, lumpSumWithdrawals),
+    [accounts, profile, extraContribution, lumpSumWithdrawals]
   );
 
   const retirementAgeProjectionReal = useMemo(
-    () => calculateWhatIfRetirementAge(accounts, profile, profile.retirementAge + retirementAgeAdjust, true),
-    [accounts, profile, retirementAgeAdjust]
+    () => calculateWhatIfRetirementAge(accounts, profile, profile.retirementAge + retirementAgeAdjust, true, lumpSumWithdrawals),
+    [accounts, profile, retirementAgeAdjust, lumpSumWithdrawals]
   );
 
   const retirementAgeProjectionNominal = useMemo(
-    () => calculateWhatIfRetirementAge(accounts, profile, profile.retirementAge + retirementAgeAdjust, false),
-    [accounts, profile, retirementAgeAdjust]
+    () => calculateWhatIfRetirementAge(accounts, profile, profile.retirementAge + retirementAgeAdjust, false, lumpSumWithdrawals),
+    [accounts, profile, retirementAgeAdjust, lumpSumWithdrawals]
   );
 
   const returnProjectionReal = useMemo(
-    () => calculateWhatIfReturns(accounts, profile, returnAdjust, true),
-    [accounts, profile, returnAdjust]
+    () => calculateWhatIfReturns(accounts, profile, returnAdjust, true, lumpSumWithdrawals),
+    [accounts, profile, returnAdjust, lumpSumWithdrawals]
   );
 
   const returnProjectionNominal = useMemo(
-    () => calculateWhatIfReturns(accounts, profile, returnAdjust, false),
-    [accounts, profile, returnAdjust]
+    () => calculateWhatIfReturns(accounts, profile, returnAdjust, false, lumpSumWithdrawals),
+    [accounts, profile, returnAdjust, lumpSumWithdrawals]
   );
 
   if (accounts.length === 0) {
