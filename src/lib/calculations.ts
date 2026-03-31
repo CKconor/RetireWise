@@ -543,13 +543,14 @@ export function calculateTargetReachAge(
 }
 
 /**
- * Calculate projected total with different monthly contribution
- * Uses real returns for proper inflation adjustment
+ * Calculate projected total with different monthly contribution.
+ * @param inflationAdjusted - true = today's money (real returns), false = future nominal value
  */
 export function calculateWhatIfContribution(
   accounts: Account[],
   profile: UserProfile,
-  extraMonthly: number
+  extraMonthly: number,
+  inflationAdjusted = true
 ): number {
   const yearsToRetirement = profile.retirementAge - profile.currentAge;
   if (yearsToRetirement <= 0) return calculateTotalBalance(accounts);
@@ -557,7 +558,7 @@ export function calculateWhatIfContribution(
   const months = yearsToRetirement * 12;
   let total = 0;
 
-  // Distribute extra contribution proportionally to existing accounts
+  const inflationRate = inflationAdjusted ? profile.expectedInflation : 0;
   const totalContributions = calculateTotalContributions(accounts);
 
   for (const account of accounts) {
@@ -565,12 +566,12 @@ export function calculateWhatIfContribution(
       ? account.monthlyContribution / totalContributions
       : 1 / accounts.length;
     const extraForAccount = extraMonthly * contributionRatio;
-    const realReturn = Math.max(0, account.annualReturnRate - profile.expectedInflation);
+    const effectiveReturn = Math.max(0, account.annualReturnRate - inflationRate);
 
     total += calculateFutureValue(
       account.currentBalance,
       account.monthlyContribution + extraForAccount,
-      realReturn,
+      effectiveReturn,
       months,
       account.annualContributionIncrease ?? 0
     );
@@ -580,25 +581,30 @@ export function calculateWhatIfContribution(
 }
 
 /**
- * Calculate projected total with different retirement age
+ * Calculate projected total with different retirement age.
+ * @param inflationAdjusted - true = today's money (real returns), false = future nominal value
  */
 export function calculateWhatIfRetirementAge(
   accounts: Account[],
   profile: UserProfile,
-  newRetirementAge: number
+  newRetirementAge: number,
+  inflationAdjusted = true
 ): number {
   const modifiedProfile = { ...profile, retirementAge: newRetirementAge };
-  return calculateProjectedTotalReal(accounts, modifiedProfile);
+  return inflationAdjusted
+    ? calculateProjectedTotalReal(accounts, modifiedProfile)
+    : calculateProjectedTotal(accounts, modifiedProfile);
 }
 
 /**
- * Calculate projected total with different return rates
- * Uses real returns for proper inflation adjustment
+ * Calculate projected total with different return rates.
+ * @param inflationAdjusted - true = today's money (real returns), false = future nominal value
  */
 export function calculateWhatIfReturns(
   accounts: Account[],
   profile: UserProfile,
-  returnAdjustment: number
+  returnAdjustment: number,
+  inflationAdjusted = true
 ): number {
   const yearsToRetirement = profile.retirementAge - profile.currentAge;
   if (yearsToRetirement <= 0) return calculateTotalBalance(accounts);
@@ -606,12 +612,14 @@ export function calculateWhatIfReturns(
   const months = yearsToRetirement * 12;
   let total = 0;
 
+  const inflationRate = inflationAdjusted ? profile.expectedInflation : 0;
+
   for (const account of accounts) {
-    const realReturn = Math.max(0, account.annualReturnRate - profile.expectedInflation + returnAdjustment);
+    const effectiveReturn = Math.max(0, account.annualReturnRate - inflationRate + returnAdjustment);
     total += calculateFutureValue(
       account.currentBalance,
       account.monthlyContribution,
-      realReturn,
+      effectiveReturn,
       months,
       account.annualContributionIncrease ?? 0
     );

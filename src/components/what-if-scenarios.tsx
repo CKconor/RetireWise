@@ -5,6 +5,7 @@ import { Account, UserProfile, LumpSumWithdrawal } from '@/types';
 import { SectionCard } from '@/components/ui/section-card';
 import { Button } from '@/components/ui/button';
 import {
+  calculateProjectedTotal,
   calculateProjectedTotalReal,
   calculateWhatIfContribution,
   calculateWhatIfRetirementAge,
@@ -25,12 +26,14 @@ const QuestionIcon = () => (
 );
 
 interface ScenarioResultProps {
-  label: string;
-  value: number;
-  diff: number;
+  realValue: number;
+  nominalValue: number;
+  realDiff: number;
+  nominalDiff: number;
 }
 
-function ScenarioResult({ label, value, diff }: ScenarioResultProps) {
+function ScenarioResult({ realValue, nominalValue, realDiff, nominalDiff }: ScenarioResultProps) {
+  const diff = realDiff;
   const bgClass = diff > 0
     ? 'bg-gradient-to-r from-teal-50 to-emerald-50/50 dark:from-teal-900/30 dark:to-emerald-900/30 ring-1 ring-teal-200 dark:ring-teal-700'
     : diff < 0
@@ -38,15 +41,28 @@ function ScenarioResult({ label, value, diff }: ScenarioResultProps) {
     : 'bg-gradient-to-r from-slate-50 to-slate-100/50 dark:from-slate-800 dark:to-slate-800/50 ring-1 ring-slate-200 dark:ring-slate-700';
 
   return (
-    <div className={`flex items-center justify-between rounded-xl p-3 ${bgClass}`}>
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <div className="text-right">
-        <span className="font-display text-lg text-foreground">{formatCurrency(value)}</span>
-        {diff !== 0 && (
-          <span className={`ml-2 text-sm font-medium ${diff > 0 ? 'text-teal-600 dark:text-teal-400' : 'text-amber-600 dark:text-amber-400'}`}>
-            ({diff > 0 ? '+' : ''}{formatCurrency(diff)})
-          </span>
-        )}
+    <div className={`rounded-xl p-3 ${bgClass} space-y-1.5`}>
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">Today&apos;s money</span>
+        <div className="text-right">
+          <span className="font-display text-base text-foreground">{formatCurrency(realValue)}</span>
+          {realDiff !== 0 && (
+            <span className={`ml-2 text-xs font-medium ${realDiff > 0 ? 'text-teal-600 dark:text-teal-400' : 'text-amber-600 dark:text-amber-400'}`}>
+              ({realDiff > 0 ? '+' : ''}{formatCurrency(realDiff)})
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">Future value</span>
+        <div className="text-right">
+          <span className="font-display text-base text-foreground">{formatCurrency(nominalValue)}</span>
+          {nominalDiff !== 0 && (
+            <span className={`ml-2 text-xs font-medium ${nominalDiff > 0 ? 'text-teal-600 dark:text-teal-400' : 'text-amber-600 dark:text-amber-400'}`}>
+              ({nominalDiff > 0 ? '+' : ''}{formatCurrency(nominalDiff)})
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -57,23 +73,43 @@ export function WhatIfScenarios({ accounts, profile, lumpSumWithdrawals = [] }: 
   const [retirementAgeAdjust, setRetirementAgeAdjust] = useState(0);
   const [returnAdjust, setReturnAdjust] = useState(0);
 
-  const baseProjection = useMemo(
+  const baseProjectionReal = useMemo(
     () => calculateProjectedTotalReal(accounts, profile, lumpSumWithdrawals),
     [accounts, profile, lumpSumWithdrawals]
   );
 
-  const contributionProjection = useMemo(
-    () => calculateWhatIfContribution(accounts, profile, extraContribution),
+  const baseProjectionNominal = useMemo(
+    () => calculateProjectedTotal(accounts, profile, lumpSumWithdrawals),
+    [accounts, profile, lumpSumWithdrawals]
+  );
+
+  const contributionProjectionReal = useMemo(
+    () => calculateWhatIfContribution(accounts, profile, extraContribution, true),
     [accounts, profile, extraContribution]
   );
 
-  const retirementAgeProjection = useMemo(
-    () => calculateWhatIfRetirementAge(accounts, profile, profile.retirementAge + retirementAgeAdjust),
+  const contributionProjectionNominal = useMemo(
+    () => calculateWhatIfContribution(accounts, profile, extraContribution, false),
+    [accounts, profile, extraContribution]
+  );
+
+  const retirementAgeProjectionReal = useMemo(
+    () => calculateWhatIfRetirementAge(accounts, profile, profile.retirementAge + retirementAgeAdjust, true),
     [accounts, profile, retirementAgeAdjust]
   );
 
-  const returnProjection = useMemo(
-    () => calculateWhatIfReturns(accounts, profile, returnAdjust),
+  const retirementAgeProjectionNominal = useMemo(
+    () => calculateWhatIfRetirementAge(accounts, profile, profile.retirementAge + retirementAgeAdjust, false),
+    [accounts, profile, retirementAgeAdjust]
+  );
+
+  const returnProjectionReal = useMemo(
+    () => calculateWhatIfReturns(accounts, profile, returnAdjust, true),
+    [accounts, profile, returnAdjust]
+  );
+
+  const returnProjectionNominal = useMemo(
+    () => calculateWhatIfReturns(accounts, profile, returnAdjust, false),
     [accounts, profile, returnAdjust]
   );
 
@@ -93,9 +129,12 @@ export function WhatIfScenarios({ accounts, profile, lumpSumWithdrawals = [] }: 
     );
   }
 
-  const contributionDiff = contributionProjection - baseProjection;
-  const retirementDiff = retirementAgeProjection - baseProjection;
-  const returnDiff = returnProjection - baseProjection;
+  const contributionDiffReal = contributionProjectionReal - baseProjectionReal;
+  const contributionDiffNominal = contributionProjectionNominal - baseProjectionNominal;
+  const retirementDiffReal = retirementAgeProjectionReal - baseProjectionReal;
+  const retirementDiffNominal = retirementAgeProjectionNominal - baseProjectionNominal;
+  const returnDiffReal = returnProjectionReal - baseProjectionReal;
+  const returnDiffNominal = returnProjectionNominal - baseProjectionNominal;
 
   return (
     <SectionCard icon={<QuestionIcon />} title="What If..." contentClassName="space-y-5">
@@ -122,9 +161,10 @@ export function WhatIfScenarios({ accounts, profile, lumpSumWithdrawals = [] }: 
           className="slider-premium"
         />
         <ScenarioResult
-          label="Projected total:"
-          value={contributionProjection}
-          diff={contributionDiff}
+          realValue={contributionProjectionReal}
+          nominalValue={contributionProjectionNominal}
+          realDiff={contributionDiffReal}
+          nominalDiff={contributionDiffNominal}
         />
       </div>
 
@@ -156,9 +196,10 @@ export function WhatIfScenarios({ accounts, profile, lumpSumWithdrawals = [] }: 
           className="slider-premium"
         />
         <ScenarioResult
-          label="Projected total:"
-          value={retirementAgeProjection}
-          diff={retirementDiff}
+          realValue={retirementAgeProjectionReal}
+          nominalValue={retirementAgeProjectionNominal}
+          realDiff={retirementDiffReal}
+          nominalDiff={retirementDiffNominal}
         />
       </div>
 
@@ -185,9 +226,10 @@ export function WhatIfScenarios({ accounts, profile, lumpSumWithdrawals = [] }: 
           className="slider-premium"
         />
         <ScenarioResult
-          label="Projected total:"
-          value={returnProjection}
-          diff={returnDiff}
+          realValue={returnProjectionReal}
+          nominalValue={returnProjectionNominal}
+          realDiff={returnDiffReal}
+          nominalDiff={returnDiffNominal}
         />
       </div>
 
