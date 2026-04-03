@@ -1,20 +1,13 @@
 'use client';
 
-import { useMemo } from 'react';
-import { Account, UserProfile, LumpSumWithdrawal } from '@/types';
+import { UserProfile } from '@/types';
 import { SectionCard } from '@/components/ui/section-card';
 import { ProgressBar } from '@/components/ui/progress-bar';
-import {
-  calculateMarketDropImpact,
-  calculateProjectedTotalReal,
-  calculatePercentageOfTarget,
-  formatCurrency,
-} from '@/lib/calculations';
+import { calculatePercentageOfTarget, formatCurrency } from '@/lib/calculations';
+import { useRetirementProjection } from '@/contexts/retirement-engine-context';
 
 interface StressTestPanelProps {
-  accounts: Account[];
   profile: UserProfile;
-  lumpSumWithdrawals?: LumpSumWithdrawal[];
 }
 
 const ShieldIcon = () => (
@@ -23,18 +16,10 @@ const ShieldIcon = () => (
   </svg>
 );
 
-export function StressTestPanel({ accounts, profile, lumpSumWithdrawals = [] }: StressTestPanelProps) {
-  const baseProjection = useMemo(
-    () => calculateProjectedTotalReal(accounts, profile, lumpSumWithdrawals),
-    [accounts, profile, lumpSumWithdrawals]
-  );
+export function StressTestPanel({ profile }: StressTestPanelProps) {
+  const { points, projectedTotalReal: baseProjection, stressTests } = useRetirementProjection();
 
-  const stressTests = useMemo(
-    () => [20, 30, 40].map(drop => calculateMarketDropImpact(accounts, profile, drop)),
-    [accounts, profile]
-  );
-
-  if (accounts.length === 0) {
+  if (points.length === 0) {
     return (
       <SectionCard icon={<ShieldIcon />} title="Stress Test">
         <div className="flex flex-col items-center py-6 text-center">

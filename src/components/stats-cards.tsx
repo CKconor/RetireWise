@@ -1,15 +1,11 @@
 'use client';
 
-import { Account, UserProfile } from '@/types';
+import { UserProfile } from '@/types';
 import { StatCard } from '@/components/ui/stat-card';
-import {
-  calculateTotalBalance,
-  calculateTotalContributions,
-  formatCurrency,
-} from '@/lib/calculations';
+import { formatCurrency } from '@/lib/calculations';
+import { useRetirementProjection } from '@/contexts/retirement-engine-context';
 
 interface StatsCardsProps {
-  accounts: Account[];
   profile: UserProfile;
 }
 
@@ -31,9 +27,8 @@ const TargetIcon = () => (
   </svg>
 );
 
-export function StatsCards({ accounts, profile }: StatsCardsProps) {
-  const totalBalance = calculateTotalBalance(accounts);
-  const monthlyContributions = calculateTotalContributions(accounts);
+export function StatsCards({ profile }: StatsCardsProps) {
+  const { totalBalance, totalContributions: monthlyContributions } = useRetirementProjection();
 
   return (
     <div className="grid grid-cols-3 gap-3">

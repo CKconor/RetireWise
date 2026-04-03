@@ -1,29 +1,30 @@
 'use client';
 
-import { Account, UserProfile, LumpSumWithdrawal, ProjectionBaseline } from '@/types';
-import {
-  calculateTotalBalance,
-  calculateTotalContributions,
-  calculateProjectedTotalReal,
-  calculateProjectedTotal,
-  calculateProgress,
-  calculateRequiredContribution,
-  calculateAverageReturnRate,
-  getYearsToRetirement,
-  formatCurrency,
-  calculateTotalRetirementIncome,
-  calculateStatePensionEquivalent,
-} from '@/lib/calculations';
+import { UserProfile, ProjectionBaseline } from '@/types';
+import { formatCurrency } from '@/lib/calculations';
+import { useRetirementProjection } from '@/contexts/retirement-engine-context';
 
 interface SummaryCardProps {
-  accounts: Account[];
   profile: UserProfile;
-  lumpSumWithdrawals?: LumpSumWithdrawal[];
   projectionBaseline?: ProjectionBaseline;
 }
 
-export function SummaryCard({ accounts, profile, lumpSumWithdrawals = [], projectionBaseline }: SummaryCardProps) {
-  if (accounts.length === 0) {
+export function SummaryCard({ profile, projectionBaseline }: SummaryCardProps) {
+  const {
+    points,
+    totalBalance,
+    totalContributions: monthlyContributions,
+    yearsToRetirement,
+    projectedTotalReal,
+    projectedTotal: projectedTotalNominal,
+    statePensionEquivalent,
+    effectiveTarget,
+    progress,
+    requiredContribution,
+    retirementIncome,
+  } = useRetirementProjection();
+
+  if (points.length === 0) {
     return (
       <div className="card-hero rounded-2xl p-6 text-white dark:text-[#1a1a1a] shadow-xl shadow-[#0c1929]/30 dark:shadow-amber-900/40">
         <div className="relative z-10 flex flex-col items-center py-4 text-center">
@@ -38,7 +39,7 @@ export function SummaryCard({ accounts, profile, lumpSumWithdrawals = [], projec
           </p>
           <div className="mt-4 flex items-center gap-2">
             <span className="badge-gold text-xs">
-              {getYearsToRetirement(profile)} years to retirement
+              {yearsToRetirement} years to retirement
             </span>
           </div>
         </div>
@@ -46,33 +47,13 @@ export function SummaryCard({ accounts, profile, lumpSumWithdrawals = [], projec
     );
   }
 
-  const totalBalance = calculateTotalBalance(accounts);
-  const monthlyContributions = calculateTotalContributions(accounts);
-
   // Baseline comparison: find expected total for the current calendar year
   const currentYear = new Date().getFullYear();
   const baselinePoint = projectionBaseline?.yearlyPoints.find((p) => p.calendarYear === currentYear);
   const baselineDelta = baselinePoint !== undefined ? totalBalance - baselinePoint.expectedTotal : null;
-  const projectedTotalReal = calculateProjectedTotalReal(accounts, profile, lumpSumWithdrawals);
-  const projectedTotalNominal = calculateProjectedTotal(accounts, profile, lumpSumWithdrawals);
-  const yearsToRetirement = getYearsToRetirement(profile);
-  const avgReturn = calculateAverageReturnRate(accounts);
 
-  // State Pension calculations
-  const statePensionEquivalent = calculateStatePensionEquivalent(profile);
-  const effectiveTarget = profile.targetAmount - statePensionEquivalent;
-  const progress = calculateProgress(projectedTotalReal, effectiveTarget);
   const surplus = projectedTotalReal - effectiveTarget;
   const isOnTrack = surplus >= 0;
-  const retirementIncome = calculateTotalRetirementIncome(projectedTotalReal, profile);
-
-  const requiredContribution = calculateRequiredContribution(
-    totalBalance,
-    effectiveTarget,
-    yearsToRetirement,
-    avgReturn,
-    profile.expectedInflation
-  );
 
   const potentialReduction = monthlyContributions - requiredContribution;
   const reductionPercentage = monthlyContributions > 0

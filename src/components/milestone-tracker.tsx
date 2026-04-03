@@ -1,22 +1,12 @@
 'use client';
 
-import { Account, UserProfile, LumpSumWithdrawal } from '@/types';
+import { UserProfile } from '@/types';
 import { SectionCard } from '@/components/ui/section-card';
-import {
-  calculateTotalBalance,
-  calculateProjectedTotalReal,
-  calculatePercentageOfTarget,
-  generateProjection,
-  formatCurrency,
-  formatCurrencyCompact,
-  calculateTargetReachAge,
-  calculateRequiredBalanceNow,
-} from '@/lib/calculations';
+import { calculatePercentageOfTarget, formatCurrency, formatCurrencyCompact } from '@/lib/calculations';
+import { useRetirementProjection } from '@/contexts/retirement-engine-context';
 
 interface MilestoneTrackerProps {
-  accounts: Account[];
   profile: UserProfile;
-  lumpSumWithdrawals?: LumpSumWithdrawal[];
 }
 
 const BadgeIcon = () => (
@@ -25,16 +15,17 @@ const BadgeIcon = () => (
   </svg>
 );
 
-export function MilestoneTracker({ accounts, profile, lumpSumWithdrawals = [] }: MilestoneTrackerProps) {
-  const currentBalance = calculateTotalBalance(accounts);
-  const projectedTotal = calculateProjectedTotalReal(accounts, profile, lumpSumWithdrawals);
-  const projection = generateProjection(accounts, profile, lumpSumWithdrawals);
+export function MilestoneTracker({ profile }: MilestoneTrackerProps) {
+  const {
+    points,
+    totalBalance: currentBalance,
+    projectedTotalReal: projectedTotal,
+    requiredBalanceNow,
+    targetReachAge,
+  } = useRetirementProjection();
 
   const currentProgress = calculatePercentageOfTarget(currentBalance, profile.targetAmount, false);
   const isOnTarget = projectedTotal >= profile.targetAmount;
-
-  // How much ahead/behind the required balance to be on track right now
-  const requiredBalanceNow = calculateRequiredBalanceNow(accounts, profile, profile.targetAmount);
   const currentValueGap = currentBalance - requiredBalanceNow;
 
   // Build milestones
@@ -53,7 +44,7 @@ export function MilestoneTracker({ accounts, profile, lumpSumWithdrawals = [] }:
     const percentage = calculatePercentageOfTarget(m.amount, profile.targetAmount, false);
 
     let projectedReachAge: number | null = null;
-    for (const point of projection) {
+    for (const point of points) {
       if (point.totalReal >= m.amount) {
         projectedReachAge = point.age;
         break;
@@ -66,12 +57,10 @@ export function MilestoneTracker({ accounts, profile, lumpSumWithdrawals = [] }:
   const nextMilestone = milestones.find(m => !m.reached);
   const reachedCount = milestones.filter(m => m.reached).length;
 
-  // Schedule gap: how many years ahead/behind of retirement are they to hit the target
-  const targetReachAge = calculateTargetReachAge(accounts, profile);
   const scheduleGapYears = targetReachAge !== null ? profile.retirementAge - targetReachAge : null;
   const isAheadOfSchedule = scheduleGapYears !== null && scheduleGapYears > 0;
 
-  if (accounts.length === 0) {
+  if (points.length === 0) {
     return (
       <SectionCard icon={<BadgeIcon />} title="Milestones">
         <div className="flex flex-col items-center justify-center py-8 text-center">

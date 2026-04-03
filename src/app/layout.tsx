@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { DM_Serif_Display, Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/contexts/theme-context";
+import { RetirementProvider } from "@/contexts/retirement-store-context";
 
 const dmSerif = DM_Serif_Display({
   weight: "400",
@@ -37,7 +38,9 @@ export default function RootLayout({
       <body
         className={`${dmSerif.variable} ${plusJakarta.variable} ${jetbrainsMono.variable} font-sans antialiased`}
       >
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <RetirementProvider>{children}</RetirementProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

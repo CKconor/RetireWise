@@ -5,13 +5,12 @@ import { Account, UserProfile, LumpSumWithdrawal } from '@/types';
 import { SectionCard } from '@/components/ui/section-card';
 import { Button } from '@/components/ui/button';
 import {
-  calculateProjectedTotal,
-  calculateProjectedTotalReal,
   calculateWhatIfContribution,
   calculateWhatIfRetirementAge,
   calculateWhatIfReturns,
   formatCurrency,
 } from '@/lib/calculations';
+import { useRetirementProjection } from '@/contexts/retirement-engine-context';
 
 interface WhatIfScenariosProps {
   accounts: Account[];
@@ -73,15 +72,7 @@ export function WhatIfScenarios({ accounts, profile, lumpSumWithdrawals = [] }: 
   const [retirementAgeAdjust, setRetirementAgeAdjust] = useState(0);
   const [returnAdjust, setReturnAdjust] = useState(0);
 
-  const baseProjectionReal = useMemo(
-    () => calculateProjectedTotalReal(accounts, profile, lumpSumWithdrawals),
-    [accounts, profile, lumpSumWithdrawals]
-  );
-
-  const baseProjectionNominal = useMemo(
-    () => calculateProjectedTotal(accounts, profile, lumpSumWithdrawals),
-    [accounts, profile, lumpSumWithdrawals]
-  );
+  const { projectedTotalReal: baseProjectionReal, projectedTotal: baseProjectionNominal } = useRetirementProjection();
 
   const contributionProjectionReal = useMemo(
     () => calculateWhatIfContribution(accounts, profile, extraContribution, true, lumpSumWithdrawals),

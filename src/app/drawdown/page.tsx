@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
-import { useRetirementData } from '@/hooks/use-retirement-data';
+import { useRetirementState, useRetirementMutations } from '@/contexts/retirement-store-context';
 import { Header } from '@/components/header';
 import { DrawdownConfigPanel } from '@/components/drawdown/drawdown-config-panel';
 import { DrawdownStatsCards } from '@/components/drawdown/drawdown-stats-cards';
@@ -14,14 +14,8 @@ import { simulateDrawdown, runMonteCarloSimulation } from '@/lib/drawdown';
 import { simulateAccountFinalBalance } from '@/lib/calculations';
 
 export default function DrawdownPage() {
-  const {
-    profile,
-    accounts,
-    drawdownConfig,
-    lumpSumWithdrawals,
-    isLoaded,
-    updateDrawdownConfig,
-  } = useRetirementData();
+  const { profile, accounts, drawdownConfig, lumpSumWithdrawals, isLoaded } = useRetirementState();
+  const { drawdown } = useRetirementMutations();
 
   const [mcNumSimulations, setMcNumSimulations] = useState(1000);
   const [mcVolatility, setMcVolatility] = useState(10);
@@ -88,7 +82,7 @@ export default function DrawdownPage() {
                 config={drawdownConfig}
                 accounts={accounts}
                 retirementBalances={retirementBalances}
-                onUpdate={updateDrawdownConfig}
+                onUpdate={drawdown.updateConfig}
               />
             </div>
             <div className="opacity-0 animate-fade-in stagger-2">

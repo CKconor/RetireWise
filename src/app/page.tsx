@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRetirementData } from '@/hooks/use-retirement-data';
+import { useRetirementState, useRetirementMutations } from '@/contexts/retirement-store-context';
 import { ProfileForm } from '@/components/profile-form';
 import { AccountList } from '@/components/account-list';
 import { SummaryCard } from '@/components/summary-card';
@@ -15,30 +15,13 @@ import { generatePdfReport } from '@/lib/pdf-report';
 import { NetWorthChart } from '@/components/net-worth-chart';
 import { Header } from '@/components/header';
 import { LumpSumWithdrawals } from '@/components/lump-sum-withdrawals';
-import { Account } from '@/types';
+import { RetirementEngineProvider } from '@/contexts/retirement-engine-context';
 
 export default function Home() {
-  const {
-    profile,
-    accounts,
-    netWorthHistory,
-    lumpSumWithdrawals,
-    projectionBaseline,
-    isLoaded,
-    updateProfile,
-    addAccount,
-    updateAccount,
-    deleteAccount,
-    saveSnapshot,
-    addManualSnapshot,
-    deleteSnapshot,
-    clearHistory,
-    addWithdrawal,
-    updateWithdrawal,
-    deleteWithdrawal,
-    setProjectionBaseline,
-    clearProjectionBaseline,
-  } = useRetirementData();
+  const { profile, accounts, netWorthHistory, lumpSumWithdrawals, projectionBaseline, isLoaded } =
+    useRetirementState();
+  const { profile: profileMut, accounts: accountsMut, history, withdrawals, baseline } =
+    useRetirementMutations();
 
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
@@ -68,6 +51,7 @@ export default function Home() {
   }
 
   return (
+    <RetirementEngineProvider accounts={accounts} profile={profile} withdrawals={lumpSumWithdrawals}>
     <div className="min-h-screen bg-mesh">
       <Header onDownloadPdf={handleDownloadPdf} isGeneratingPdf={isGeneratingPdf} />
 
@@ -78,16 +62,16 @@ export default function Home() {
           {/* Left Column - Your Details & Summary */}
           <div className="space-y-4 lg:col-span-4">
             <div className="opacity-0 animate-fade-in stagger-1">
-              <ProfileForm profile={profile} onUpdate={updateProfile} />
+              <ProfileForm profile={profile} onUpdate={profileMut.update} />
             </div>
             <div className="opacity-0 animate-fade-in stagger-2">
-              <SummaryCard accounts={accounts} profile={profile} lumpSumWithdrawals={lumpSumWithdrawals} projectionBaseline={projectionBaseline} />
+              <SummaryCard profile={profile} projectionBaseline={projectionBaseline} />
             </div>
             <div className="opacity-0 animate-fade-in stagger-3">
-              <StatsCards accounts={accounts} profile={profile} />
+              <StatsCards profile={profile} />
             </div>
             <div className="opacity-0 animate-fade-in stagger-4">
-              <PeaceOfMindCard accounts={accounts} profile={profile} lumpSumWithdrawals={lumpSumWithdrawals} />
+              <PeaceOfMindCard profile={profile} />
             </div>
           </div>
 
@@ -98,13 +82,13 @@ export default function Home() {
               <AccountList
                 accounts={accounts}
                 profile={profile}
-                onAdd={addAccount}
-                onUpdate={updateAccount}
-                onDelete={deleteAccount}
-                onSaveSnapshot={saveSnapshot}
+                onAdd={accountsMut.add}
+                onUpdate={accountsMut.update}
+                onDelete={accountsMut.remove}
+                onSaveSnapshot={history.saveSnapshot}
                 projectionBaseline={projectionBaseline}
-                onSetBaseline={setProjectionBaseline}
-                onClearBaseline={clearProjectionBaseline}
+                onSetBaseline={baseline.set}
+                onClearBaseline={baseline.clear}
               />
             </div>
 
@@ -114,9 +98,9 @@ export default function Home() {
                 withdrawals={lumpSumWithdrawals}
                 accounts={accounts}
                 profile={profile}
-                onAdd={addWithdrawal}
-                onUpdate={updateWithdrawal}
-                onDelete={deleteWithdrawal}
+                onAdd={withdrawals.add}
+                onUpdate={withdrawals.update}
+                onDelete={withdrawals.remove}
               />
             </div>
 
@@ -132,16 +116,16 @@ export default function Home() {
                 netWorthHistory={netWorthHistory}
                 currentAge={profile.currentAge}
                 retirementAge={profile.retirementAge}
-                onAddManualSnapshot={addManualSnapshot}
-                onDeleteSnapshot={deleteSnapshot}
-                onClearHistory={clearHistory}
+                onAddManualSnapshot={history.addManual}
+                onDeleteSnapshot={history.delete}
+                onClearHistory={history.clear}
                 projectionBaseline={projectionBaseline}
               />
             </div>
 
             {/* Milestone Tracker */}
             <div className="opacity-0 animate-fade-in stagger-5">
-              <MilestoneTracker accounts={accounts} profile={profile} lumpSumWithdrawals={lumpSumWithdrawals} />
+              <MilestoneTracker profile={profile} />
             </div>
 
             {/* What-If Scenarios & ISA Bridge */}
@@ -150,7 +134,7 @@ export default function Home() {
                 <WhatIfScenarios accounts={accounts} profile={profile} lumpSumWithdrawals={lumpSumWithdrawals} />
               </div>
               <div className="opacity-0 animate-fade-in stagger-7">
-                <IsaBridgeCard accounts={accounts} profile={profile} />
+                <IsaBridgeCard profile={profile} />
               </div>
             </div>
           </div>
@@ -168,5 +152,6 @@ export default function Home() {
       </footer>
 
     </div>
+    </RetirementEngineProvider>
   );
 }

@@ -1,15 +1,12 @@
 'use client';
 
-import { Account, UserProfile } from '@/types';
+import { UserProfile } from '@/types';
 import { SectionCard } from '@/components/ui/section-card';
-import {
-  calculateIsaBridgeProgress,
-  formatCurrency,
-} from '@/lib/calculations';
+import { formatCurrency } from '@/lib/calculations';
 import { PRIVATE_PENSION_ACCESS_AGE } from '@/lib/constants';
+import { useRetirementProjection } from '@/contexts/retirement-engine-context';
 
 interface IsaBridgeCardProps {
-  accounts: Account[];
   profile: UserProfile;
 }
 
@@ -32,8 +29,8 @@ const InfoTooltip = () => (
   </div>
 );
 
-export function IsaBridgeCard({ accounts, profile }: IsaBridgeCardProps) {
-  const bridgeProgress = calculateIsaBridgeProgress(accounts, profile);
+export function IsaBridgeCard({ profile }: IsaBridgeCardProps) {
+  const { isaBridgeProgress: bridgeProgress } = useRetirementProjection();
 
   // Don't show if no bridge period needed
   if (bridgeProgress.bridgeYears <= 0) {

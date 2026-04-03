@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import {
   AreaChart,
   Area,
@@ -17,9 +17,10 @@ import { SectionCard } from '@/components/ui/section-card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
-import { generateProjection, formatCurrency, formatCurrencyCompact, calculateCoastFireNumber, findCoastFireYear, calculateAverageReturnRate } from '@/lib/calculations';
+import { formatCurrency, formatCurrencyCompact } from '@/lib/calculations';
 import { useChartColors } from '@/hooks/use-chart-colors';
 import { MonthlyBreakdownTable } from '@/components/monthly-breakdown-table';
+import { useRetirementProjection } from '@/contexts/retirement-engine-context';
 
 interface ProjectionChartProps {
   accounts: Account[];
@@ -46,26 +47,7 @@ export function ProjectionChart({ accounts, profile, lumpSumWithdrawals = [] }: 
   const [showCoastFire, setShowCoastFire] = useState(true);
   const chartColors = useChartColors();
 
-  const data = useMemo(
-    () => generateProjection(accounts, profile, lumpSumWithdrawals),
-    [accounts, profile, lumpSumWithdrawals]
-  );
-
-  const coastFireInfo = useMemo(() => {
-    if (accounts.length === 0 || data.length === 0) return null;
-
-    const avgReturn = calculateAverageReturnRate(accounts);
-    const realReturn = Math.max(0, avgReturn - profile.expectedInflation);
-    const coastFireNumber = calculateCoastFireNumber(profile, realReturn);
-    const coastFireYearIndex = findCoastFireYear(data, coastFireNumber);
-
-    if (coastFireYearIndex === null) return null;
-
-    return {
-      age: data[coastFireYearIndex].age,
-      amount: coastFireNumber,
-    };
-  }, [accounts, profile, data]);
+  const { points: data, coastFireInfo } = useRetirementProjection();
 
   if (accounts.length === 0) {
     return (
