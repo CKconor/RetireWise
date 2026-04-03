@@ -36,6 +36,7 @@ export interface AppState {
   drawdownConfig?: DrawdownConfig;
   netWorthHistory: NetWorthSnapshot[];
   lumpSumWithdrawals: LumpSumWithdrawal[];
+  projectionBaseline?: ProjectionBaseline;
 }
 
 export interface ProjectionDataPoint {
@@ -120,6 +121,22 @@ export interface NetWorthSnapshot {
   timestamp: number;
   totalBalance: number;
   accountBalances: Record<string, { balance: number; name: string; type: AccountType }>;
+}
+
+// Projection baseline types
+export interface BaselineYearPoint {
+  calendarYear: number;
+  age: number;
+  expectedTotal: number;
+  expectedTotalReal: number;
+  expectedAccountBalances: Record<string, number>; // accountId → nominal balance
+}
+
+export interface ProjectionBaseline {
+  setDate: string; // ISO YYYY-MM-DD
+  setTimestamp: number;
+  yearlyPoints: BaselineYearPoint[];
+  accountMeta: Record<string, { name: string; type: AccountType }>;
 }
 
 // Drawdown types

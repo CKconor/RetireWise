@@ -1,6 +1,6 @@
 'use client';
 
-import { Account, UserProfile, LumpSumWithdrawal } from '@/types';
+import { Account, UserProfile, LumpSumWithdrawal, ProjectionBaseline } from '@/types';
 import {
   calculateTotalBalance,
   calculateTotalContributions,
@@ -19,9 +19,10 @@ interface SummaryCardProps {
   accounts: Account[];
   profile: UserProfile;
   lumpSumWithdrawals?: LumpSumWithdrawal[];
+  projectionBaseline?: ProjectionBaseline;
 }
 
-export function SummaryCard({ accounts, profile, lumpSumWithdrawals = [] }: SummaryCardProps) {
+export function SummaryCard({ accounts, profile, lumpSumWithdrawals = [], projectionBaseline }: SummaryCardProps) {
   if (accounts.length === 0) {
     return (
       <div className="card-hero rounded-2xl p-6 text-white dark:text-[#1a1a1a] shadow-xl shadow-[#0c1929]/30 dark:shadow-amber-900/40">
@@ -47,6 +48,11 @@ export function SummaryCard({ accounts, profile, lumpSumWithdrawals = [] }: Summ
 
   const totalBalance = calculateTotalBalance(accounts);
   const monthlyContributions = calculateTotalContributions(accounts);
+
+  // Baseline comparison: find expected total for the current calendar year
+  const currentYear = new Date().getFullYear();
+  const baselinePoint = projectionBaseline?.yearlyPoints.find((p) => p.calendarYear === currentYear);
+  const baselineDelta = baselinePoint !== undefined ? totalBalance - baselinePoint.expectedTotal : null;
   const projectedTotalReal = calculateProjectedTotalReal(accounts, profile, lumpSumWithdrawals);
   const projectedTotalNominal = calculateProjectedTotal(accounts, profile, lumpSumWithdrawals);
   const yearsToRetirement = getYearsToRetirement(profile);
@@ -200,6 +206,26 @@ export function SummaryCard({ accounts, profile, lumpSumWithdrawals = [] }: Summ
                 <span className="font-semibold text-teal-300 dark:text-teal-700">{formatCurrency(statePensionEquivalent)}</span>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Baseline comparison */}
+        {baselineDelta !== null && (
+          <div className="mt-4 rounded-xl bg-white/10 dark:bg-white/20 p-4 backdrop-blur-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <svg className="h-4 w-4 text-amber-400 dark:text-amber-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                <span className="text-sm font-medium text-white/80 dark:text-[#1a1a1a]/80">vs. Baseline</span>
+              </div>
+              <span className={`text-sm font-semibold ${baselineDelta >= 0 ? 'text-teal-300 dark:text-teal-700' : 'text-rose-300 dark:text-rose-700'}`}>
+                {baselineDelta >= 0 ? '+' : ''}{formatCurrency(Math.round(baselineDelta))}
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-white/50 dark:text-[#1a1a1a]/60">
+              Baseline expected {formatCurrency(Math.round(baselinePoint!.expectedTotal))} today
+            </p>
           </div>
         )}
 

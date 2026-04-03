@@ -25,9 +25,10 @@ interface AccountCardProps {
   profile: UserProfile;
   onEdit: (account: Account) => void;
   onDelete: (id: string) => void;
+  baselineExpectedBalance?: number;
 }
 
-export function AccountCard({ account, profile, onEdit, onDelete }: AccountCardProps) {
+export function AccountCard({ account, profile, onEdit, onDelete, baselineExpectedBalance }: AccountCardProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const months = getMonthsToRetirement(profile);
   const realReturn = calculateRealReturn(account.annualReturnRate, profile.expectedInflation);
@@ -100,6 +101,15 @@ export function AccountCard({ account, profile, onEdit, onDelete }: AccountCardP
           <div className="rounded-lg bg-slate-50/80 dark:bg-slate-800/80 p-2.5">
             <p className="text-xs text-muted-foreground">Balance</p>
             <p className="font-display text-lg">{formatCurrency(account.currentBalance)}</p>
+            {baselineExpectedBalance !== undefined && (() => {
+              const delta = account.currentBalance - baselineExpectedBalance;
+              const isAhead = delta >= 0;
+              return (
+                <p className={`text-xs mt-0.5 ${isAhead ? 'text-teal-600 dark:text-teal-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                  {isAhead ? '+' : ''}{formatCurrency(Math.round(delta))} vs baseline
+                </p>
+              );
+            })()}
           </div>
           <div className="rounded-lg bg-slate-50/80 dark:bg-slate-800/80 p-2.5">
             <p className="text-xs text-muted-foreground">Monthly</p>

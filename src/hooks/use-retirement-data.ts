@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Account, UserProfile, AppState, DrawdownConfig, NetWorthSnapshot, LumpSumWithdrawal } from '@/types';
+import { Account, UserProfile, AppState, DrawdownConfig, NetWorthSnapshot, LumpSumWithdrawal, ProjectionBaseline } from '@/types';
 import { loadState, saveState, createAccount, createWithdrawal, DEFAULT_DRAWDOWN_CONFIG } from '@/lib/storage';
-import { calculateAgeFromBirthday } from '@/lib/calculations';
+import { calculateAgeFromBirthday, buildBaselinePoints } from '@/lib/calculations';
 
 export function useRetirementData() {
   const [state, setState] = useState<AppState>(() => ({
@@ -165,12 +165,34 @@ export function useRetirementData() {
     }));
   }, []);
 
+  const setProjectionBaseline = useCallback(() => {
+    setState((prev) => {
+      const { yearlyPoints, accountMeta } = buildBaselinePoints(
+        prev.accounts,
+        prev.profile,
+        prev.lumpSumWithdrawals ?? []
+      );
+      const baseline: ProjectionBaseline = {
+        setDate: new Date().toISOString().split('T')[0],
+        setTimestamp: Date.now(),
+        yearlyPoints,
+        accountMeta,
+      };
+      return { ...prev, projectionBaseline: baseline };
+    });
+  }, []);
+
+  const clearProjectionBaseline = useCallback(() => {
+    setState((prev) => ({ ...prev, projectionBaseline: undefined }));
+  }, []);
+
   return {
     profile: state.profile,
     accounts: state.accounts,
     drawdownConfig: state.drawdownConfig ?? DEFAULT_DRAWDOWN_CONFIG,
     netWorthHistory: state.netWorthHistory,
     lumpSumWithdrawals: state.lumpSumWithdrawals ?? [],
+    projectionBaseline: state.projectionBaseline,
     isLoaded,
     updateProfile,
     addAccount,
@@ -184,5 +206,7 @@ export function useRetirementData() {
     addWithdrawal,
     updateWithdrawal,
     deleteWithdrawal,
+    setProjectionBaseline,
+    clearProjectionBaseline,
   };
 }

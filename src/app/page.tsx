@@ -23,6 +23,7 @@ export default function Home() {
     accounts,
     netWorthHistory,
     lumpSumWithdrawals,
+    projectionBaseline,
     isLoaded,
     updateProfile,
     addAccount,
@@ -35,6 +36,8 @@ export default function Home() {
     addWithdrawal,
     updateWithdrawal,
     deleteWithdrawal,
+    setProjectionBaseline,
+    clearProjectionBaseline,
   } = useRetirementData();
 
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
@@ -78,7 +81,7 @@ export default function Home() {
               <ProfileForm profile={profile} onUpdate={updateProfile} />
             </div>
             <div className="opacity-0 animate-fade-in stagger-2">
-              <SummaryCard accounts={accounts} profile={profile} lumpSumWithdrawals={lumpSumWithdrawals} />
+              <SummaryCard accounts={accounts} profile={profile} lumpSumWithdrawals={lumpSumWithdrawals} projectionBaseline={projectionBaseline} />
             </div>
             <div className="opacity-0 animate-fade-in stagger-3">
               <StatsCards accounts={accounts} profile={profile} />
@@ -99,6 +102,9 @@ export default function Home() {
                 onUpdate={updateAccount}
                 onDelete={deleteAccount}
                 onSaveSnapshot={saveSnapshot}
+                projectionBaseline={projectionBaseline}
+                onSetBaseline={setProjectionBaseline}
+                onClearBaseline={clearProjectionBaseline}
               />
             </div>
 
@@ -129,6 +135,7 @@ export default function Home() {
                 onAddManualSnapshot={addManualSnapshot}
                 onDeleteSnapshot={deleteSnapshot}
                 onClearHistory={clearHistory}
+                projectionBaseline={projectionBaseline}
               />
             </div>
 

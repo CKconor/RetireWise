@@ -60,6 +60,7 @@ export function loadState(): AppState {
         drawdownConfig: { ...DEFAULT_DRAWDOWN_CONFIG, ...parsed.drawdownConfig },
         netWorthHistory: parsed.netWorthHistory || [],
         lumpSumWithdrawals: parsed.lumpSumWithdrawals || [],
+        projectionBaseline: parsed.projectionBaseline,
       };
     }
   } catch (error) {

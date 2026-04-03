@@ -1,4 +1,4 @@
-import { Account, UserProfile, ProjectionDataPoint, MonthlyProjectionDataPoint, AccountProjection, Milestone, StressTestResult, NetWorthSnapshot, LumpSumWithdrawal } from '@/types';
+import { Account, UserProfile, ProjectionDataPoint, MonthlyProjectionDataPoint, AccountProjection, Milestone, StressTestResult, NetWorthSnapshot, LumpSumWithdrawal, BaselineYearPoint, ProjectionBaseline } from '@/types';
 import { PRIVATE_PENSION_ACCESS_AGE } from '@/lib/constants';
 
 /**
@@ -235,6 +235,36 @@ export function generateProjection(
   }
 
   return dataPoints;
+}
+
+/**
+ * Build a frozen baseline from the current projection for later comparison.
+ * Reuses generateProjection() so no logic is duplicated.
+ */
+export function buildBaselinePoints(
+  accounts: Account[],
+  profile: UserProfile,
+  lumpSumWithdrawals: LumpSumWithdrawal[] = []
+): { yearlyPoints: BaselineYearPoint[]; accountMeta: ProjectionBaseline['accountMeta'] } {
+  const points = generateProjection(accounts, profile, lumpSumWithdrawals);
+  const yearlyPoints: BaselineYearPoint[] = points.map((pt) => {
+    const expectedAccountBalances: Record<string, number> = {};
+    for (const acc of accounts) {
+      expectedAccountBalances[acc.id] = typeof pt[acc.id] === 'number' ? (pt[acc.id] as number) : 0;
+    }
+    return {
+      calendarYear: pt.year,
+      age: pt.age,
+      expectedTotal: pt.total,
+      expectedTotalReal: pt.totalReal,
+      expectedAccountBalances,
+    };
+  });
+  const accountMeta: ProjectionBaseline['accountMeta'] = {};
+  for (const acc of accounts) {
+    accountMeta[acc.id] = { name: acc.name, type: acc.type };
+  }
+  return { yearlyPoints, accountMeta };
 }
 
 /**

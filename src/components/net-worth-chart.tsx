@@ -12,7 +12,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { TrendingUp, Plus, Trash2, Pencil, ArrowRight } from 'lucide-react';
-import { Account, AccountType, NetWorthSnapshot, ACCOUNT_TYPE_LABELS } from '@/types';
+import { Account, AccountType, NetWorthSnapshot, ProjectionBaseline, ACCOUNT_TYPE_LABELS } from '@/types';
 import { SectionCard } from '@/components/ui/section-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -60,6 +60,7 @@ interface NetWorthChartProps {
   onAddManualSnapshot: (date: string, accountBalances: NetWorthSnapshot['accountBalances']) => void;
   onDeleteSnapshot: (date: string) => void;
   onClearHistory: () => void;
+  projectionBaseline?: ProjectionBaseline;
 }
 
 const ChartIcon = () => (
@@ -81,6 +82,7 @@ export function NetWorthChart({
   onAddManualSnapshot,
   onDeleteSnapshot,
   onClearHistory,
+  projectionBaseline,
 }: NetWorthChartProps) {
   const chartColors = useChartColors();
   const [showForecast, setShowForecast] = useState(false);
@@ -104,10 +106,13 @@ export function NetWorthChart({
   // Build chart data: one row per snapshot, one key per account
   const chartData = useMemo(() => {
     const rows = netWorthHistory.map((snap) => {
+      const snapYear = new Date(snap.date + 'T00:00:00').getFullYear();
+      const baselinePoint = projectionBaseline?.yearlyPoints.find((p) => p.calendarYear === snapYear);
       const row: Record<string, number | string | undefined> = {
         date: snap.date,
         dateLabel: formatDateLabel(snap.date),
         total: snap.totalBalance,
+        baselineExpected: baselinePoint?.expectedTotal,
       };
       for (const id of allAccountKeys.keys()) {
         row[id] = snap.accountBalances[id]?.balance ?? 0;
@@ -340,6 +345,17 @@ export function NetWorthChart({
                                 {formatCurrency(total ?? 0)}
                               </span>
                             </div>
+                            {dataPoint?.baselineExpected != null && (
+                              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', marginBottom: '8px' }}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <span style={{ width: 10, borderTop: '2px dashed #f59e0b', display: 'inline-block' }} />
+                                  <span style={{ color: '#f59e0b', fontSize: '12px' }}>Baseline</span>
+                                </span>
+                                <span style={{ color: '#f59e0b', fontSize: '12px', fontWeight: 600 }}>
+                                  {formatCurrency(dataPoint.baselineExpected as number)}
+                                </span>
+                              </div>
+                            )}
                             <div style={{ borderTop: `1px solid ${chartColors.tooltipBorder}`, paddingTop: '8px' }}>
                               {Array.from(allAccountKeys.entries()).map(([id, info]) => {
                                 const val = (dataPoint?.[id] as number) ?? 0;
@@ -391,6 +407,19 @@ export function NetWorthChart({
                     connectNulls={false}
                   />
                 )}
+                {projectionBaseline && (
+                  <Line
+                    type="monotone"
+                    dataKey="baselineExpected"
+                    name="Baseline"
+                    stroke="#f59e0b"
+                    strokeWidth={2}
+                    strokeDasharray="4 4"
+                    dot={false}
+                    activeDot={{ r: 4, fill: '#f59e0b', stroke: chartColors.activeDotStroke, strokeWidth: 2 }}
+                    connectNulls
+                  />
+                )}
               </AreaChart>
             </ResponsiveContainer>
             {/* Legend */}
@@ -406,6 +435,12 @@ export function NetWorthChart({
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <span className="h-0.5 w-4 rounded-full" style={{ backgroundColor: '#94a3b8', borderTop: '2px dashed #94a3b8' }} />
                   Forecast
+                </div>
+              )}
+              {projectionBaseline && (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span className="h-0.5 w-4" style={{ borderTop: '2px dashed #f59e0b', display: 'inline-block' }} />
+                  <span style={{ color: '#f59e0b' }}>Baseline</span>
                 </div>
               )}
             </div>

@@ -1,13 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { Account, UserProfile } from '@/types';
+import { Account, UserProfile, ProjectionBaseline } from '@/types';
 import { AccountCard } from '@/components/account-card';
 import { AccountForm } from '@/components/account-form';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Camera } from 'lucide-react';
+import { Camera, Target, X } from 'lucide-react';
 
 interface AccountListProps {
   accounts: Account[];
@@ -16,6 +16,9 @@ interface AccountListProps {
   onUpdate: (id: string, updates: Partial<Account>) => void;
   onDelete: (id: string) => void;
   onSaveSnapshot?: () => void;
+  projectionBaseline?: ProjectionBaseline;
+  onSetBaseline?: () => void;
+  onClearBaseline?: () => void;
 }
 
 const PlusIcon = ({ className = "h-6 w-6" }: { className?: string }) => (
@@ -24,7 +27,11 @@ const PlusIcon = ({ className = "h-6 w-6" }: { className?: string }) => (
   </svg>
 );
 
-export function AccountList({ accounts, profile, onAdd, onUpdate, onDelete, onSaveSnapshot }: AccountListProps) {
+function formatDate(iso: string) {
+  return new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+export function AccountList({ accounts, profile, onAdd, onUpdate, onDelete, onSaveSnapshot, projectionBaseline, onSetBaseline, onClearBaseline }: AccountListProps) {
   const [formOpen, setFormOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [snapshotPromptOpen, setSnapshotPromptOpen] = useState(false);
@@ -59,8 +66,39 @@ export function AccountList({ accounts, profile, onAdd, onUpdate, onDelete, onSa
     setFormOpen(true);
   };
 
+  // Find baseline point for current calendar year to pass per-account expected balances
+  const currentYear = new Date().getFullYear();
+  const baselineThisYear = projectionBaseline?.yearlyPoints.find((p) => p.calendarYear === currentYear);
+
   return (
     <>
+      {/* Baseline banner */}
+      {accounts.length > 0 && (
+        <div className="mb-3 flex items-center justify-between gap-3">
+          {projectionBaseline ? (
+            <div className="flex items-center gap-2 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-3 py-1.5 text-xs text-amber-700 dark:text-amber-400">
+              <Target className="h-3.5 w-3.5 flex-shrink-0" />
+              <span>Baseline set {formatDate(projectionBaseline.setDate)}</span>
+              <button
+                onClick={onClearBaseline}
+                className="ml-1 text-amber-500 hover:text-amber-700 dark:hover:text-amber-200 transition-colors cursor-pointer"
+                title="Clear baseline"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">Set a baseline to track actual vs. expected growth.</p>
+          )}
+          {onSetBaseline && (
+            <Button variant="outline" size="sm" onClick={onSetBaseline} className="gap-1.5 flex-shrink-0">
+              <Target className="h-3.5 w-3.5" />
+              {projectionBaseline ? 'Reset Baseline' : 'Set Baseline'}
+            </Button>
+          )}
+        </div>
+      )}
+
       {accounts.length === 0 ? (
         <div
           onClick={handleAddClick}
@@ -84,6 +122,7 @@ export function AccountList({ accounts, profile, onAdd, onUpdate, onDelete, onSa
               profile={profile}
               onEdit={handleEdit}
               onDelete={onDelete}
+              baselineExpectedBalance={baselineThisYear?.expectedAccountBalances[account.id]}
             />
           ))}
           <Card
