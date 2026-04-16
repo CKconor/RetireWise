@@ -44,9 +44,11 @@ export interface ProjectionDataPoint {
   age: number;
   label: string; // e.g., "Y0", "Y1", etc.
   total: number;
-  totalReal: number; // inflation-adjusted
-  overperformanceReal: number; // optimistic scenario (+2% returns)
-  underperformanceReal: number; // pessimistic scenario (-2% returns)
+  totalReal: number; // inflation-adjusted (P50 / base)
+  overperformanceReal: number; // P75: +2% real return
+  underperformanceReal: number; // P25: -2% real return
+  p90Real: number; // P90: +4% real return
+  p10Real: number; // P10: -4% real return
   [accountId: string]: number | string;
 }
 

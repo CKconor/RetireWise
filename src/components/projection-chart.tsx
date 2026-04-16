@@ -117,8 +117,8 @@ export function ProjectionChart({ accounts, profile, lumpSumWithdrawals = [] }: 
                         onCheckedChange={(checked) => setShowOptimistic(checked === true)}
                       />
                       <span className="flex items-center gap-1.5">
-                        <span className="h-2 w-2 rounded-full bg-[#22c55e]" />
-                        Optimistic
+                        <span className="h-2 w-2 rounded-full bg-[#93c5fd]" />
+                        P75–P90 (high)
                       </span>
                     </label>
                     <label className="flex items-center gap-2 text-sm cursor-pointer">
@@ -127,8 +127,8 @@ export function ProjectionChart({ accounts, profile, lumpSumWithdrawals = [] }: 
                         onCheckedChange={(checked) => setShowConservative(checked === true)}
                       />
                       <span className="flex items-center gap-1.5">
-                        <span className="h-2 w-2 rounded-full bg-[#f59e0b]" />
-                        Conservative
+                        <span className="h-2 w-2 rounded-full bg-[#93c5fd]" />
+                        P10–P25 (low)
                       </span>
                     </label>
                     <label className="flex items-center gap-2 text-sm cursor-pointer">
@@ -157,8 +157,10 @@ export function ProjectionChart({ accounts, profile, lumpSumWithdrawals = [] }: 
           <ComposedChart
             data={data.map((point) => ({
               ...point,
-              bandBase: point.underperformanceReal,
-              bandRange: Math.max(0, point.overperformanceReal - point.underperformanceReal),
+              outerBase: point.p10Real,
+              outerRange: Math.max(0, point.p90Real - point.p10Real),
+              innerBase: point.underperformanceReal,
+              innerRange: Math.max(0, point.overperformanceReal - point.underperformanceReal),
             }))}
             margin={{ top: 10, right: 10, left: 0, bottom: 35 }}
           >
@@ -182,9 +184,11 @@ export function ProjectionChart({ accounts, profile, lumpSumWithdrawals = [] }: 
               content={({ active, payload, label }) => {
                 if (!active || !payload || payload.length === 0) return null;
                 const dataPoint = payload[0]?.payload;
-                const expected = dataPoint?.totalReal as number;
-                const optimistic = dataPoint?.overperformanceReal as number;
-                const conservative = dataPoint?.underperformanceReal as number;
+                const p90 = dataPoint?.p90Real as number;
+                const p75 = dataPoint?.overperformanceReal as number;
+                const p50 = dataPoint?.totalReal as number;
+                const p25 = dataPoint?.underperformanceReal as number;
+                const p10 = dataPoint?.p10Real as number;
                 const showTargets = showCoastFire && coastFireInfo;
 
                 const accountBreakdown = accounts.map((account) => ({
@@ -207,9 +211,11 @@ export function ProjectionChart({ accounts, profile, lumpSumWithdrawals = [] }: 
                       Age {label}
                     </p>
                     {[
-                      { label: 'Optimistic (+2%)', value: optimistic, color: '#22c55e', show: showOptimistic },
-                      { label: 'Expected', value: expected, color: '#3b82f6', show: true },
-                      { label: 'Conservative (-2%)', value: conservative, color: '#f59e0b', show: showConservative },
+                      { label: 'P90 (optimistic)', value: p90, color: '#93c5fd', show: showOptimistic },
+                      { label: 'P75', value: p75, color: '#60a5fa', show: showOptimistic },
+                      { label: 'P50 (base)', value: p50, color: '#3b82f6', show: true },
+                      { label: 'P25', value: p25, color: '#60a5fa', show: showConservative },
+                      { label: 'P10 (conservative)', value: p10, color: '#93c5fd', show: showConservative },
                     ].filter((r) => r.show).map(({ label: l, value, color }) => (
                       <div key={l} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                         <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: color, flexShrink: 0 }} />
@@ -285,22 +291,29 @@ export function ProjectionChart({ accounts, profile, lumpSumWithdrawals = [] }: 
                 }}
               />
             )}
-            {/* Scenario band: conservative → optimistic */}
+            {/* Outer band P10→P90 */}
             {showOptimistic && showConservative && (
               <>
-                <Area stackId="band" dataKey="bandBase" fill="transparent" stroke="none" legendType="none" />
-                <Area stackId="band" dataKey="bandRange" fill="#3b82f6" fillOpacity={0.15} stroke="none" name="Scenario range" legendType="rect" />
+                <Area stackId="outer" dataKey="outerBase" fill="transparent" stroke="none" legendType="none" />
+                <Area stackId="outer" dataKey="outerRange" fill="#3b82f6" fillOpacity={0.12} stroke="none" name="P10–P90 range" legendType="rect" />
               </>
             )}
-            {/* Individual scenario lines when only one is shown */}
+            {/* Inner band P25→P75 */}
+            {showOptimistic && showConservative && (
+              <>
+                <Area stackId="inner" dataKey="innerBase" fill="transparent" stroke="none" legendType="none" />
+                <Area stackId="inner" dataKey="innerRange" fill="#3b82f6" fillOpacity={0.28} stroke="none" name="P25–P75 range" legendType="rect" />
+              </>
+            )}
+            {/* Individual scenario lines when only one band side is shown */}
             {showOptimistic && !showConservative && (
-              <Line dataKey="overperformanceReal" stroke="#22c55e" strokeWidth={1.5} strokeDasharray="4 2" dot={false} name="Optimistic (+2%)" />
+              <Line dataKey="p90Real" stroke="#93c5fd" strokeWidth={1.5} strokeDasharray="4 2" dot={false} name="P90 (optimistic)" />
             )}
             {!showOptimistic && showConservative && (
-              <Line dataKey="underperformanceReal" stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="4 2" dot={false} name="Conservative (-2%)" />
+              <Line dataKey="p10Real" stroke="#93c5fd" strokeWidth={1.5} strokeDasharray="4 2" dot={false} name="P10 (conservative)" />
             )}
-            {/* Main expected line */}
-            <Line dataKey="totalReal" stroke="#3b82f6" strokeWidth={2.5} dot={false} name="Expected" />
+            {/* P50 base line */}
+            <Line dataKey="totalReal" stroke="#3b82f6" strokeWidth={2.5} dot={false} name="P50 (base)" />
             <Legend
               verticalAlign="top"
               align="right"

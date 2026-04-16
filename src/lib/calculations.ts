@@ -164,17 +164,21 @@ export function generateProjection(
   const currentYear = new Date().getFullYear();
   const performanceVariance = 2;
 
-  // Track running balances for 4 scenarios per account
+  // Track running balances for 6 scenarios per account
   const nominalBal: Record<string, number> = {};
   const realBal: Record<string, number> = {};
   const overBal: Record<string, number> = {};
   const underBal: Record<string, number> = {};
+  const highBal: Record<string, number> = {};
+  const lowBal: Record<string, number> = {};
 
   for (const account of accounts) {
     nominalBal[account.id] = account.currentBalance;
     realBal[account.id] = account.currentBalance;
     overBal[account.id] = account.currentBalance;
     underBal[account.id] = account.currentBalance;
+    highBal[account.id] = account.currentBalance;
+    lowBal[account.id] = account.currentBalance;
   }
 
   const dataPoints: ProjectionDataPoint[] = [];
@@ -194,6 +198,8 @@ export function generateProjection(
         realBal[account.id] = calculateFutureValue(realBal[account.id], yearlyContrib, realReturn, 12, 0);
         overBal[account.id] = calculateFutureValue(overBal[account.id], yearlyContrib, realReturn + performanceVariance, 12, 0);
         underBal[account.id] = calculateFutureValue(underBal[account.id], yearlyContrib, Math.max(0, realReturn - performanceVariance), 12, 0);
+        highBal[account.id] = calculateFutureValue(highBal[account.id], yearlyContrib, realReturn + performanceVariance * 2, 12, 0);
+        lowBal[account.id] = calculateFutureValue(lowBal[account.id], yearlyContrib, Math.max(0, realReturn - performanceVariance * 2), 12, 0);
       }
 
       // Apply withdrawals for this age
@@ -203,11 +209,13 @@ export function generateProjection(
           realBal[w.accountId] = Math.max(0, realBal[w.accountId] - w.amount);
           overBal[w.accountId] = Math.max(0, overBal[w.accountId] - w.amount);
           underBal[w.accountId] = Math.max(0, underBal[w.accountId] - w.amount);
+          highBal[w.accountId] = Math.max(0, highBal[w.accountId] - w.amount);
+          lowBal[w.accountId] = Math.max(0, lowBal[w.accountId] - w.amount);
         }
       }
     }
 
-    let total = 0, totalReal = 0, totalOver = 0, totalUnder = 0;
+    let total = 0, totalReal = 0, totalOver = 0, totalUnder = 0, totalHigh = 0, totalLow = 0;
     const dataPoint: ProjectionDataPoint = {
       year: currentYear + year,
       age,
@@ -216,6 +224,8 @@ export function generateProjection(
       totalReal: 0,
       overperformanceReal: 0,
       underperformanceReal: 0,
+      p90Real: 0,
+      p10Real: 0,
     };
 
     for (const account of accounts) {
@@ -225,12 +235,16 @@ export function generateProjection(
       totalReal += realBal[account.id];
       totalOver += overBal[account.id];
       totalUnder += underBal[account.id];
+      totalHigh += highBal[account.id];
+      totalLow += lowBal[account.id];
     }
 
     dataPoint.total = Math.round(total);
     dataPoint.totalReal = Math.round(totalReal);
     dataPoint.overperformanceReal = Math.round(totalOver);
     dataPoint.underperformanceReal = Math.round(totalUnder);
+    dataPoint.p90Real = Math.round(totalHigh);
+    dataPoint.p10Real = Math.round(totalLow);
     dataPoints.push(dataPoint);
   }
 
