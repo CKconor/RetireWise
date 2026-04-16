@@ -2,14 +2,16 @@
 
 import { useState } from 'react';
 import {
-  AreaChart,
+  ComposedChart,
   Area,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
   ReferenceLine,
+  Legend,
 } from 'recharts';
 import { BarChart3, Settings2, Table2 } from 'lucide-react';
 import { Account, UserProfile, LumpSumWithdrawal } from '@/types';
@@ -152,21 +154,14 @@ export function ProjectionChart({ accounts, profile, lumpSumWithdrawals = [] }: 
       ) : (
       <div className="h-[350px]">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 35 }}>
-            <defs>
-              <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
-                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.05} />
-              </linearGradient>
-              <linearGradient id="colorOver" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#22c55e" stopOpacity={0.2} />
-                <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
-              </linearGradient>
-              <linearGradient id="colorUnder" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.25} />
-                <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
-              </linearGradient>
-            </defs>
+          <ComposedChart
+            data={data.map((point) => ({
+              ...point,
+              bandBase: point.underperformanceReal,
+              bandRange: Math.max(0, point.overperformanceReal - point.underperformanceReal),
+            }))}
+            margin={{ top: 10, right: 10, left: 0, bottom: 35 }}
+          >
             <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} vertical={false} />
             <XAxis
               dataKey="age"
@@ -186,17 +181,12 @@ export function ProjectionChart({ accounts, profile, lumpSumWithdrawals = [] }: 
             <Tooltip
               content={({ active, payload, label }) => {
                 if (!active || !payload || payload.length === 0) return null;
-
-                const lineConfig: Record<string, { label: string; color: string }> = {
-                  totalReal: { label: 'Expected', color: '#3b82f6' },
-                  overperformanceReal: { label: 'Optimistic (+2%)', color: '#22c55e' },
-                  underperformanceReal: { label: 'Conservative (-2%)', color: '#f59e0b' },
-                };
-
-                const showTargets = showCoastFire && coastFireInfo;
                 const dataPoint = payload[0]?.payload;
+                const expected = dataPoint?.totalReal as number;
+                const optimistic = dataPoint?.overperformanceReal as number;
+                const conservative = dataPoint?.underperformanceReal as number;
+                const showTargets = showCoastFire && coastFireInfo;
 
-                // Get account values from the data point
                 const accountBreakdown = accounts.map((account) => ({
                   name: account.name,
                   value: dataPoint?.[`${account.id}_real`] as number | undefined,
@@ -210,33 +200,24 @@ export function ProjectionChart({ accounts, profile, lumpSumWithdrawals = [] }: 
                       borderRadius: '12px',
                       boxShadow: '0 10px 40px -10px rgba(12, 25, 41, 0.15)',
                       padding: '12px 16px',
+                      minWidth: '190px',
                     }}
                   >
                     <p style={{ color: chartColors.tooltipMuted, fontWeight: 600, marginBottom: '8px', fontSize: '13px' }}>
                       Age {label}
                     </p>
-                    {[...payload]
-                      .sort((a, b) => (b.value as number) - (a.value as number))
-                      .map((entry) => {
-                        const config = lineConfig[entry.dataKey as string];
-                        if (!config) return null;
-                        return (
-                          <div key={entry.dataKey} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                            <span
-                              style={{
-                                width: '10px',
-                                height: '10px',
-                                borderRadius: '50%',
-                                backgroundColor: config.color,
-                                flexShrink: 0,
-                              }}
-                            />
-                            <span style={{ color: chartColors.tooltipText, fontSize: '13px' }}>
-                              {config.label}: {formatCurrency(entry.value as number)}
-                            </span>
-                          </div>
-                        );
-                      })}
+                    {[
+                      { label: 'Optimistic (+2%)', value: optimistic, color: '#22c55e', show: showOptimistic },
+                      { label: 'Expected', value: expected, color: '#3b82f6', show: true },
+                      { label: 'Conservative (-2%)', value: conservative, color: '#f59e0b', show: showConservative },
+                    ].filter((r) => r.show).map(({ label: l, value, color }) => (
+                      <div key={l} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                        <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: color, flexShrink: 0 }} />
+                        <span style={{ color: chartColors.tooltipText, fontSize: '13px' }}>
+                          {l}: {formatCurrency(value)}
+                        </span>
+                      </div>
+                    ))}
                     {accountBreakdown.length > 0 && (
                       <div style={{ borderTop: `1px solid ${chartColors.tooltipBorder}`, marginTop: '8px', paddingTop: '8px' }}>
                         <p style={{ color: chartColors.tooltipMuted, fontWeight: 600, marginBottom: '6px', fontSize: '12px' }}>
@@ -246,9 +227,7 @@ export function ProjectionChart({ accounts, profile, lumpSumWithdrawals = [] }: 
                           .sort((a, b) => (b.value ?? 0) - (a.value ?? 0))
                           .map((item) => (
                             <div key={item.name} style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', marginBottom: '2px' }}>
-                              <span style={{ color: chartColors.tooltipMuted, fontSize: '12px' }}>
-                                {item.name}
-                              </span>
+                              <span style={{ color: chartColors.tooltipMuted, fontSize: '12px' }}>{item.name}</span>
                               <span style={{ color: chartColors.tooltipText, fontSize: '12px', fontWeight: 500 }}>
                                 {formatCurrency(item.value ?? 0)}
                               </span>
@@ -259,15 +238,7 @@ export function ProjectionChart({ accounts, profile, lumpSumWithdrawals = [] }: 
                     {showTargets && (
                       <div style={{ borderTop: `1px solid ${chartColors.tooltipBorder}`, marginTop: '8px', paddingTop: '8px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span
-                            style={{
-                              width: '10px',
-                              height: '10px',
-                              borderRadius: '50%',
-                              backgroundColor: '#2c7a7b',
-                              flexShrink: 0,
-                            }}
-                          />
+                          <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: '#2c7a7b', flexShrink: 0 }} />
                           <span style={{ color: chartColors.tooltipMuted, fontSize: '12px' }}>
                             Coast FIRE: {formatCurrency(coastFireInfo.amount)}
                           </span>
@@ -289,23 +260,8 @@ export function ProjectionChart({ accounts, profile, lumpSumWithdrawals = [] }: 
                 const y = (viewBox?.y ?? 0) - 8;
                 return (
                   <g>
-                    <rect
-                      x={x - 4}
-                      y={y - 10}
-                      width={42}
-                      height={16}
-                      rx={4}
-                      fill={chartColors.labelBg}
-                    />
-                    <text
-                      x={x}
-                      y={y}
-                      fill={chartColors.axis}
-                      fontSize={12}
-                      fontWeight={600}
-                    >
-                      Target
-                    </text>
+                    <rect x={x - 4} y={y - 10} width={42} height={16} rx={4} fill={chartColors.labelBg} />
+                    <text x={x} y={y} fill={chartColors.axis} fontSize={12} fontWeight={600}>Target</text>
                   </g>
                 );
               }}
@@ -322,70 +278,36 @@ export function ProjectionChart({ accounts, profile, lumpSumWithdrawals = [] }: 
                   const y = 24;
                   return (
                     <g>
-                      <rect
-                        x={x - 4}
-                        y={y - 10}
-                        width={70}
-                        height={16}
-                        rx={4}
-                        fill={chartColors.labelBg}
-                      />
-                      <text
-                        x={x}
-                        y={y}
-                        fill="#2c7a7b"
-                        fontSize={12}
-                        fontWeight={600}
-                      >
-                        Coast FIRE
-                      </text>
+                      <rect x={x - 4} y={y - 10} width={70} height={16} rx={4} fill={chartColors.labelBg} />
+                      <text x={x} y={y} fill="#2c7a7b" fontSize={12} fontWeight={600}>Coast FIRE</text>
                     </g>
                   );
                 }}
               />
             )}
-            {showOptimistic && (
-              <Area
-                type="monotone"
-                dataKey="overperformanceReal"
-                name="overperformanceReal"
-                stroke="#22c55e"
-                strokeWidth={2}
-                strokeOpacity={0.7}
-                strokeDasharray="4 2"
-                fillOpacity={1}
-                fill="url(#colorOver)"
-                dot={false}
-                activeDot={{ r: 4, fill: '#22c55e', stroke: chartColors.activeDotStroke, strokeWidth: 2 }}
-              />
+            {/* Scenario band: conservative → optimistic */}
+            {showOptimistic && showConservative && (
+              <>
+                <Area stackId="band" dataKey="bandBase" fill="transparent" stroke="none" legendType="none" />
+                <Area stackId="band" dataKey="bandRange" fill="#3b82f6" fillOpacity={0.15} stroke="none" name="Scenario range" legendType="rect" />
+              </>
             )}
-            {showConservative && (
-              <Area
-                type="monotone"
-                dataKey="underperformanceReal"
-                name="underperformanceReal"
-                stroke="#f59e0b"
-                strokeWidth={2}
-                strokeOpacity={0.7}
-                strokeDasharray="4 2"
-                fillOpacity={1}
-                fill="url(#colorUnder)"
-                dot={false}
-                activeDot={{ r: 4, fill: '#f59e0b', stroke: chartColors.activeDotStroke, strokeWidth: 2 }}
-              />
+            {/* Individual scenario lines when only one is shown */}
+            {showOptimistic && !showConservative && (
+              <Line dataKey="overperformanceReal" stroke="#22c55e" strokeWidth={1.5} strokeDasharray="4 2" dot={false} name="Optimistic (+2%)" />
             )}
-            <Area
-              type="monotone"
-              dataKey="totalReal"
-              name="totalReal"
-              stroke="#3b82f6"
-              strokeWidth={3}
-              fillOpacity={1}
-              fill="url(#colorTotal)"
-              dot={false}
-              activeDot={{ r: 6, fill: '#3b82f6', stroke: chartColors.activeDotStroke, strokeWidth: 2 }}
+            {!showOptimistic && showConservative && (
+              <Line dataKey="underperformanceReal" stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="4 2" dot={false} name="Conservative (-2%)" />
+            )}
+            {/* Main expected line */}
+            <Line dataKey="totalReal" stroke="#3b82f6" strokeWidth={2.5} dot={false} name="Expected" />
+            <Legend
+              verticalAlign="top"
+              align="right"
+              wrapperStyle={{ fontSize: '12px', paddingBottom: '8px' }}
+              formatter={(value) => <span style={{ color: chartColors.axis }}>{value}</span>}
             />
-          </AreaChart>
+          </ComposedChart>
         </ResponsiveContainer>
       </div>
       )}
