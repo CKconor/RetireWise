@@ -3,7 +3,7 @@
 import { UserProfile } from '@/types';
 import { StatCard } from '@/components/ui/stat-card';
 import { formatCurrency } from '@/lib/calculations';
-import { useRetirementProjection } from '@/contexts/retirement-engine-context';
+import { useRetirementSummary } from '@/contexts/retirement-engine-context';
 
 interface StatsCardsProps {
   profile: UserProfile;
@@ -28,7 +28,7 @@ const TargetIcon = () => (
 );
 
 export function StatsCards({ profile }: StatsCardsProps) {
-  const { totalBalance, totalContributions: monthlyContributions } = useRetirementProjection();
+  const { totalBalance, totalContributions: monthlyContributions } = useRetirementSummary();
 
   return (
     <div className="grid grid-cols-3 gap-3">

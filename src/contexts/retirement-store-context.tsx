@@ -89,7 +89,9 @@ export function RetirementProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   useEffect(() => {
-    if (isLoaded) saveState(appState);
+    if (!isLoaded) return;
+    const id = setTimeout(() => saveState(appState), 500);
+    return () => clearTimeout(id);
   }, [appState, isLoaded]);
 
   // ── Profile mutations ──────────────────────────────────────────────────────
@@ -220,7 +222,7 @@ export function RetirementProvider({ children }: { children: React.ReactNode }) 
 
   const setProjectionBaseline = useCallback(() => {
     setAppState((prev) => {
-      const { yearlyPoints, accountMeta } = buildBaselinePoints(
+      const { monthlyPoints, accountMeta } = buildBaselinePoints(
         prev.accounts,
         prev.profile,
         prev.lumpSumWithdrawals ?? []
@@ -228,7 +230,7 @@ export function RetirementProvider({ children }: { children: React.ReactNode }) 
       const baseline: ProjectionBaseline = {
         setDate: new Date().toISOString().split('T')[0],
         setTimestamp: Date.now(),
-        yearlyPoints,
+        monthlyPoints,
         accountMeta,
       };
       return { ...prev, projectionBaseline: baseline };

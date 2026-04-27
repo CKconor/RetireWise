@@ -3,7 +3,7 @@
 import { UserProfile } from '@/types';
 import { SectionCard } from '@/components/ui/section-card';
 import { calculatePercentageOfTarget, formatCurrency, formatCurrencyCompact } from '@/lib/calculations';
-import { useRetirementProjection } from '@/contexts/retirement-engine-context';
+import { useRetirementSummary, useRetirementAnalysis } from '@/contexts/retirement-engine-context';
 
 interface MilestoneTrackerProps {
   profile: UserProfile;
@@ -16,13 +16,8 @@ const BadgeIcon = () => (
 );
 
 export function MilestoneTracker({ profile }: MilestoneTrackerProps) {
-  const {
-    points,
-    totalBalance: currentBalance,
-    projectedTotalReal: projectedTotal,
-    requiredBalanceNow,
-    targetReachAge,
-  } = useRetirementProjection();
+  const { totalBalance: currentBalance, projectedTotalReal: projectedTotal, requiredBalanceNow, targetReachAge } = useRetirementSummary();
+  const { points } = useRetirementAnalysis();
 
   const currentProgress = calculatePercentageOfTarget(currentBalance, profile.targetAmount, false);
   const isOnTarget = projectedTotal >= profile.targetAmount;

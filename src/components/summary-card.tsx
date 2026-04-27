@@ -2,7 +2,7 @@
 
 import { UserProfile, ProjectionBaseline } from '@/types';
 import { formatCurrency } from '@/lib/calculations';
-import { useRetirementProjection } from '@/contexts/retirement-engine-context';
+import { useRetirementSummary, useRetirementAnalysis } from '@/contexts/retirement-engine-context';
 
 interface SummaryCardProps {
   profile: UserProfile;
@@ -10,19 +10,8 @@ interface SummaryCardProps {
 }
 
 export function SummaryCard({ profile, projectionBaseline }: SummaryCardProps) {
-  const {
-    points,
-    totalBalance,
-    totalContributions: monthlyContributions,
-    yearsToRetirement,
-    projectedTotalReal,
-    projectedTotal: projectedTotalNominal,
-    statePensionEquivalent,
-    effectiveTarget,
-    progress,
-    requiredContribution,
-    retirementIncome,
-  } = useRetirementProjection();
+  const { totalBalance, totalContributions: monthlyContributions, yearsToRetirement, projectedTotalReal, projectedTotal: projectedTotalNominal, statePensionEquivalent, effectiveTarget, progress, requiredContribution, retirementIncome } = useRetirementSummary();
+  const { points } = useRetirementAnalysis();
 
   if (points.length === 0) {
     return (
@@ -47,9 +36,13 @@ export function SummaryCard({ profile, projectionBaseline }: SummaryCardProps) {
     );
   }
 
-  // Baseline comparison: find expected total for the current calendar year
-  const currentYear = new Date().getFullYear();
-  const baselinePoint = projectionBaseline?.yearlyPoints.find((p) => p.calendarYear === currentYear);
+  // Baseline comparison: find expected total for the current month
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+  const baselinePoint = projectionBaseline?.monthlyPoints.find(
+    (p) => p.year === currentYear && p.monthOfYear === currentMonth
+  );
   const baselineDelta = baselinePoint !== undefined ? totalBalance - baselinePoint.expectedTotal : null;
 
   const surplus = projectedTotalReal - effectiveTarget;

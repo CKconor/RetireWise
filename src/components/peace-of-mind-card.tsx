@@ -3,7 +3,7 @@
 import { UserProfile } from '@/types';
 import { SectionCard } from '@/components/ui/section-card';
 import { calculatePercentageOfTarget, formatCurrency } from '@/lib/calculations';
-import { useRetirementProjection } from '@/contexts/retirement-engine-context';
+import { useRetirementSummary, useRetirementAnalysis } from '@/contexts/retirement-engine-context';
 
 interface PeaceOfMindCardProps {
   profile: UserProfile;
@@ -16,14 +16,8 @@ const HeartIcon = () => (
 );
 
 export function PeaceOfMindCard({ profile }: PeaceOfMindCardProps) {
-  const {
-    points,
-    projectedTotalReal,
-    statePensionEquivalent,
-    effectiveTarget,
-    confidenceScore,
-    totalContributions: totalMonthlyContributions,
-  } = useRetirementProjection();
+  const { projectedTotalReal, statePensionEquivalent, effectiveTarget, confidenceScore, totalContributions: totalMonthlyContributions } = useRetirementSummary();
+  const { points } = useRetirementAnalysis();
 
   if (points.length === 0) {
     return (

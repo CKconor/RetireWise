@@ -1,4 +1,4 @@
-import { Account, UserProfile, ProjectionDataPoint, MonthlyProjectionDataPoint, AccountProjection, Milestone, StressTestResult, NetWorthSnapshot, LumpSumWithdrawal, BaselineYearPoint, ProjectionBaseline } from '@/types';
+import { Account, UserProfile, ProjectionDataPoint, MonthlyProjectionDataPoint, AccountProjection, Milestone, StressTestResult, NetWorthSnapshot, LumpSumWithdrawal, BaselineMonthPoint, ProjectionBaseline } from '@/types';
 import { PRIVATE_PENSION_ACCESS_AGE } from '@/lib/constants';
 
 /**
@@ -40,6 +40,48 @@ export function calculateFutureValue(
   return balance;
 }
 
+// ── Withdrawal application ────────────────────────────────────────────────────
+
+type WithdrawalTrigger =
+  | { kind: 'annual'; age: number }
+  | { kind: 'monthly'; ageYears: number; ageMonthsPart: number };
+
+function withdrawalFires(w: LumpSumWithdrawal, trigger: WithdrawalTrigger): boolean {
+  if (trigger.kind === 'annual') return w.age === trigger.age;
+  return trigger.ageMonthsPart === 0 && w.age === trigger.ageYears;
+}
+
+/** Apply due withdrawals to a single account balance. Returns the new balance (≥ 0). */
+function applyWithdrawalsToBalance(
+  balance: number,
+  accountId: string,
+  withdrawals: LumpSumWithdrawal[],
+  trigger: WithdrawalTrigger
+): number {
+  for (const w of withdrawals) {
+    if (w.accountId === accountId && withdrawalFires(w, trigger)) {
+      balance = Math.max(0, balance - w.amount);
+    }
+  }
+  return balance;
+}
+
+/** Apply due withdrawals across N scenario balance maps in place. */
+function applyWithdrawalsToScenarios(
+  scenarios: Record<string, number>[],
+  withdrawals: LumpSumWithdrawal[],
+  trigger: WithdrawalTrigger
+): void {
+  for (const w of withdrawals) {
+    if (!withdrawalFires(w, trigger)) continue;
+    for (const scenario of scenarios) {
+      if (w.accountId in scenario) {
+        scenario[w.accountId] = Math.max(0, scenario[w.accountId] - w.amount);
+      }
+    }
+  }
+}
+
 /**
  * Simulate an account's balance year-by-year, applying lump sum withdrawals at the correct age.
  * Returns the final balance at the end of the given number of years.
@@ -61,12 +103,7 @@ export function simulateAccountFinalBalance(
     const yearlyContrib = account.monthlyContribution * Math.pow(1 + increase / 100, year - 1);
     balance = calculateFutureValue(balance, yearlyContrib, annualRate, 12, 0);
 
-    // Apply any withdrawals scheduled at this age for this account
-    for (const w of withdrawals) {
-      if (w.age === age && w.accountId === account.id) {
-        balance = Math.max(0, balance - w.amount);
-      }
-    }
+    balance = applyWithdrawalsToBalance(balance, account.id, withdrawals, { kind: 'annual', age });
   }
 
   return balance;
@@ -153,6 +190,23 @@ export function calculatePercentageOfTarget(value: number, target: number, round
  * Uses year-by-year simulation to correctly apply lump sum withdrawals.
  * Uses real returns (nominal - inflation) for real/scenario lines.
  */
+// Each scenario defines its return-rate function and where to write output on ProjectionDataPoint.
+// accountKey: if set, also writes per-account balances under that key suffix.
+const PERF_VARIANCE = 2;
+interface ProjectionScenario {
+  totalKey: string;
+  rate: (account: Account, realReturn: number) => number;
+  accountKey?: (accountId: string) => string;
+}
+const PROJECTION_SCENARIOS: ProjectionScenario[] = [
+  { totalKey: 'total',                rate: (a) => a.annualReturnRate,                             accountKey: (id) => id },
+  { totalKey: 'totalReal',            rate: (_, r) => r,                                           accountKey: (id) => `${id}_real` },
+  { totalKey: 'overperformanceReal',  rate: (_, r) => r + PERF_VARIANCE },
+  { totalKey: 'underperformanceReal', rate: (_, r) => Math.max(0, r - PERF_VARIANCE) },
+  { totalKey: 'p90Real',              rate: (_, r) => r + PERF_VARIANCE * 2 },
+  { totalKey: 'p10Real',              rate: (_, r) => Math.max(0, r - PERF_VARIANCE * 2) },
+];
+
 export function generateProjection(
   accounts: Account[],
   profile: UserProfile,
@@ -162,24 +216,11 @@ export function generateProjection(
   if (yearsToRetirement <= 0) return [];
 
   const currentYear = new Date().getFullYear();
-  const performanceVariance = 2;
 
-  // Track running balances for 6 scenarios per account
-  const nominalBal: Record<string, number> = {};
-  const realBal: Record<string, number> = {};
-  const overBal: Record<string, number> = {};
-  const underBal: Record<string, number> = {};
-  const highBal: Record<string, number> = {};
-  const lowBal: Record<string, number> = {};
-
-  for (const account of accounts) {
-    nominalBal[account.id] = account.currentBalance;
-    realBal[account.id] = account.currentBalance;
-    overBal[account.id] = account.currentBalance;
-    underBal[account.id] = account.currentBalance;
-    highBal[account.id] = account.currentBalance;
-    lowBal[account.id] = account.currentBalance;
-  }
+  // One balance map per scenario, initialised from current account balances
+  const balances: Record<string, number>[] = PROJECTION_SCENARIOS.map(() =>
+    Object.fromEntries(accounts.map((a) => [a.id, a.currentBalance]))
+  );
 
   const dataPoints: ProjectionDataPoint[] = [];
 
@@ -187,35 +228,18 @@ export function generateProjection(
     const age = profile.currentAge + year;
 
     if (year > 0) {
-      // Advance each account by 1 year
       for (const account of accounts) {
         const increase = account.annualContributionIncrease ?? 0;
         const realReturn = Math.max(0, account.annualReturnRate - profile.expectedInflation);
-        // Contribution for this year (compounded by annualContributionIncrease)
         const yearlyContrib = account.monthlyContribution * Math.pow(1 + increase / 100, year - 1);
-
-        nominalBal[account.id] = calculateFutureValue(nominalBal[account.id], yearlyContrib, account.annualReturnRate, 12, 0);
-        realBal[account.id] = calculateFutureValue(realBal[account.id], yearlyContrib, realReturn, 12, 0);
-        overBal[account.id] = calculateFutureValue(overBal[account.id], yearlyContrib, realReturn + performanceVariance, 12, 0);
-        underBal[account.id] = calculateFutureValue(underBal[account.id], yearlyContrib, Math.max(0, realReturn - performanceVariance), 12, 0);
-        highBal[account.id] = calculateFutureValue(highBal[account.id], yearlyContrib, realReturn + performanceVariance * 2, 12, 0);
-        lowBal[account.id] = calculateFutureValue(lowBal[account.id], yearlyContrib, Math.max(0, realReturn - performanceVariance * 2), 12, 0);
-      }
-
-      // Apply withdrawals for this age
-      for (const w of withdrawals) {
-        if (w.age === age && w.accountId in nominalBal) {
-          nominalBal[w.accountId] = Math.max(0, nominalBal[w.accountId] - w.amount);
-          realBal[w.accountId] = Math.max(0, realBal[w.accountId] - w.amount);
-          overBal[w.accountId] = Math.max(0, overBal[w.accountId] - w.amount);
-          underBal[w.accountId] = Math.max(0, underBal[w.accountId] - w.amount);
-          highBal[w.accountId] = Math.max(0, highBal[w.accountId] - w.amount);
-          lowBal[w.accountId] = Math.max(0, lowBal[w.accountId] - w.amount);
+        for (let s = 0; s < PROJECTION_SCENARIOS.length; s++) {
+          const rate = PROJECTION_SCENARIOS[s].rate(account, realReturn);
+          balances[s][account.id] = calculateFutureValue(balances[s][account.id], yearlyContrib, rate, 12, 0);
         }
       }
+      applyWithdrawalsToScenarios(balances, withdrawals, { kind: 'annual', age });
     }
 
-    let total = 0, totalReal = 0, totalOver = 0, totalUnder = 0, totalHigh = 0, totalLow = 0;
     const dataPoint: ProjectionDataPoint = {
       year: currentYear + year,
       age,
@@ -228,23 +252,17 @@ export function generateProjection(
       p10Real: 0,
     };
 
-    for (const account of accounts) {
-      dataPoint[account.id] = Math.round(nominalBal[account.id]);
-      dataPoint[`${account.id}_real`] = Math.round(realBal[account.id]);
-      total += nominalBal[account.id];
-      totalReal += realBal[account.id];
-      totalOver += overBal[account.id];
-      totalUnder += underBal[account.id];
-      totalHigh += highBal[account.id];
-      totalLow += lowBal[account.id];
+    for (let s = 0; s < PROJECTION_SCENARIOS.length; s++) {
+      const scenario = PROJECTION_SCENARIOS[s];
+      let scenarioTotal = 0;
+      for (const account of accounts) {
+        const bal = balances[s][account.id];
+        scenarioTotal += bal;
+        if (scenario.accountKey) dataPoint[scenario.accountKey(account.id)] = Math.round(bal);
+      }
+      dataPoint[scenario.totalKey] = Math.round(scenarioTotal);
     }
 
-    dataPoint.total = Math.round(total);
-    dataPoint.totalReal = Math.round(totalReal);
-    dataPoint.overperformanceReal = Math.round(totalOver);
-    dataPoint.underperformanceReal = Math.round(totalUnder);
-    dataPoint.p90Real = Math.round(totalHigh);
-    dataPoint.p10Real = Math.round(totalLow);
     dataPoints.push(dataPoint);
   }
 
@@ -259,18 +277,18 @@ export function buildBaselinePoints(
   accounts: Account[],
   profile: UserProfile,
   lumpSumWithdrawals: LumpSumWithdrawal[] = []
-): { yearlyPoints: BaselineYearPoint[]; accountMeta: ProjectionBaseline['accountMeta'] } {
-  const points = generateProjection(accounts, profile, lumpSumWithdrawals);
-  const yearlyPoints: BaselineYearPoint[] = points.map((pt) => {
+): { monthlyPoints: BaselineMonthPoint[]; accountMeta: ProjectionBaseline['accountMeta'] } {
+  const points = generateMonthlyProjection(accounts, profile, undefined, undefined, lumpSumWithdrawals);
+  const monthlyPoints: BaselineMonthPoint[] = points.map((pt) => {
     const expectedAccountBalances: Record<string, number> = {};
     for (const acc of accounts) {
-      expectedAccountBalances[acc.id] = typeof pt[acc.id] === 'number' ? (pt[acc.id] as number) : 0;
+      expectedAccountBalances[acc.id] = pt.accountBalances[acc.id] ?? 0;
     }
     return {
-      calendarYear: pt.year,
+      year: pt.year,
+      monthOfYear: pt.monthOfYear,
       age: pt.age,
       expectedTotal: pt.total,
-      expectedTotalReal: pt.totalReal,
       expectedAccountBalances,
     };
   });
@@ -278,7 +296,7 @@ export function buildBaselinePoints(
   for (const acc of accounts) {
     accountMeta[acc.id] = { name: acc.name, type: acc.type };
   }
-  return { yearlyPoints, accountMeta };
+  return { monthlyPoints, accountMeta };
 }
 
 /**
@@ -992,14 +1010,12 @@ export function generateMonthlyProjection(
         }
       }
 
-      // Apply lump sum withdrawals on the user's birthday month for this age
-      if (ageMonthsPart === 0 && withdrawals.length > 0) {
-        for (const w of withdrawals) {
-          if (w.age === ageYears && w.accountId === accountState.id) {
-            accountState.balance = Math.max(0, accountState.balance - w.amount);
-          }
-        }
-      }
+      accountState.balance = applyWithdrawalsToBalance(
+        accountState.balance,
+        accountState.id,
+        withdrawals,
+        { kind: 'monthly', ageYears, ageMonthsPart }
+      );
     }
 
     let total = 0;

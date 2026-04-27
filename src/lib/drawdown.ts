@@ -53,6 +53,16 @@ function calculateIncomeTax(totalIncome: number): number {
   return basicBand * 0.2 + higherBand * 0.4 + (taxable - basicBand - higherBand) * 0.45;
 }
 
+export interface WithdrawalTaxInput {
+  withdrawals: Record<string, number>;
+  accounts: Account[];
+  accountRetirementBalances: Record<string, number>;
+  accountTotalContributed: Record<string, number>;
+  sippTaxFreeUsed: Record<string, number>;
+  statePensionIncome: number;
+  taxModeling: boolean;
+}
+
 /**
  * Calculate tax on withdrawals for a given year.
  * Properly allocates tax between state pension and portfolio withdrawals:
@@ -61,15 +71,15 @@ function calculateIncomeTax(totalIncome: number): number {
  * - GIA withdrawals: CGT on gains only (annual allowance applied once across all GIAs)
  * - State pension uses personal allowance first; remaining allowance applies to pension withdrawals
  */
-function calculateWithdrawalTax(
-  withdrawals: Record<string, number>,
-  accounts: Account[],
-  accountRetirementBalances: Record<string, number>,
-  accountTotalContributed: Record<string, number>,
-  sippTaxFreeUsed: Record<string, number>,
-  statePensionIncome: number,
-  taxModeling: boolean
-): { totalTax: number; withdrawalTax: number; updatedSippTaxFreeUsed: Record<string, number> } {
+export function calculateWithdrawalTax({
+  withdrawals,
+  accounts,
+  accountRetirementBalances,
+  accountTotalContributed,
+  sippTaxFreeUsed,
+  statePensionIncome,
+  taxModeling,
+}: WithdrawalTaxInput): { totalTax: number; withdrawalTax: number; updatedSippTaxFreeUsed: Record<string, number> } {
   if (!taxModeling) {
     return { totalTax: 0, withdrawalTax: 0, updatedSippTaxFreeUsed: sippTaxFreeUsed };
   }
@@ -354,15 +364,15 @@ export function simulateDrawdown(
     const grossWithdrawal = Object.values(yearWithdrawals).reduce((sum, w) => sum + w, 0);
 
     // Calculate tax — properly allocates between state pension and withdrawals
-    const { totalTax, withdrawalTax, updatedSippTaxFreeUsed } = calculateWithdrawalTax(
-      yearWithdrawals,
+    const { totalTax, withdrawalTax, updatedSippTaxFreeUsed } = calculateWithdrawalTax({
+      withdrawals: yearWithdrawals,
       accounts,
       accountRetirementBalances,
       accountTotalContributed,
       sippTaxFreeUsed,
-      statePensionThisYear,
-      config.taxModeling
-    );
+      statePensionIncome: statePensionThisYear,
+      taxModeling: config.taxModeling,
+    });
     sippTaxFreeUsed = updatedSippTaxFreeUsed;
 
     const statePensionTax = totalTax - withdrawalTax;

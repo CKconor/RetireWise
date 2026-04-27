@@ -106,8 +106,12 @@ export function NetWorthChart({
   // Build chart data: one row per snapshot, one key per account
   const chartData = useMemo(() => {
     const rows = netWorthHistory.map((snap) => {
-      const snapYear = new Date(snap.date + 'T00:00:00').getFullYear();
-      const baselinePoint = projectionBaseline?.yearlyPoints.find((p) => p.calendarYear === snapYear);
+      const snapDate = new Date(snap.date + 'T00:00:00');
+      const snapYear = snapDate.getFullYear();
+      const snapMonth = snapDate.getMonth() + 1;
+      const baselinePoint = projectionBaseline?.monthlyPoints.find(
+        (p) => p.year === snapYear && p.monthOfYear === snapMonth
+      );
       const row: Record<string, number | string | undefined> = {
         date: snap.date,
         dateLabel: formatDateLabel(snap.date),

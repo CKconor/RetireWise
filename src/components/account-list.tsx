@@ -66,9 +66,11 @@ export function AccountList({ accounts, profile, onAdd, onUpdate, onDelete, onSa
     setFormOpen(true);
   };
 
-  // Find baseline point for current calendar year to pass per-account expected balances
-  const currentYear = new Date().getFullYear();
-  const baselineThisYear = projectionBaseline?.yearlyPoints.find((p) => p.calendarYear === currentYear);
+  // Find baseline point for current month to pass per-account expected balances
+  const nowDate = new Date();
+  const baselineThisMonth = projectionBaseline?.monthlyPoints.find(
+    (p) => p.year === nowDate.getFullYear() && p.monthOfYear === nowDate.getMonth() + 1
+  );
 
   return (
     <>
@@ -122,7 +124,7 @@ export function AccountList({ accounts, profile, onAdd, onUpdate, onDelete, onSa
               profile={profile}
               onEdit={handleEdit}
               onDelete={onDelete}
-              baselineExpectedBalance={baselineThisYear?.expectedAccountBalances[account.id]}
+              baselineExpectedBalance={baselineThisMonth?.expectedAccountBalances[account.id]}
             />
           ))}
           <Card

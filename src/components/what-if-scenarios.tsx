@@ -10,7 +10,7 @@ import {
   calculateWhatIfReturns,
   formatCurrency,
 } from '@/lib/calculations';
-import { useRetirementProjection } from '@/contexts/retirement-engine-context';
+import { useRetirementSummary } from '@/contexts/retirement-engine-context';
 
 interface WhatIfScenariosProps {
   accounts: Account[];
@@ -72,7 +72,7 @@ export function WhatIfScenarios({ accounts, profile, lumpSumWithdrawals = [] }: 
   const [retirementAgeAdjust, setRetirementAgeAdjust] = useState(0);
   const [returnAdjust, setReturnAdjust] = useState(0);
 
-  const { projectedTotalReal: baseProjectionReal, projectedTotal: baseProjectionNominal } = useRetirementProjection();
+  const { projectedTotalReal: baseProjectionReal, projectedTotal: baseProjectionNominal } = useRetirementSummary();
 
   const contributionProjectionReal = useMemo(
     () => calculateWhatIfContribution(accounts, profile, extraContribution, true, lumpSumWithdrawals),

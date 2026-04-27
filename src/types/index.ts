@@ -126,18 +126,18 @@ export interface NetWorthSnapshot {
 }
 
 // Projection baseline types
-export interface BaselineYearPoint {
-  calendarYear: number;
+export interface BaselineMonthPoint {
+  year: number;
+  monthOfYear: number; // 1-12
   age: number;
   expectedTotal: number;
-  expectedTotalReal: number;
   expectedAccountBalances: Record<string, number>; // accountId → nominal balance
 }
 
 export interface ProjectionBaseline {
   setDate: string; // ISO YYYY-MM-DD
   setTimestamp: number;
-  yearlyPoints: BaselineYearPoint[];
+  monthlyPoints: BaselineMonthPoint[];
   accountMeta: Record<string, { name: string; type: AccountType }>;
 }
 

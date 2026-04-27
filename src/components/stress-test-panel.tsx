@@ -4,7 +4,7 @@ import { UserProfile } from '@/types';
 import { SectionCard } from '@/components/ui/section-card';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { calculatePercentageOfTarget, formatCurrency } from '@/lib/calculations';
-import { useRetirementProjection } from '@/contexts/retirement-engine-context';
+import { useRetirementSummary, useRetirementAnalysis } from '@/contexts/retirement-engine-context';
 
 interface StressTestPanelProps {
   profile: UserProfile;
@@ -17,7 +17,8 @@ const ShieldIcon = () => (
 );
 
 export function StressTestPanel({ profile }: StressTestPanelProps) {
-  const { points, projectedTotalReal: baseProjection, stressTests } = useRetirementProjection();
+  const { projectedTotalReal: baseProjection } = useRetirementSummary();
+  const { points, stressTests } = useRetirementAnalysis();
 
   if (points.length === 0) {
     return (

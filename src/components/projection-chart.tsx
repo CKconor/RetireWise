@@ -22,7 +22,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { formatCurrency, formatCurrencyCompact } from '@/lib/calculations';
 import { useChartColors } from '@/hooks/use-chart-colors';
 import { MonthlyBreakdownTable } from '@/components/monthly-breakdown-table';
-import { useRetirementProjection } from '@/contexts/retirement-engine-context';
+import { useRetirementSummary, useRetirementAnalysis } from '@/contexts/retirement-engine-context';
 
 interface ProjectionChartProps {
   accounts: Account[];
@@ -49,7 +49,8 @@ export function ProjectionChart({ accounts, profile, lumpSumWithdrawals = [] }: 
   const [showCoastFire, setShowCoastFire] = useState(true);
   const chartColors = useChartColors();
 
-  const { points: data, coastFireInfo } = useRetirementProjection();
+  const { coastFireInfo } = useRetirementSummary();
+  const { points: data } = useRetirementAnalysis();
 
   if (accounts.length === 0) {
     return (

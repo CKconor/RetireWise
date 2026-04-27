@@ -1,5 +1,79 @@
-import { AppState, Account, UserProfile, DrawdownConfig, NetWorthSnapshot, LumpSumWithdrawal } from '@/types';
+import { AppState, Account, UserProfile, DrawdownConfig, NetWorthSnapshot, LumpSumWithdrawal, ProjectionBaseline, BaselineMonthPoint } from '@/types';
 import { calculateAgeFromBirthday } from '@/lib/calculations';
+
+function migrateLegacyBaseline(raw: unknown): ProjectionBaseline | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const b = raw as Record<string, unknown>;
+
+  if (Array.isArray(b.monthlyPoints)) return raw as ProjectionBaseline;
+  if (!Array.isArray(b.yearlyPoints)) return undefined;
+
+  // Each yearly point represents the expected value at the anniversary of setDate.
+  // Use setDate's month as the anchor and linearly interpolate between yearly points
+  // to produce per-month expected values.
+  const setDate = typeof b.setDate === 'string' ? b.setDate : '';
+  const anchor = setDate ? new Date(setDate + 'T00:00:00') : new Date();
+  const setMonth = anchor.getMonth() + 1; // 1-12
+
+  type RawPt = Record<string, unknown>;
+  const yearlyPoints = b.yearlyPoints as RawPt[];
+  const yearMap = new Map<number, RawPt>();
+  for (const pt of yearlyPoints) {
+    if (typeof pt.calendarYear === 'number') yearMap.set(pt.calendarYear as number, pt);
+  }
+
+  const lerp = (a: number, b: number, t: number) => a + t * (b - a);
+
+  const monthlyPoints: BaselineMonthPoint[] = [];
+  for (const pt of yearlyPoints) {
+    if (typeof pt.calendarYear !== 'number') continue;
+    const year = pt.calendarYear as number;
+    const prevPt = yearMap.get(year - 1);
+    const nextPt = yearMap.get(year + 1);
+
+    for (let m = 1; m <= 12; m++) {
+      // Months ahead of the annual anchor (year, setMonth).
+      // m >= setMonth → interpolate forward to next year.
+      // m < setMonth  → interpolate backward from prev year.
+      let expectedTotal: number;
+      const expectedAccountBalances: Record<string, number> = {};
+      const ptAccounts = (pt.expectedAccountBalances ?? {}) as Record<string, number>;
+
+      if (m >= setMonth) {
+        const t = (m - setMonth) / 12;
+        const ref = nextPt ?? pt;
+        const refAccounts = (ref.expectedAccountBalances ?? {}) as Record<string, number>;
+        expectedTotal = lerp(pt.expectedTotal as number, ref.expectedTotal as number, t);
+        for (const id of Object.keys(ptAccounts)) {
+          expectedAccountBalances[id] = lerp(ptAccounts[id], refAccounts[id] ?? ptAccounts[id], t);
+        }
+      } else {
+        const t = (12 - setMonth + m) / 12;
+        const ref = prevPt ?? pt;
+        const refAccounts = (ref.expectedAccountBalances ?? {}) as Record<string, number>;
+        expectedTotal = lerp(ref.expectedTotal as number, pt.expectedTotal as number, t);
+        for (const id of Object.keys(ptAccounts)) {
+          expectedAccountBalances[id] = lerp(refAccounts[id] ?? ptAccounts[id], ptAccounts[id], t);
+        }
+      }
+
+      monthlyPoints.push({
+        year,
+        monthOfYear: m,
+        age: pt.age as number,
+        expectedTotal: Math.round(expectedTotal),
+        expectedAccountBalances,
+      });
+    }
+  }
+
+  return {
+    setDate: b.setDate as string,
+    setTimestamp: b.setTimestamp as number,
+    monthlyPoints,
+    accountMeta: (b.accountMeta ?? {}) as ProjectionBaseline['accountMeta'],
+  };
+}
 
 const STORAGE_KEY = 'retirewise-data';
 
@@ -60,7 +134,7 @@ export function loadState(): AppState {
         drawdownConfig: { ...DEFAULT_DRAWDOWN_CONFIG, ...parsed.drawdownConfig },
         netWorthHistory: parsed.netWorthHistory || [],
         lumpSumWithdrawals: parsed.lumpSumWithdrawals || [],
-        projectionBaseline: parsed.projectionBaseline,
+        projectionBaseline: migrateLegacyBaseline(parsed.projectionBaseline),
       };
     }
   } catch (error) {
