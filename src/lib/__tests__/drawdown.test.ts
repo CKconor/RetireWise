@@ -212,5 +212,24 @@ describe('calculateWithdrawalTax', () => {
       );
       expect(result.withdrawalTax).toBe(0);
     });
+
+    it('applies personal allowance taper for high combined income', () => {
+      const pension = makeAccount({ id: 'pen-1', type: 'pension' });
+      const result = calculateWithdrawalTax(
+        makeTaxInput({
+          withdrawals: { 'pen-1': 115_000 },
+          accounts: [pension],
+          accountRetirementBalances: { 'pen-1': 100_000 },
+          statePensionIncome: 20_000,
+        })
+      );
+
+      // Combined taxable income = £110k, so PA tapers from £12,570 to £7,570.
+      // Total tax at £110k with tapered PA = £33,432.
+      // State pension-only tax (£20k) = (£20,000 - £12,570) * 20% = £1,486.
+      // Withdrawal tax should be the incremental amount.
+      expect(result.totalTax).toBeCloseTo(33_432, 0);
+      expect(result.withdrawalTax).toBeCloseTo(31_946, 0);
+    });
   });
 });

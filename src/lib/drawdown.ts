@@ -40,8 +40,10 @@ const CGT_ALLOWANCE = 3000;
  * Calculate UK income tax on a given total income, applying personal allowance and tax bands.
  */
 function calculateIncomeTax(totalIncome: number): number {
-  if (totalIncome <= PERSONAL_ALLOWANCE) return 0;
-  const taxable = totalIncome - PERSONAL_ALLOWANCE;
+  const allowanceReduction = Math.max(0, (totalIncome - 100000) / 2);
+  const effectiveAllowance = Math.max(0, PERSONAL_ALLOWANCE - allowanceReduction);
+  if (totalIncome <= effectiveAllowance) return 0;
+  const taxable = totalIncome - effectiveAllowance;
   const basicBand = BASIC_LIMIT - PERSONAL_ALLOWANCE;
   const higherBand = HIGHER_LIMIT - BASIC_LIMIT;
 
