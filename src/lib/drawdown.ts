@@ -226,15 +226,11 @@ export function simulateDrawdown(
 
   const initialPortfolio = Object.values(accountBalances).reduce((sum, b) => sum + b, 0);
 
-  // Calculate the annual withdrawal amount (RMD recalculates each year inside the loop)
+  // Fixed withdrawal is constant; percentage and RMD recalculate each year inside the loop
   let annualWithdrawal: number;
   if (config.strategy === 'fixed') {
     annualWithdrawal = config.fixedAnnualIncome;
-  } else if (config.strategy === 'percentage') {
-    // Percentage strategy: lock in initial withdrawal based on portfolio * rate
-    annualWithdrawal = initialPortfolio * (config.withdrawalRate / 100);
   } else {
-    // RMD: placeholder — recalculated each year inside the loop
     annualWithdrawal = 0;
   }
 
@@ -265,9 +261,11 @@ export function simulateDrawdown(
       depletionAge = age;
     }
 
-    // RMD: recalculate withdrawal each year based on current portfolio balance
+    // Recalculate withdrawal each year for dynamic strategies
     if (config.strategy === 'rmd') {
       annualWithdrawal = portfolioBalance / getRmdFactor(age);
+    } else if (config.strategy === 'percentage') {
+      annualWithdrawal = portfolioBalance * (config.withdrawalRate / 100);
     }
 
     // State pension income this year
