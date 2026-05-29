@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   ComposedChart,
   Area,
@@ -19,7 +19,7 @@ import { SectionCard } from '@/components/ui/section-card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
-import { formatCurrency, formatCurrencyCompact } from '@/lib/calculations';
+import { formatCurrency, formatCurrencyCompact, generateProjection } from '@/lib/calculations';
 import { useChartColors } from '@/hooks/use-chart-colors';
 import { MonthlyBreakdownTable } from '@/components/monthly-breakdown-table';
 import { useRetirementSummary, useRetirementAnalysis } from '@/contexts/retirement-engine-context';
@@ -47,7 +47,15 @@ export function ProjectionChart({ accounts, profile, lumpSumWithdrawals = [] }: 
   const [showOptimistic, setShowOptimistic] = useState(true);
   const [showConservative, setShowConservative] = useState(true);
   const [showCoastFire, setShowCoastFire] = useState(true);
+  const [showNoContributions, setShowNoContributions] = useState(false);
   const chartColors = useChartColors();
+
+  const noContribByAge = useMemo(() => {
+    if (!showNoContributions) return null;
+    const zeroedAccounts = accounts.map((a) => ({ ...a, monthlyContribution: 0 }));
+    const pts = generateProjection(zeroedAccounts, profile, lumpSumWithdrawals);
+    return Object.fromEntries(pts.map((p) => [p.age, p.totalReal]));
+  }, [showNoContributions, accounts, profile, lumpSumWithdrawals]);
 
   const { coastFireInfo } = useRetirementSummary();
   const { points: data } = useRetirementAnalysis();
@@ -142,6 +150,16 @@ export function ProjectionChart({ accounts, profile, lumpSumWithdrawals = [] }: 
                         Coast FIRE
                       </span>
                     </label>
+                    <label className="flex items-center gap-2 text-sm cursor-pointer">
+                      <Checkbox
+                        checked={showNoContributions}
+                        onCheckedChange={(checked) => setShowNoContributions(checked === true)}
+                      />
+                      <span className="flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-full bg-[#9ca3af]" />
+                        No contributions
+                      </span>
+                    </label>
                   </div>
                 </div>
               </PopoverContent>
@@ -162,6 +180,7 @@ export function ProjectionChart({ accounts, profile, lumpSumWithdrawals = [] }: 
               outerRange: Math.max(0, point.p90Real - point.p10Real),
               innerBase: point.underperformanceReal,
               innerRange: Math.max(0, point.overperformanceReal - point.underperformanceReal),
+              noContribReal: noContribByAge ? (noContribByAge[point.age] ?? null) : null,
             }))}
             margin={{ top: 10, right: 10, left: 0, bottom: 35 }}
           >
@@ -190,6 +209,7 @@ export function ProjectionChart({ accounts, profile, lumpSumWithdrawals = [] }: 
                 const p50 = dataPoint?.totalReal as number;
                 const p25 = dataPoint?.underperformanceReal as number;
                 const p10 = dataPoint?.p10Real as number;
+                const noContrib = dataPoint?.noContribReal as number | undefined;
                 const showTargets = showCoastFire && coastFireInfo;
 
                 const accountBreakdown = accounts.map((account) => ({
@@ -217,6 +237,7 @@ export function ProjectionChart({ accounts, profile, lumpSumWithdrawals = [] }: 
                       { label: 'P50 (base)', value: p50, color: '#3b82f6', show: true },
                       { label: 'P25', value: p25, color: '#60a5fa', show: showConservative },
                       { label: 'P10 (conservative)', value: p10, color: '#93c5fd', show: showConservative },
+                      { label: 'No contributions', value: noContrib ?? 0, color: '#9ca3af', show: showNoContributions && noContrib !== undefined },
                     ].filter((r) => r.show).map(({ label: l, value, color }) => (
                       <div key={l} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                         <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: color, flexShrink: 0 }} />
@@ -315,6 +336,10 @@ export function ProjectionChart({ accounts, profile, lumpSumWithdrawals = [] }: 
             )}
             {/* P50 base line */}
             <Line dataKey="totalReal" stroke="#3b82f6" strokeWidth={2.5} dot={false} name="P50 (base)" />
+            {/* No contributions line */}
+            {showNoContributions && (
+              <Line dataKey="noContribReal" stroke="#9ca3af" strokeWidth={1.5} strokeDasharray="5 3" dot={false} name="No contributions" />
+            )}
             <Legend
               verticalAlign="top"
               align="right"
