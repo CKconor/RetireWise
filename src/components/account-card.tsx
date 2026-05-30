@@ -37,9 +37,11 @@ export function AccountCard({ account, profile, onEdit, onDelete, baselineExpect
 
   const increase = account.annualContributionIncrease ?? 0;
 
+  const effectiveContribution = contributionsPaused ? 0 : account.monthlyContribution;
+
   const projectedValueReal = calculateFutureValue(
     account.currentBalance,
-    account.monthlyContribution,
+    effectiveContribution,
     Math.max(0, realReturn),
     months,
     increase
@@ -47,7 +49,7 @@ export function AccountCard({ account, profile, onEdit, onDelete, baselineExpect
 
   const projectedValueNominal = calculateFutureValue(
     account.currentBalance,
-    account.monthlyContribution,
+    effectiveContribution,
     account.annualReturnRate,
     months,
     increase
