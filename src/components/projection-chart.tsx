@@ -53,13 +53,11 @@ export function ProjectionChart({ accounts, profile, lumpSumWithdrawals = [], pa
   const hasPaused = (pausedContribAccounts?.size ?? 0) > 0;
 
   const noContribByAge = useMemo(() => {
-    if (!hasPaused || !pausedContribAccounts) return null;
-    const adjustedAccounts = accounts.map((a) =>
-      pausedContribAccounts.has(a.id) ? { ...a, monthlyContribution: 0 } : a
-    );
-    const pts = generateProjection(adjustedAccounts, profile, lumpSumWithdrawals);
+    if (!hasPaused) return null;
+    // accounts prop = original accounts (engine already uses zeroed-out version)
+    const pts = generateProjection(accounts, profile, lumpSumWithdrawals);
     return Object.fromEntries(pts.map((p) => [p.age, p.totalReal]));
-  }, [hasPaused, pausedContribAccounts, accounts, profile, lumpSumWithdrawals]);
+  }, [hasPaused, accounts, profile, lumpSumWithdrawals]);
 
   const { coastFireInfo } = useRetirementSummary();
   const { points: data } = useRetirementAnalysis();
@@ -231,7 +229,7 @@ export function ProjectionChart({ accounts, profile, lumpSumWithdrawals = [], pa
                       { label: 'P50 (base)', value: p50, color: '#3b82f6', show: true },
                       { label: 'P25', value: p25, color: '#60a5fa', show: showConservative },
                       { label: 'P10 (conservative)', value: p10, color: '#93c5fd', show: showConservative },
-                      { label: 'No contributions', value: noContrib ?? 0, color: '#9ca3af', show: hasPaused && noContrib !== undefined },
+                      { label: 'With contributions', value: noContrib ?? 0, color: '#9ca3af', show: hasPaused && noContrib !== undefined },
                     ].filter((r) => r.show).map(({ label: l, value, color }) => (
                       <div key={l} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                         <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: color, flexShrink: 0 }} />
@@ -330,9 +328,9 @@ export function ProjectionChart({ accounts, profile, lumpSumWithdrawals = [], pa
             )}
             {/* P50 base line */}
             <Line dataKey="totalReal" stroke="#3b82f6" strokeWidth={2.5} dot={false} name="P50 (base)" />
-            {/* Paused contributions line */}
+            {/* Full-contributions comparison line (shown when any account is paused) */}
             {hasPaused && (
-              <Line dataKey="noContribReal" stroke="#9ca3af" strokeWidth={1.5} strokeDasharray="5 3" dot={false} name="No contributions" />
+              <Line dataKey="noContribReal" stroke="#9ca3af" strokeWidth={1.5} strokeDasharray="5 3" dot={false} name="With contributions" />
             )}
             <Legend
               verticalAlign="top"

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRetirementState, useRetirementMutations } from '@/contexts/retirement-store-context';
 import { ProfileForm } from '@/components/profile-form';
 import { AccountList } from '@/components/account-list';
@@ -33,6 +33,16 @@ export default function Home() {
       return next;
     });
 
+  const effectiveAccounts = useMemo(
+    () =>
+      pausedContribAccounts.size === 0
+        ? accounts
+        : accounts.map((a) =>
+            pausedContribAccounts.has(a.id) ? { ...a, monthlyContribution: 0 } : a
+          ),
+    [accounts, pausedContribAccounts]
+  );
+
   const handleDownloadPdf = async () => {
     setIsGeneratingPdf(true);
     try {
@@ -59,7 +69,7 @@ export default function Home() {
   }
 
   return (
-    <RetirementEngineProvider accounts={accounts} profile={profile} withdrawals={lumpSumWithdrawals}>
+    <RetirementEngineProvider accounts={effectiveAccounts} profile={profile} withdrawals={lumpSumWithdrawals}>
     <div className="min-h-screen bg-mesh">
       <Header onDownloadPdf={handleDownloadPdf} isGeneratingPdf={isGeneratingPdf} />
 
