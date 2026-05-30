@@ -24,6 +24,14 @@ export default function Home() {
     useRetirementMutations();
 
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [pausedContribAccounts, setPausedContribAccounts] = useState<Set<string>>(new Set());
+
+  const toggleContribPause = (id: string) =>
+    setPausedContribAccounts((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
 
   const handleDownloadPdf = async () => {
     setIsGeneratingPdf(true);
@@ -89,6 +97,8 @@ export default function Home() {
                 projectionBaseline={projectionBaseline}
                 onSetBaseline={baseline.set}
                 onClearBaseline={baseline.clear}
+                pausedContribAccounts={pausedContribAccounts}
+                onToggleContribPause={toggleContribPause}
               />
             </div>
 
@@ -106,7 +116,7 @@ export default function Home() {
 
             {/* Projection Chart */}
             <div className="opacity-0 animate-fade-in stagger-3">
-              <ProjectionChart accounts={accounts} profile={profile} lumpSumWithdrawals={lumpSumWithdrawals} />
+              <ProjectionChart accounts={accounts} profile={profile} lumpSumWithdrawals={lumpSumWithdrawals} pausedContribAccounts={pausedContribAccounts} />
             </div>
 
             {/* Net Worth History */}

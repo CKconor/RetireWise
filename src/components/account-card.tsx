@@ -26,9 +26,11 @@ interface AccountCardProps {
   onEdit: (account: Account) => void;
   onDelete: (id: string) => void;
   baselineExpectedBalance?: number;
+  contributionsPaused?: boolean;
+  onToggleContribPause?: () => void;
 }
 
-export function AccountCard({ account, profile, onEdit, onDelete, baselineExpectedBalance }: AccountCardProps) {
+export function AccountCard({ account, profile, onEdit, onDelete, baselineExpectedBalance, contributionsPaused = false, onToggleContribPause }: AccountCardProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const months = getMonthsToRetirement(profile);
   const realReturn = calculateRealReturn(account.annualReturnRate, profile.expectedInflation);
@@ -73,6 +75,30 @@ export function AccountCard({ account, profile, onEdit, onDelete, baselineExpect
             </div>
           </div>
           <div className="flex gap-1">
+            {onToggleContribPause && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onToggleContribPause}
+                title={contributionsPaused ? 'Resume contributions in projection' : 'Pause contributions in projection'}
+                className={`h-8 w-8 p-0 transition-colors ${
+                  contributionsPaused
+                    ? 'text-amber-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950'
+                    : 'text-muted-foreground hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-foreground'
+                }`}
+              >
+                {contributionsPaused ? (
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                ) : (
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                )}
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"
@@ -111,9 +137,14 @@ export function AccountCard({ account, profile, onEdit, onDelete, baselineExpect
               );
             })()}
           </div>
-          <div className="rounded-lg bg-slate-50/80 dark:bg-slate-800/80 p-2.5">
-            <p className="text-xs text-muted-foreground">Monthly</p>
-            <p className="font-display text-lg">
+          <div className={`rounded-lg p-2.5 transition-colors ${contributionsPaused ? 'bg-amber-50/80 dark:bg-amber-950/40' : 'bg-slate-50/80 dark:bg-slate-800/80'}`}>
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">Monthly</p>
+              {contributionsPaused && (
+                <span className="text-xs font-medium text-amber-600 dark:text-amber-400">paused</span>
+              )}
+            </div>
+            <p className={`font-display text-lg ${contributionsPaused ? 'text-muted-foreground line-through' : ''}`}>
               {formatCurrency(account.monthlyContribution)}
               {increase > 0 && (
                 <span className="text-xs font-normal text-muted-foreground"> (+{increase}%/yr)</span>

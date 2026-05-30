@@ -28,6 +28,7 @@ interface ProjectionChartProps {
   accounts: Account[];
   profile: UserProfile;
   lumpSumWithdrawals?: LumpSumWithdrawal[];
+  pausedContribAccounts?: Set<string>;
 }
 
 const ChartIcon = () => (
@@ -42,20 +43,23 @@ const EmptyChartIcon = () => (
   </svg>
 );
 
-export function ProjectionChart({ accounts, profile, lumpSumWithdrawals = [] }: ProjectionChartProps) {
+export function ProjectionChart({ accounts, profile, lumpSumWithdrawals = [], pausedContribAccounts }: ProjectionChartProps) {
   const [view, setView] = useState<'chart' | 'table'>('chart');
   const [showOptimistic, setShowOptimistic] = useState(true);
   const [showConservative, setShowConservative] = useState(true);
   const [showCoastFire, setShowCoastFire] = useState(true);
-  const [showNoContributions, setShowNoContributions] = useState(false);
   const chartColors = useChartColors();
 
+  const hasPaused = (pausedContribAccounts?.size ?? 0) > 0;
+
   const noContribByAge = useMemo(() => {
-    if (!showNoContributions) return null;
-    const zeroedAccounts = accounts.map((a) => ({ ...a, monthlyContribution: 0 }));
-    const pts = generateProjection(zeroedAccounts, profile, lumpSumWithdrawals);
+    if (!hasPaused || !pausedContribAccounts) return null;
+    const adjustedAccounts = accounts.map((a) =>
+      pausedContribAccounts.has(a.id) ? { ...a, monthlyContribution: 0 } : a
+    );
+    const pts = generateProjection(adjustedAccounts, profile, lumpSumWithdrawals);
     return Object.fromEntries(pts.map((p) => [p.age, p.totalReal]));
-  }, [showNoContributions, accounts, profile, lumpSumWithdrawals]);
+  }, [hasPaused, pausedContribAccounts, accounts, profile, lumpSumWithdrawals]);
 
   const { coastFireInfo } = useRetirementSummary();
   const { points: data } = useRetirementAnalysis();
@@ -150,16 +154,6 @@ export function ProjectionChart({ accounts, profile, lumpSumWithdrawals = [] }: 
                         Coast FIRE
                       </span>
                     </label>
-                    <label className="flex items-center gap-2 text-sm cursor-pointer">
-                      <Checkbox
-                        checked={showNoContributions}
-                        onCheckedChange={(checked) => setShowNoContributions(checked === true)}
-                      />
-                      <span className="flex items-center gap-1.5">
-                        <span className="h-2 w-2 rounded-full bg-[#9ca3af]" />
-                        No contributions
-                      </span>
-                    </label>
                   </div>
                 </div>
               </PopoverContent>
@@ -237,7 +231,7 @@ export function ProjectionChart({ accounts, profile, lumpSumWithdrawals = [] }: 
                       { label: 'P50 (base)', value: p50, color: '#3b82f6', show: true },
                       { label: 'P25', value: p25, color: '#60a5fa', show: showConservative },
                       { label: 'P10 (conservative)', value: p10, color: '#93c5fd', show: showConservative },
-                      { label: 'No contributions', value: noContrib ?? 0, color: '#9ca3af', show: showNoContributions && noContrib !== undefined },
+                      { label: 'No contributions', value: noContrib ?? 0, color: '#9ca3af', show: hasPaused && noContrib !== undefined },
                     ].filter((r) => r.show).map(({ label: l, value, color }) => (
                       <div key={l} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                         <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: color, flexShrink: 0 }} />
@@ -336,8 +330,8 @@ export function ProjectionChart({ accounts, profile, lumpSumWithdrawals = [] }: 
             )}
             {/* P50 base line */}
             <Line dataKey="totalReal" stroke="#3b82f6" strokeWidth={2.5} dot={false} name="P50 (base)" />
-            {/* No contributions line */}
-            {showNoContributions && (
+            {/* Paused contributions line */}
+            {hasPaused && (
               <Line dataKey="noContribReal" stroke="#9ca3af" strokeWidth={1.5} strokeDasharray="5 3" dot={false} name="No contributions" />
             )}
             <Legend

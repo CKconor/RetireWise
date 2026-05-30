@@ -19,6 +19,8 @@ interface AccountListProps {
   projectionBaseline?: ProjectionBaseline;
   onSetBaseline?: () => void;
   onClearBaseline?: () => void;
+  pausedContribAccounts?: Set<string>;
+  onToggleContribPause?: (id: string) => void;
 }
 
 const PlusIcon = ({ className = "h-6 w-6" }: { className?: string }) => (
@@ -31,7 +33,7 @@ function formatDate(iso: string) {
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-export function AccountList({ accounts, profile, onAdd, onUpdate, onDelete, onSaveSnapshot, projectionBaseline, onSetBaseline, onClearBaseline }: AccountListProps) {
+export function AccountList({ accounts, profile, onAdd, onUpdate, onDelete, onSaveSnapshot, projectionBaseline, onSetBaseline, onClearBaseline, pausedContribAccounts, onToggleContribPause }: AccountListProps) {
   const [formOpen, setFormOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
   const [snapshotPromptOpen, setSnapshotPromptOpen] = useState(false);
@@ -125,6 +127,8 @@ export function AccountList({ accounts, profile, onAdd, onUpdate, onDelete, onSa
               onEdit={handleEdit}
               onDelete={onDelete}
               baselineExpectedBalance={baselineThisMonth?.expectedAccountBalances[account.id]}
+              contributionsPaused={pausedContribAccounts?.has(account.id) ?? false}
+              onToggleContribPause={onToggleContribPause ? () => onToggleContribPause(account.id) : undefined}
             />
           ))}
           <Card
