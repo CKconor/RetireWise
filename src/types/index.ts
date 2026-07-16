@@ -8,6 +8,8 @@ export interface Account {
   monthlyContribution: number;
   annualReturnRate: number; // percentage, e.g., 7 for 7%
   annualContributionIncrease: number; // percentage, e.g., 2 for 2% yearly increase
+  futureMonthlyContribution?: number; // absolute £/mo after the step-up; set together with contributionStepUpAge or not at all
+  contributionStepUpAge?: number; // age at which futureMonthlyContribution takes effect
 }
 
 export interface UserProfile {

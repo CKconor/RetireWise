@@ -150,6 +150,7 @@ export function AccountList({ accounts, profile, onAdd, onUpdate, onDelete, onSa
         open={formOpen}
         onOpenChange={handleOpenChange}
         account={editingAccount}
+        profile={profile}
         onSave={handleSave}
       />
 

@@ -38,13 +38,17 @@ export function AccountCard({ account, profile, onEdit, onDelete, baselineExpect
   const increase = account.annualContributionIncrease ?? 0;
 
   const effectiveContribution = contributionsPaused ? 0 : account.monthlyContribution;
+  const stepUpAccount = contributionsPaused ? undefined : account;
+  const stepUpStartAge = contributionsPaused ? undefined : profile.currentAge;
 
   const projectedValueReal = calculateFutureValue(
     account.currentBalance,
     effectiveContribution,
     Math.max(0, realReturn),
     months,
-    increase
+    increase,
+    stepUpAccount,
+    stepUpStartAge
   );
 
   const projectedValueNominal = calculateFutureValue(
@@ -52,7 +56,9 @@ export function AccountCard({ account, profile, onEdit, onDelete, baselineExpect
     effectiveContribution,
     account.annualReturnRate,
     months,
-    increase
+    increase,
+    stepUpAccount,
+    stepUpStartAge
   );
 
   const growth = projectedValueReal - account.currentBalance;
@@ -152,6 +158,11 @@ export function AccountCard({ account, profile, onEdit, onDelete, baselineExpect
                 <span className="text-xs font-normal text-muted-foreground"> (+{increase}%/yr)</span>
               )}
             </p>
+            {account.futureMonthlyContribution != null && account.contributionStepUpAge != null && (
+              <p className="text-xs text-muted-foreground mt-0.5">
+                → {formatCurrency(account.futureMonthlyContribution)}/mo at age {account.contributionStepUpAge}
+              </p>
+            )}
           </div>
         </div>
 

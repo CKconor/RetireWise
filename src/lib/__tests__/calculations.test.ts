@@ -6,8 +6,12 @@ import {
   calculateProgress,
   calculateRequiredContribution,
   calculateCoastFireNumber,
+  getContributionForYear,
+  simulateAccountFinalBalance,
+  generateProjection,
+  generateMonthlyProjection,
 } from '@/lib/calculations';
-import type { Account } from '@/types';
+import type { Account, UserProfile } from '@/types';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -20,6 +24,21 @@ function makeAccount(overrides: Partial<Account> = {}): Account {
     monthlyContribution: 0,
     annualReturnRate: 7,
     annualContributionIncrease: 0,
+    ...overrides,
+  };
+}
+
+function makeProfile(overrides: Partial<UserProfile> = {}): UserProfile {
+  return {
+    birthday: '1990-01-01',
+    currentAge: 35,
+    retirementAge: 65,
+    targetAmount: 1_000_000,
+    expectedInflation: 2.5,
+    annualSalary: 60_000,
+    statePensionAmount: 11_502,
+    statePensionAge: 67,
+    includeStatePension: false,
     ...overrides,
   };
 }
@@ -57,6 +76,83 @@ describe('calculateFutureValue', () => {
 
   it('returns 0 for 0 months', () => {
     expect(calculateFutureValue(50_000, 500, 7, 0)).toBe(50_000);
+  });
+
+  it('switches to the step-up amount at the configured age when account/startAge are provided', () => {
+    // £500/mo, no growth %, steps up to £800/mo at age 47. Start age 45, run 3 years (36 months).
+    // Years 0-1 (age 45, 46) at £500/mo, year 2 onward (age 47+) at £800/mo.
+    const account = makeAccount({
+      monthlyContribution: 500,
+      annualReturnRate: 0,
+      futureMonthlyContribution: 800,
+      contributionStepUpAge: 47,
+    });
+    const withStepUp = calculateFutureValue(0, 500, 0, 36, 0, account, 45);
+    const withoutStepUp = calculateFutureValue(0, 500, 0, 36, 0);
+    expect(withStepUp).toBeGreaterThan(withoutStepUp);
+    // Hand-computed: 12 months @ £500, 12 months @ £500, 12 months @ £800 (0% return, so simple sums)
+    expect(withStepUp).toBeCloseTo(500 * 24 + 800 * 12, 5);
+  });
+
+  it('is unaffected by a step-up on the account when account/startAge are omitted (legacy behavior)', () => {
+    const account = makeAccount({
+      monthlyContribution: 500,
+      futureMonthlyContribution: 800,
+      contributionStepUpAge: 47,
+    });
+    const legacy = calculateFutureValue(0, 500, 6, 24, 0);
+    const withAccountButNoStartAge = calculateFutureValue(0, 500, 6, 24, 0, account);
+    expect(withAccountButNoStartAge).toBeCloseTo(legacy, 5);
+  });
+});
+
+// ─── getContributionForYear ───────────────────────────────────────────────────
+
+describe('getContributionForYear', () => {
+  it('matches the legacy formula when no step-up is configured', () => {
+    const account = makeAccount({ monthlyContribution: 500, annualContributionIncrease: 5 });
+    const yearsSinceStart = 3;
+    const expected = 500 * Math.pow(1.05, yearsSinceStart);
+    expect(getContributionForYear(account, 38, yearsSinceStart)).toBeCloseTo(expected, 5);
+  });
+
+  it('uses the pre-step-up amount before the step-up age', () => {
+    const account = makeAccount({
+      monthlyContribution: 500,
+      annualContributionIncrease: 0,
+      futureMonthlyContribution: 800,
+      contributionStepUpAge: 47,
+    });
+    expect(getContributionForYear(account, 46, 1)).toBe(500);
+  });
+
+  it('switches to the future amount unscaled exactly at the step-up age', () => {
+    const account = makeAccount({
+      monthlyContribution: 500,
+      annualContributionIncrease: 5,
+      futureMonthlyContribution: 800,
+      contributionStepUpAge: 47,
+    });
+    expect(getContributionForYear(account, 47, 12)).toBe(800);
+  });
+
+  it('compounds the % increase on the new base with the exponent reset after the step-up', () => {
+    const account = makeAccount({
+      monthlyContribution: 500,
+      annualContributionIncrease: 5,
+      futureMonthlyContribution: 800,
+      contributionStepUpAge: 47,
+    });
+    // Two years after the step-up age (age 49): exponent = 49 - 47 = 2
+    const expected = 800 * Math.pow(1.05, 2);
+    expect(getContributionForYear(account, 49, 14)).toBeCloseTo(expected, 5);
+  });
+
+  it('treats the account as having no step-up when only one of the two fields is set', () => {
+    const onlyFuture = makeAccount({ monthlyContribution: 500, futureMonthlyContribution: 800 });
+    const onlyAge = makeAccount({ monthlyContribution: 500, contributionStepUpAge: 47 });
+    expect(getContributionForYear(onlyFuture, 50, 5)).toBe(500);
+    expect(getContributionForYear(onlyAge, 50, 5)).toBe(500);
   });
 });
 
@@ -194,5 +290,79 @@ describe('calculateCoastFireNumber', () => {
     const younger = calculateCoastFireNumber({ ...base, currentAge: 25, retirementAge: 65 }, 4.5);
     const older   = calculateCoastFireNumber({ ...base, currentAge: 45, retirementAge: 65 }, 4.5);
     expect(younger).toBeLessThan(older);
+  });
+});
+
+// ─── Contribution Step-Up across the projection engines ───────────────────────
+
+describe('Contribution Step-Up integration', () => {
+  // "Mortgage ends at 47" scenario: £500/mo -> £800/mo at age 47, 0% return isolates the contribution effect.
+  function stepUpAccount(): Account {
+    return makeAccount({
+      currentBalance: 0,
+      monthlyContribution: 500,
+      annualReturnRate: 0,
+      annualContributionIncrease: 0,
+      futureMonthlyContribution: 800,
+      contributionStepUpAge: 47,
+    });
+  }
+
+  it('simulateAccountFinalBalance reflects the higher contribution from the step-up age onward', () => {
+    const profile = makeProfile({ currentAge: 45, retirementAge: 50 });
+    const withStepUp = simulateAccountFinalBalance(stepUpAccount(), 5, profile.currentAge, 0, []);
+    const withoutStepUp = simulateAccountFinalBalance(
+      makeAccount({ monthlyContribution: 500, annualReturnRate: 0 }),
+      5,
+      profile.currentAge,
+      0,
+      []
+    );
+    expect(withStepUp).toBeGreaterThan(withoutStepUp);
+    // Ages 46-50: years 1-2 at £500/mo (age 46,47 boundary happens at year 2 -> age 47), years 3-5 at £800/mo
+    // year=1 -> age 46 (£500), year=2 -> age 47 (£800), year=3 -> age 48 (£800), year=4 -> age 49 (£800), year=5 -> age 50 (£800)
+    const expected = 500 * 12 + 800 * 12 * 4;
+    expect(withStepUp).toBeCloseTo(expected, 0);
+  });
+
+  it('generateProjection applies the step-up uniformly across all scenarios', () => {
+    const profile = makeProfile({ currentAge: 45, retirementAge: 50 });
+    const points = generateProjection([stepUpAccount()], profile, []);
+    const lastPoint = points[points.length - 1];
+    expect(lastPoint.age).toBe(50);
+
+    const scenarioKeys: (keyof typeof lastPoint)[] = [
+      'total', 'totalReal', 'overperformanceReal', 'underperformanceReal', 'p90Real', 'p10Real',
+    ];
+    // With 0% base return, all scenarios still get boosted equally by the higher contribution total,
+    // so every scenario key should exceed what a flat £500/mo account would produce for the same span.
+    const flatPoints = generateProjection(
+      [makeAccount({ monthlyContribution: 500, annualReturnRate: 0 })],
+      profile,
+      []
+    );
+    const flatLastPoint = flatPoints[flatPoints.length - 1];
+    for (const key of scenarioKeys) {
+      expect(lastPoint[key] as number).toBeGreaterThan(flatLastPoint[key] as number);
+    }
+  });
+
+  it('generateMonthlyProjection switches to the new contribution once the account holder reaches the step-up age', () => {
+    const profile = makeProfile({
+      birthday: `${new Date().getFullYear() - 45}-01-01`,
+      currentAge: 45,
+      retirementAge: 50,
+    });
+    const points = generateMonthlyProjection([stepUpAccount()], profile);
+    const preStepUp = points.find((p) => p.age === 46);
+    const postStepUp = points.find((p) => p.age === 47);
+    expect(preStepUp).toBeDefined();
+    expect(postStepUp).toBeDefined();
+    // Balance growth per month should be higher once the step-up has taken effect.
+    const idxPre = points.indexOf(preStepUp!);
+    const idxPost = points.indexOf(postStepUp!);
+    const preMonthlyDelta = points[idxPre + 1].total - points[idxPre].total;
+    const postMonthlyDelta = points[idxPost + 1].total - points[idxPost].total;
+    expect(postMonthlyDelta).toBeGreaterThan(preMonthlyDelta);
   });
 });

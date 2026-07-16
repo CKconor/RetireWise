@@ -17,22 +17,49 @@ export function calculateAgeFromBirthday(birthday: string): number {
 }
 
 /**
- * Calculate the future value of an account with monthly compounding
+ * Compute the monthly contribution amount for an account at a given point in its
+ * schedule. Applies annualContributionIncrease compounding, and — if a contribution
+ * step-up is configured — switches to futureMonthlyContribution once age reaches
+ * contributionStepUpAge, resetting the compounding exponent to 0 at the step-up year.
+ */
+export function getContributionForYear(account: Account, age: number, yearsSinceStart: number): number {
+  const increase = account.annualContributionIncrease ?? 0;
+  const { futureMonthlyContribution, contributionStepUpAge } = account;
+
+  if (futureMonthlyContribution != null && contributionStepUpAge != null && age >= contributionStepUpAge) {
+    return futureMonthlyContribution * Math.pow(1 + increase / 100, age - contributionStepUpAge);
+  }
+
+  return account.monthlyContribution * Math.pow(1 + increase / 100, yearsSinceStart);
+}
+
+/**
+ * Calculate the future value of an account with monthly compounding.
+ * If account/startAge are provided, contribution bumps (including any configured
+ * step-up) are computed via getContributionForYear; otherwise the legacy inline
+ * annualContributionIncrease-only formula is used.
  */
 export function calculateFutureValue(
   currentBalance: number,
   monthlyContribution: number,
   annualReturnRate: number,
   months: number,
-  annualContributionIncrease: number = 0
+  annualContributionIncrease: number = 0,
+  account?: Account,
+  startAge?: number
 ): number {
   const monthlyRate = annualReturnRate / 100 / 12;
   let balance = currentBalance;
   let currentContribution = monthlyContribution;
 
   for (let i = 0; i < months; i++) {
-    if (i > 0 && i % 12 === 0 && annualContributionIncrease > 0) {
-      currentContribution = monthlyContribution * Math.pow(1 + annualContributionIncrease / 100, i / 12);
+    if (i > 0 && i % 12 === 0) {
+      const yearsSinceStart = i / 12;
+      if (account && startAge !== undefined) {
+        currentContribution = getContributionForYear(account, startAge + yearsSinceStart, yearsSinceStart);
+      } else if (annualContributionIncrease > 0) {
+        currentContribution = monthlyContribution * Math.pow(1 + annualContributionIncrease / 100, yearsSinceStart);
+      }
     }
     balance = (balance + currentContribution) * (1 + monthlyRate);
   }
@@ -94,13 +121,12 @@ export function simulateAccountFinalBalance(
   annualRate: number,
   withdrawals: LumpSumWithdrawal[]
 ): number {
-  const increase = account.annualContributionIncrease ?? 0;
   let balance = account.currentBalance;
 
   for (let year = 1; year <= yearsToRetirement; year++) {
     const age = currentAge + year;
-    // Contribution for this year — increases by annualContributionIncrease each year
-    const yearlyContrib = account.monthlyContribution * Math.pow(1 + increase / 100, year - 1);
+    // Contribution for this year — accounts for annualContributionIncrease and any step-up
+    const yearlyContrib = getContributionForYear(account, age, year - 1);
     balance = calculateFutureValue(balance, yearlyContrib, annualRate, 12, 0);
 
     balance = applyWithdrawalsToBalance(balance, account.id, withdrawals, { kind: 'annual', age });
@@ -229,9 +255,8 @@ export function generateProjection(
 
     if (year > 0) {
       for (const account of accounts) {
-        const increase = account.annualContributionIncrease ?? 0;
         const realReturn = Math.max(0, account.annualReturnRate - profile.expectedInflation);
-        const yearlyContrib = account.monthlyContribution * Math.pow(1 + increase / 100, year - 1);
+        const yearlyContrib = getContributionForYear(account, age, year - 1);
         for (let s = 0; s < PROJECTION_SCENARIOS.length; s++) {
           const rate = PROJECTION_SCENARIOS[s].rate(account, realReturn);
           balances[s][account.id] = calculateFutureValue(balances[s][account.id], yearlyContrib, rate, 12, 0);
@@ -555,7 +580,7 @@ export function calculateRequiredBalanceNow(
 
   for (const account of accounts) {
     const realReturn = Math.max(0, account.annualReturnRate - profile.expectedInflation);
-    fvContributionsOnly += calculateFutureValue(0, account.monthlyContribution, realReturn, months, account.annualContributionIncrease ?? 0);
+    fvContributionsOnly += calculateFutureValue(0, account.monthlyContribution, realReturn, months, account.annualContributionIncrease ?? 0, account, profile.currentAge);
     // Growth factor for £1 invested in this account over the full period
     weightedGrowthFactor += calculateFutureValue(1, 0, realReturn, months, 0) * account.currentBalance;
     totalBalance += account.currentBalance;
@@ -592,7 +617,9 @@ export function calculateTargetReachAge(
         account.monthlyContribution,
         realReturn,
         months,
-        account.annualContributionIncrease ?? 0
+        account.annualContributionIncrease ?? 0,
+        account,
+        profile.currentAge
       );
     }
 
@@ -815,7 +842,9 @@ export function calculateMarketDropImpact(
       account.monthlyContribution,
       realReturn,
       months,
-      account.annualContributionIncrease ?? 0
+      account.annualContributionIncrease ?? 0,
+      account,
+      profile.currentAge
     );
   }
 
@@ -904,7 +933,9 @@ export function calculateAccessibleBalance(
       account.monthlyContribution,
       realReturn,
       months,
-      account.annualContributionIncrease ?? 0
+      account.annualContributionIncrease ?? 0,
+      account,
+      profile.currentAge
     );
   }
 
@@ -977,10 +1008,9 @@ export function generateMonthlyProjection(
   const birth = new Date(profile.birthday);
   const accountStates = accounts.map((account) => ({
     id: account.id,
+    account,
     balance: account.currentBalance,
-    monthlyContribution: account.monthlyContribution,
     monthlyGrowthFactor: 1 + account.annualReturnRate / 100 / 12,
-    annualIncreaseFactor: 1 + (account.annualContributionIncrease ?? 0) / 100,
   }));
   const points: MonthlyProjectionDataPoint[] = [];
   let inflatedTarget = reducedTarget;
@@ -1003,7 +1033,7 @@ export function generateMonthlyProjection(
       if (m > 0) {
         if (m <= maxRetirementMonths) {
           const contributionYear = Math.floor((m - 1) / 12);
-          const contribution = accountState.monthlyContribution * Math.pow(accountState.annualIncreaseFactor, contributionYear);
+          const contribution = getContributionForYear(accountState.account, ageYears, contributionYear);
           accountState.balance = (accountState.balance + contribution) * accountState.monthlyGrowthFactor;
         } else {
           accountState.balance *= accountState.monthlyGrowthFactor;
