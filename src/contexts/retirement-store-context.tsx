@@ -21,6 +21,9 @@ export interface RetirementState {
   drawdownConfig: DrawdownConfig;
   netWorthHistory: NetWorthSnapshot[];
   lumpSumWithdrawals: LumpSumWithdrawal[];
+  lumpSumsEnabled: boolean;
+  /** lumpSumWithdrawals when enabled, otherwise []. Use this for projections/calculations. */
+  effectiveLumpSumWithdrawals: LumpSumWithdrawal[];
   projectionBaseline: ProjectionBaseline | undefined;
   isLoaded: boolean;
 }
@@ -49,6 +52,7 @@ export interface RetirementMutations {
     add: (data: Omit<LumpSumWithdrawal, 'id'>) => LumpSumWithdrawal;
     update: (id: string, patch: Partial<Omit<LumpSumWithdrawal, 'id'>>) => void;
     remove: (id: string) => void;
+    setEnabled: (enabled: boolean) => void;
   };
   baseline: {
     set: () => void;
@@ -80,6 +84,7 @@ export function RetirementProvider({ children }: { children: React.ReactNode }) 
     drawdownConfig: DEFAULT_DRAWDOWN_CONFIG,
     netWorthHistory: [],
     lumpSumWithdrawals: [],
+    lumpSumsEnabled: true,
   }));
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -218,6 +223,10 @@ export function RetirementProvider({ children }: { children: React.ReactNode }) 
     }));
   }, []);
 
+  const setLumpSumsEnabled = useCallback((enabled: boolean) => {
+    setAppState((prev) => ({ ...prev, lumpSumsEnabled: enabled }));
+  }, []);
+
   // ── Baseline mutations ─────────────────────────────────────────────────────
 
   const setProjectionBaseline = useCallback(() => {
@@ -244,15 +253,21 @@ export function RetirementProvider({ children }: { children: React.ReactNode }) 
   // ── Context values ────────────────────────────────────────────────────────
   // stateValue updates on every appState change — correct, consumers display data
   const stateValue = useMemo<RetirementState>(
-    () => ({
-      profile: appState.profile,
-      accounts: appState.accounts,
-      drawdownConfig: appState.drawdownConfig ?? DEFAULT_DRAWDOWN_CONFIG,
-      netWorthHistory: appState.netWorthHistory,
-      lumpSumWithdrawals: appState.lumpSumWithdrawals ?? [],
-      projectionBaseline: appState.projectionBaseline,
-      isLoaded,
-    }),
+    () => {
+      const lumpSumWithdrawals = appState.lumpSumWithdrawals ?? [];
+      const lumpSumsEnabled = appState.lumpSumsEnabled ?? true;
+      return {
+        profile: appState.profile,
+        accounts: appState.accounts,
+        drawdownConfig: appState.drawdownConfig ?? DEFAULT_DRAWDOWN_CONFIG,
+        netWorthHistory: appState.netWorthHistory,
+        lumpSumWithdrawals,
+        lumpSumsEnabled,
+        effectiveLumpSumWithdrawals: lumpSumsEnabled ? lumpSumWithdrawals : [],
+        projectionBaseline: appState.projectionBaseline,
+        isLoaded,
+      };
+    },
     [appState, isLoaded]
   );
 
@@ -269,7 +284,7 @@ export function RetirementProvider({ children }: { children: React.ReactNode }) 
         delete: deleteSnapshot,
         clear: clearHistory,
       },
-      withdrawals: { add: addWithdrawal, update: updateWithdrawal, remove: removeWithdrawal },
+      withdrawals: { add: addWithdrawal, update: updateWithdrawal, remove: removeWithdrawal, setEnabled: setLumpSumsEnabled },
       baseline: { set: setProjectionBaseline, clear: clearProjectionBaseline },
     }),
     [
@@ -277,7 +292,7 @@ export function RetirementProvider({ children }: { children: React.ReactNode }) 
       addAccount, updateAccount, removeAccount,
       updateDrawdownConfig,
       saveSnapshot, addManualSnapshot, deleteSnapshot, clearHistory,
-      addWithdrawal, updateWithdrawal, removeWithdrawal,
+      addWithdrawal, updateWithdrawal, removeWithdrawal, setLumpSumsEnabled,
       setProjectionBaseline, clearProjectionBaseline,
     ]
   );

@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/calculations';
 import { Pencil, Trash2 } from 'lucide-react';
@@ -28,6 +29,8 @@ interface LumpSumWithdrawalsProps {
   withdrawals: LumpSumWithdrawal[];
   accounts: Account[];
   profile: UserProfile;
+  enabled: boolean;
+  onToggleEnabled: (enabled: boolean) => void;
   onAdd: (data: Omit<LumpSumWithdrawal, 'id'>) => void;
   onUpdate: (id: string, updates: Partial<Omit<LumpSumWithdrawal, 'id'>>) => void;
   onDelete: (id: string) => void;
@@ -53,6 +56,8 @@ export function LumpSumWithdrawals({
   withdrawals,
   accounts,
   profile,
+  enabled,
+  onToggleEnabled,
   onAdd,
   onUpdate,
   onDelete,
@@ -128,7 +133,18 @@ export function LumpSumWithdrawals({
             No planned withdrawals or lump sums. Add a one-off withdrawal or deposit to see how it affects your projection.
           </p>
         ) : (
-          <div className="space-y-2">
+          <>
+            <div className="flex items-center gap-2 mb-3 pb-3 border-b border-border/60">
+              <Checkbox
+                id="lumpSumsEnabled"
+                checked={enabled}
+                onCheckedChange={(checked) => onToggleEnabled(checked === true)}
+              />
+              <label htmlFor="lumpSumsEnabled" className="text-sm text-muted-foreground cursor-pointer">
+                Include in projections
+              </label>
+            </div>
+            <div className={cn('space-y-2', !enabled && 'opacity-50')}>
             {sorted.map((w) => {
               const isDeposit = w.type === 'deposit';
               return (
@@ -159,7 +175,8 @@ export function LumpSumWithdrawals({
                 </div>
               );
             })}
-          </div>
+            </div>
+          </>
         )}
       </SectionCard>
 

@@ -41,6 +41,7 @@ export interface AppState {
   drawdownConfig?: DrawdownConfig;
   netWorthHistory: NetWorthSnapshot[];
   lumpSumWithdrawals: LumpSumWithdrawal[];
+  lumpSumsEnabled?: boolean; // master on/off toggle for all planned withdrawals & lump sums (default true)
   projectionBaseline?: ProjectionBaseline;
 }
 

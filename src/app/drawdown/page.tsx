@@ -14,7 +14,7 @@ import { simulateDrawdown, runMonteCarloSimulation } from '@/lib/drawdown';
 import { simulateAccountFinalBalance } from '@/lib/calculations';
 
 export default function DrawdownPage() {
-  const { profile, accounts, drawdownConfig, lumpSumWithdrawals, isLoaded } = useRetirementState();
+  const { profile, accounts, drawdownConfig, effectiveLumpSumWithdrawals: lumpSumWithdrawals, isLoaded } = useRetirementState();
   const { drawdown } = useRetirementMutations();
 
   const [mcNumSimulations, setMcNumSimulations] = useState(1000);

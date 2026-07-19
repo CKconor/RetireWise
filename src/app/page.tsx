@@ -18,7 +18,7 @@ import { LumpSumWithdrawals } from '@/components/lump-sum-withdrawals';
 import { RetirementEngineProvider } from '@/contexts/retirement-engine-context';
 
 export default function Home() {
-  const { profile, accounts, netWorthHistory, lumpSumWithdrawals, projectionBaseline, isLoaded } =
+  const { profile, accounts, netWorthHistory, lumpSumWithdrawals, lumpSumsEnabled, effectiveLumpSumWithdrawals, projectionBaseline, isLoaded } =
     useRetirementState();
   const { profile: profileMut, accounts: accountsMut, history, withdrawals, baseline } =
     useRetirementMutations();
@@ -69,7 +69,7 @@ export default function Home() {
   }
 
   return (
-    <RetirementEngineProvider accounts={effectiveAccounts} profile={profile} withdrawals={lumpSumWithdrawals}>
+    <RetirementEngineProvider accounts={effectiveAccounts} profile={profile} withdrawals={effectiveLumpSumWithdrawals}>
     <div className="min-h-screen bg-mesh">
       <Header onDownloadPdf={handleDownloadPdf} isGeneratingPdf={isGeneratingPdf} />
 
@@ -118,6 +118,8 @@ export default function Home() {
                 withdrawals={lumpSumWithdrawals}
                 accounts={accounts}
                 profile={profile}
+                enabled={lumpSumsEnabled}
+                onToggleEnabled={withdrawals.setEnabled}
                 onAdd={withdrawals.add}
                 onUpdate={withdrawals.update}
                 onDelete={withdrawals.remove}
@@ -126,7 +128,7 @@ export default function Home() {
 
             {/* Projection Chart */}
             <div className="opacity-0 animate-fade-in stagger-3">
-              <ProjectionChart accounts={accounts} profile={profile} lumpSumWithdrawals={lumpSumWithdrawals} pausedContribAccounts={pausedContribAccounts} />
+              <ProjectionChart accounts={accounts} profile={profile} lumpSumWithdrawals={effectiveLumpSumWithdrawals} pausedContribAccounts={pausedContribAccounts} />
             </div>
 
             {/* Net Worth History */}
@@ -151,7 +153,7 @@ export default function Home() {
             {/* What-If Scenarios & ISA Bridge */}
             <div className="grid gap-6 lg:grid-cols-2">
               <div className="opacity-0 animate-fade-in stagger-6">
-                <WhatIfScenarios accounts={accounts} profile={profile} lumpSumWithdrawals={lumpSumWithdrawals} />
+                <WhatIfScenarios accounts={accounts} profile={profile} lumpSumWithdrawals={effectiveLumpSumWithdrawals} />
               </div>
               <div className="opacity-0 animate-fade-in stagger-7">
                 <IsaBridgeCard profile={profile} />

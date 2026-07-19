@@ -107,6 +107,7 @@ const DEFAULT_STATE: AppState = {
   drawdownConfig: DEFAULT_DRAWDOWN_CONFIG,
   netWorthHistory: [],
   lumpSumWithdrawals: [],
+  lumpSumsEnabled: true,
 };
 
 export function loadState(): AppState {
@@ -134,6 +135,7 @@ export function loadState(): AppState {
         drawdownConfig: { ...DEFAULT_DRAWDOWN_CONFIG, ...parsed.drawdownConfig },
         netWorthHistory: parsed.netWorthHistory || [],
         lumpSumWithdrawals: parsed.lumpSumWithdrawals || [],
+        lumpSumsEnabled: parsed.lumpSumsEnabled ?? true,
         projectionBaseline: migrateLegacyBaseline(parsed.projectionBaseline),
       };
     }
