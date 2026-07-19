@@ -78,7 +78,12 @@ function withdrawalFires(w: LumpSumWithdrawal, trigger: WithdrawalTrigger): bool
   return trigger.ageMonthsPart === 0 && w.age === trigger.ageYears;
 }
 
-/** Apply due withdrawals to a single account balance. Returns the new balance (≥ 0). */
+/** Signed amount: positive for deposits, negative for withdrawals (the default). */
+function signedLumpSumAmount(w: LumpSumWithdrawal): number {
+  return w.type === 'deposit' ? w.amount : -w.amount;
+}
+
+/** Apply due withdrawals/deposits to a single account balance. Returns the new balance (≥ 0). */
 function applyWithdrawalsToBalance(
   balance: number,
   accountId: string,
@@ -87,13 +92,13 @@ function applyWithdrawalsToBalance(
 ): number {
   for (const w of withdrawals) {
     if (w.accountId === accountId && withdrawalFires(w, trigger)) {
-      balance = Math.max(0, balance - w.amount);
+      balance = Math.max(0, balance + signedLumpSumAmount(w));
     }
   }
   return balance;
 }
 
-/** Apply due withdrawals across N scenario balance maps in place. */
+/** Apply due withdrawals/deposits across N scenario balance maps in place. */
 function applyWithdrawalsToScenarios(
   scenarios: Record<string, number>[],
   withdrawals: LumpSumWithdrawal[],
@@ -101,9 +106,10 @@ function applyWithdrawalsToScenarios(
 ): void {
   for (const w of withdrawals) {
     if (!withdrawalFires(w, trigger)) continue;
+    const delta = signedLumpSumAmount(w);
     for (const scenario of scenarios) {
       if (w.accountId in scenario) {
-        scenario[w.accountId] = Math.max(0, scenario[w.accountId] - w.amount);
+        scenario[w.accountId] = Math.max(0, scenario[w.accountId] + delta);
       }
     }
   }

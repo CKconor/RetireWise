@@ -24,12 +24,15 @@ export interface UserProfile {
   includeStatePension: boolean; // whether to include in projections
 }
 
+export type LumpSumType = 'withdrawal' | 'deposit';
+
 export interface LumpSumWithdrawal {
   id: string;
   name: string;
   amount: number;
-  age: number;        // age at which the withdrawal occurs
-  accountId: string;  // which account to draw from
+  age: number;        // age at which the withdrawal/deposit occurs
+  accountId: string;  // which account to draw from / pay into
+  type?: LumpSumType; // 'withdrawal' (default, for backward compatibility) or 'deposit'
 }
 
 export interface AppState {

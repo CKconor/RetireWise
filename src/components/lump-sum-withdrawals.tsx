@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Account, LumpSumWithdrawal, UserProfile } from '@/types';
+import { Account, LumpSumWithdrawal, LumpSumType, UserProfile } from '@/types';
 import { SectionCard } from '@/components/ui/section-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/calculations';
 import { Pencil, Trash2 } from 'lucide-react';
 
@@ -37,9 +38,10 @@ interface FormState {
   amount: string;
   age: string;
   accountId: string;
+  type: LumpSumType;
 }
 
-const EMPTY_FORM: FormState = { name: '', amount: '', age: '', accountId: '' };
+const EMPTY_FORM: FormState = { name: '', amount: '', age: '', accountId: '', type: 'withdrawal' };
 
 const WithdrawalIcon = () => (
   <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -68,17 +70,30 @@ export function LumpSumWithdrawals({
 
   const handleEdit = (w: LumpSumWithdrawal) => {
     setEditingId(w.id);
-    setForm({ name: w.name, amount: String(w.amount), age: String(w.age), accountId: w.accountId });
+    setForm({
+      name: w.name,
+      amount: String(w.amount),
+      age: String(w.age),
+      accountId: w.accountId,
+      type: w.type ?? 'withdrawal',
+    });
+    setFormOpen(true);
+  };
+
+  const handleAddNew = (type: LumpSumType) => {
+    setForm({ ...EMPTY_FORM, type });
+    setEditingId(null);
     setFormOpen(true);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const data = {
-      name: form.name.trim() || 'Withdrawal',
+      name: form.name.trim() || (form.type === 'deposit' ? 'Lump Sum' : 'Withdrawal'),
       amount: parseFloat(form.amount) || 0,
       age: parseInt(form.age) || profile.currentAge,
       accountId: form.accountId,
+      type: form.type,
     };
     if (editingId) {
       onUpdate(editingId, data);
@@ -96,40 +111,54 @@ export function LumpSumWithdrawals({
     <>
       <SectionCard
         icon={<WithdrawalIcon />}
-        title="Planned Withdrawals"
+        title="Planned Withdrawals & Lump Sums"
         action={
-          <Button size="sm" variant="outline" onClick={() => setFormOpen(true)} disabled={accounts.length === 0}>
-            + Add Withdrawal
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => handleAddNew('withdrawal')} disabled={accounts.length === 0}>
+              + Withdrawal
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => handleAddNew('deposit')} disabled={accounts.length === 0}>
+              + Lump Sum
+            </Button>
+          </div>
         }
       >
         {sorted.length === 0 ? (
           <p className="text-sm text-muted-foreground py-2">
-            No planned withdrawals. Add a one-off withdrawal to see how it affects your projection.
+            No planned withdrawals or lump sums. Add a one-off withdrawal or deposit to see how it affects your projection.
           </p>
         ) : (
           <div className="space-y-2">
-            {sorted.map((w) => (
-              <div
-                key={w.id}
-                className="flex items-center justify-between rounded-lg border border-border/60 bg-secondary/30 px-3 py-2"
-              >
-                <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">{w.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatCurrency(w.amount)} at age {w.age} &middot; {accountName(w.accountId)}
-                  </p>
+            {sorted.map((w) => {
+              const isDeposit = w.type === 'deposit';
+              return (
+                <div
+                  key={w.id}
+                  className="flex items-center justify-between rounded-lg border border-border/60 bg-secondary/30 px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{w.name}</p>
+                    <p
+                      className={cn(
+                        'text-xs',
+                        isDeposit ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'
+                      )}
+                    >
+                      {isDeposit ? '+' : '-'}
+                      {formatCurrency(w.amount)} at age {w.age} &middot; {accountName(w.accountId)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1 ml-2 shrink-0">
+                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleEdit(w)}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => onDelete(w.id)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1 ml-2 shrink-0">
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleEdit(w)}>
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => onDelete(w.id)}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </SectionCard>
@@ -137,13 +166,40 @@ export function LumpSumWithdrawals({
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{editingId ? 'Edit Withdrawal' : 'Add Planned Withdrawal'}</DialogTitle>
+            <DialogTitle>
+              {editingId
+                ? form.type === 'deposit' ? 'Edit Lump Sum' : 'Edit Withdrawal'
+                : form.type === 'deposit' ? 'Add Planned Lump Sum' : 'Add Planned Withdrawal'}
+            </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-2 rounded-lg bg-secondary/50 p-1">
+              <button
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, type: 'withdrawal' }))}
+                className={cn(
+                  'rounded-md py-1.5 text-sm font-medium transition-colors',
+                  form.type === 'withdrawal' ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                Withdrawal
+              </button>
+              <button
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, type: 'deposit' }))}
+                className={cn(
+                  'rounded-md py-1.5 text-sm font-medium transition-colors',
+                  form.type === 'deposit' ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                Lump Sum
+              </button>
+            </div>
+
             <FormField id="wName" label="Description">
               <Input
                 id="wName"
-                placeholder="e.g., House deposit, New car"
+                placeholder={form.type === 'deposit' ? 'e.g., Inheritance, Bonus' : 'e.g., House deposit, New car'}
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 className="bg-secondary/50"
@@ -178,7 +234,7 @@ export function LumpSumWithdrawals({
               </FormField>
             </div>
 
-            <FormField id="wAccount" label="From Account">
+            <FormField id="wAccount" label={form.type === 'deposit' ? 'Into Account' : 'From Account'}>
               <Select value={form.accountId} onValueChange={(v) => setForm((f) => ({ ...f, accountId: v }))}>
                 <SelectTrigger className="bg-secondary/50">
                   <SelectValue placeholder="Select account..." />
@@ -198,7 +254,7 @@ export function LumpSumWithdrawals({
                 Cancel
               </Button>
               <Button type="submit" className="bg-primary ml-4" disabled={!form.accountId || !form.amount || !form.age}>
-                {editingId ? 'Save Changes' : 'Add Withdrawal'}
+                {editingId ? 'Save Changes' : form.type === 'deposit' ? 'Add Lump Sum' : 'Add Withdrawal'}
               </Button>
             </DialogFooter>
           </form>
