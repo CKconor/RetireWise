@@ -132,7 +132,7 @@ export function MonthlyBreakdownTable({ accounts, profile, lumpSumWithdrawals = 
         />
       </div>
 
-      <div className="overflow-x-auto -mx-6 px-6">
+      <div className="overflow-x-auto overscroll-x-contain -mx-6 px-6 [-webkit-overflow-scrolling:touch]">
       <table className="w-full min-w-[700px] text-sm">
         <thead>
           <tr className="border-b border-border/60">
