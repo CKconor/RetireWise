@@ -136,8 +136,8 @@ export function MonthlyBreakdownTable({ accounts, profile, lumpSumWithdrawals = 
       <table className="w-full min-w-[700px] text-sm">
         <thead>
           <tr className="border-b border-border/60">
-            <th className="sticky left-0 z-10 w-[140px] min-w-[140px] bg-card pb-3 pr-4 text-left font-semibold text-muted-foreground">Date</th>
-            <th className="sticky left-[140px] z-10 w-[100px] min-w-[100px] border-r border-border/40 bg-card pb-3 px-4 text-left font-semibold text-muted-foreground">Age</th>
+            <th className="sticky left-0 z-10 w-[118px] min-w-[118px] bg-card pb-3 pr-4 text-left font-semibold text-muted-foreground">Date</th>
+            <th className="sticky left-[118px] z-10 w-[94px] min-w-[94px] border-r border-border/40 bg-card pb-3 px-3 text-left font-semibold text-muted-foreground">Age</th>
             {accounts.map((account) => (
               <th key={account.id} className="pb-3 px-4 text-right font-semibold text-muted-foreground whitespace-nowrap">
                 <div className="flex items-center justify-end gap-1.5">
@@ -193,7 +193,7 @@ function YearSection({ group, summary, isExpanded, onToggle, accounts }: YearSec
         className="group border-b border-border/30 cursor-pointer transition-colors hover:bg-muted/30 select-none"
         onClick={() => onToggle(group.year)}
       >
-        <td className="sticky left-0 z-10 w-[140px] min-w-[140px] bg-card py-2.5 pr-4 font-semibold text-foreground group-hover:bg-muted/30">
+        <td className="sticky left-0 z-10 w-[118px] min-w-[118px] bg-card py-2.5 pr-4 font-semibold text-foreground group-hover:bg-muted">
           <div className="flex items-center gap-2">
             <svg
               className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${isExpanded ? 'rotate-90' : ''}`}
@@ -207,7 +207,7 @@ function YearSection({ group, summary, isExpanded, onToggle, accounts }: YearSec
             {group.year}
           </div>
         </td>
-        <td className="sticky left-[140px] z-10 w-[100px] min-w-[100px] border-r border-border/40 bg-card py-2.5 px-4 font-mono text-foreground group-hover:bg-muted/30">{summary.age}</td>
+        <td className="sticky left-[118px] z-10 w-[94px] min-w-[94px] border-r border-border/40 bg-card py-2.5 px-3 font-mono text-foreground group-hover:bg-muted">{summary.age}</td>
         {accounts.map((account) => (
           <td key={account.id} className="py-2.5 px-4 text-right font-mono text-foreground">
             {formatCurrency(summary.accountBalances[account.id] ?? 0)}
@@ -228,10 +228,10 @@ function YearSection({ group, summary, isExpanded, onToggle, accounts }: YearSec
             key={row.month}
             className="group border-b border-border/20 transition-colors hover:bg-muted/20"
           >
-            <td className="sticky left-0 z-10 w-[140px] min-w-[140px] bg-card py-2 pr-4 pl-7 font-mono text-muted-foreground group-hover:bg-muted/20">
+            <td className="sticky left-0 z-10 w-[118px] min-w-[118px] bg-card py-2 pr-4 pl-7 font-mono text-muted-foreground group-hover:bg-muted">
               {MONTH_NAMES[row.monthOfYear - 1]} {row.year}
             </td>
-            <td className="sticky left-[140px] z-10 w-[100px] min-w-[100px] border-r border-border/40 bg-card py-2 px-4 font-mono text-muted-foreground group-hover:bg-muted/20">
+            <td className="sticky left-[118px] z-10 w-[94px] min-w-[94px] border-r border-border/40 bg-card py-2 px-3 font-mono text-muted-foreground group-hover:bg-muted">
               {row.age}y {row.ageMonths}m
             </td>
             {accounts.map((account) => (
