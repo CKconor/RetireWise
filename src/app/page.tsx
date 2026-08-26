@@ -94,7 +94,7 @@ export default function Home() {
           </div>
 
           {/* Right Column - Accounts & Chart */}
-          <div className="space-y-6 lg:col-span-8">
+          <div className="min-w-0 space-y-6 lg:col-span-8">
             {/* Account Cards Grid */}
             <div className="opacity-0 animate-fade-in stagger-2">
               <AccountList
