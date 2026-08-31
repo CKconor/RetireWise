@@ -75,6 +75,24 @@ function migrateLegacyBaseline(raw: unknown): ProjectionBaseline | undefined {
   };
 }
 
+/**
+ * Migration: convert the old single-step-up fields (futureMonthlyContribution +
+ * contributionStepUpAge) into the new contributionChanges array.
+ */
+function migrateAccount(raw: unknown): Account {
+  const a = raw as Account & { futureMonthlyContribution?: number; contributionStepUpAge?: number };
+  if (a.contributionChanges == null && a.futureMonthlyContribution != null && a.contributionStepUpAge != null) {
+    const { futureMonthlyContribution, contributionStepUpAge, ...rest } = a;
+    return {
+      ...rest,
+      contributionChanges: [
+        { id: generateContributionChangeId(), age: contributionStepUpAge, monthlyContribution: futureMonthlyContribution },
+      ],
+    };
+  }
+  return a;
+}
+
 const STORAGE_KEY = 'retirewise-data';
 
 const currentYear = new Date().getFullYear();
@@ -131,7 +149,7 @@ export function loadState(): AppState {
 
       return {
         profile,
-        accounts: parsed.accounts || [],
+        accounts: (parsed.accounts || []).map(migrateAccount),
         drawdownConfig: { ...DEFAULT_DRAWDOWN_CONFIG, ...parsed.drawdownConfig },
         netWorthHistory: parsed.netWorthHistory || [],
         lumpSumWithdrawals: parsed.lumpSumWithdrawals || [],
@@ -162,6 +180,10 @@ export function generateAccountId(): string {
 
 export function generateWithdrawalId(): string {
   return `withdrawal-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+}
+
+export function generateContributionChangeId(): string {
+  return `contrib-change-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 }
 
 export function createWithdrawal(partial: Omit<LumpSumWithdrawal, 'id'>): LumpSumWithdrawal {

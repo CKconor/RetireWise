@@ -1,5 +1,11 @@
 export type AccountType = 'isa' | 'sipp' | 'pension' | 'gia' | 'savings';
 
+export interface ContributionChange {
+  id: string;
+  age: number;               // age at which monthlyContribution takes effect
+  monthlyContribution: number; // absolute £/mo from this age onward (until the next change, if any)
+}
+
 export interface Account {
   id: string;
   name: string;
@@ -8,8 +14,7 @@ export interface Account {
   monthlyContribution: number;
   annualReturnRate: number; // percentage, e.g., 7 for 7%
   annualContributionIncrease: number; // percentage, e.g., 2 for 2% yearly increase
-  futureMonthlyContribution?: number; // absolute £/mo after the step-up; set together with contributionStepUpAge or not at all
-  contributionStepUpAge?: number; // age at which futureMonthlyContribution takes effect
+  contributionChanges?: ContributionChange[]; // future contribution changes, in any order
 }
 
 export interface UserProfile {

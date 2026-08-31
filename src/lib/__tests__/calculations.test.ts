@@ -84,8 +84,7 @@ describe('calculateFutureValue', () => {
     const account = makeAccount({
       monthlyContribution: 500,
       annualReturnRate: 0,
-      futureMonthlyContribution: 800,
-      contributionStepUpAge: 47,
+      contributionChanges: [{ id: 'c1', age: 47, monthlyContribution: 800 }],
     });
     const withStepUp = calculateFutureValue(0, 500, 0, 36, 0, account, 45);
     const withoutStepUp = calculateFutureValue(0, 500, 0, 36, 0);
@@ -97,8 +96,7 @@ describe('calculateFutureValue', () => {
   it('is unaffected by a step-up on the account when account/startAge are omitted (legacy behavior)', () => {
     const account = makeAccount({
       monthlyContribution: 500,
-      futureMonthlyContribution: 800,
-      contributionStepUpAge: 47,
+      contributionChanges: [{ id: 'c1', age: 47, monthlyContribution: 800 }],
     });
     const legacy = calculateFutureValue(0, 500, 6, 24, 0);
     const withAccountButNoStartAge = calculateFutureValue(0, 500, 6, 24, 0, account);
@@ -120,8 +118,7 @@ describe('getContributionForYear', () => {
     const account = makeAccount({
       monthlyContribution: 500,
       annualContributionIncrease: 0,
-      futureMonthlyContribution: 800,
-      contributionStepUpAge: 47,
+      contributionChanges: [{ id: 'c1', age: 47, monthlyContribution: 800 }],
     });
     expect(getContributionForYear(account, 46, 1)).toBe(500);
   });
@@ -130,8 +127,7 @@ describe('getContributionForYear', () => {
     const account = makeAccount({
       monthlyContribution: 500,
       annualContributionIncrease: 5,
-      futureMonthlyContribution: 800,
-      contributionStepUpAge: 47,
+      contributionChanges: [{ id: 'c1', age: 47, monthlyContribution: 800 }],
     });
     expect(getContributionForYear(account, 47, 12)).toBe(800);
   });
@@ -140,19 +136,38 @@ describe('getContributionForYear', () => {
     const account = makeAccount({
       monthlyContribution: 500,
       annualContributionIncrease: 5,
-      futureMonthlyContribution: 800,
-      contributionStepUpAge: 47,
+      contributionChanges: [{ id: 'c1', age: 47, monthlyContribution: 800 }],
     });
     // Two years after the step-up age (age 49): exponent = 49 - 47 = 2
     const expected = 800 * Math.pow(1.05, 2);
     expect(getContributionForYear(account, 49, 14)).toBeCloseTo(expected, 5);
   });
 
-  it('treats the account as having no step-up when only one of the two fields is set', () => {
-    const onlyFuture = makeAccount({ monthlyContribution: 500, futureMonthlyContribution: 800 });
-    const onlyAge = makeAccount({ monthlyContribution: 500, contributionStepUpAge: 47 });
-    expect(getContributionForYear(onlyFuture, 50, 5)).toBe(500);
-    expect(getContributionForYear(onlyAge, 50, 5)).toBe(500);
+  it('uses the most recent applicable change when multiple changes are configured', () => {
+    const account = makeAccount({
+      monthlyContribution: 500,
+      annualContributionIncrease: 0,
+      contributionChanges: [
+        { id: 'c1', age: 40, monthlyContribution: 700 },
+        { id: 'c2', age: 47, monthlyContribution: 800 },
+        { id: 'c3', age: 55, monthlyContribution: 1000 },
+      ],
+    });
+    expect(getContributionForYear(account, 38, 3)).toBe(500);
+    expect(getContributionForYear(account, 45, 10)).toBe(700);
+    expect(getContributionForYear(account, 50, 15)).toBe(800);
+    expect(getContributionForYear(account, 60, 25)).toBe(1000);
+  });
+
+  it('ignores contribution changes that have not been reached yet, regardless of array order', () => {
+    const account = makeAccount({
+      monthlyContribution: 500,
+      contributionChanges: [
+        { id: 'c1', age: 55, monthlyContribution: 1000 },
+        { id: 'c2', age: 47, monthlyContribution: 800 },
+      ],
+    });
+    expect(getContributionForYear(account, 50, 15)).toBe(800);
   });
 });
 
@@ -303,8 +318,7 @@ describe('Contribution Step-Up integration', () => {
       monthlyContribution: 500,
       annualReturnRate: 0,
       annualContributionIncrease: 0,
-      futureMonthlyContribution: 800,
-      contributionStepUpAge: 47,
+      contributionChanges: [{ id: 'c1', age: 47, monthlyContribution: 800 }],
     });
   }
 

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Account, AccountType, UserProfile, ACCOUNT_TYPE_LABELS, DEFAULT_RETURN_RATES } from '@/types';
+import { Account, AccountType, ContributionChange, UserProfile, ACCOUNT_TYPE_LABELS, DEFAULT_RETURN_RATES } from '@/types';
+import { generateContributionChangeId } from '@/lib/storage';
 import {
   Dialog,
   DialogContent,
@@ -12,7 +13,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FormField } from '@/components/ui/form-field';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Trash2 } from 'lucide-react';
 
 interface AccountFormProps {
   open: boolean;
@@ -38,9 +39,9 @@ export function AccountForm({ open, onOpenChange, account, profile, onSave }: Ac
   const [monthlyContribution, setMonthlyContribution] = useState('');
   const [annualReturnRate, setAnnualReturnRate] = useState('');
   const [annualContributionIncrease, setAnnualContributionIncrease] = useState('0');
-  const [hasStepUp, setHasStepUp] = useState(false);
-  const [futureMonthlyContribution, setFutureMonthlyContribution] = useState('');
-  const [contributionStepUpAge, setContributionStepUpAge] = useState('');
+  const [contributionChangeRows, setContributionChangeRows] = useState<
+    { id: string; age: string; monthlyContribution: string }[]
+  >([]);
 
   useEffect(() => {
     if (open) {
@@ -51,10 +52,13 @@ export function AccountForm({ open, onOpenChange, account, profile, onSave }: Ac
         setMonthlyContribution(String(account.monthlyContribution));
         setAnnualReturnRate(String(account.annualReturnRate));
         setAnnualContributionIncrease(String(account.annualContributionIncrease ?? 0));
-        const stepUpConfigured = account.futureMonthlyContribution != null && account.contributionStepUpAge != null;
-        setHasStepUp(stepUpConfigured);
-        setFutureMonthlyContribution(stepUpConfigured ? String(account.futureMonthlyContribution) : '');
-        setContributionStepUpAge(stepUpConfigured ? String(account.contributionStepUpAge) : '');
+        setContributionChangeRows(
+          (account.contributionChanges ?? []).map((c) => ({
+            id: c.id,
+            age: String(c.age),
+            monthlyContribution: String(c.monthlyContribution),
+          }))
+        );
       } else {
         setName('');
         setType('isa');
@@ -62,9 +66,7 @@ export function AccountForm({ open, onOpenChange, account, profile, onSave }: Ac
         setMonthlyContribution('');
         setAnnualReturnRate(String(DEFAULT_RETURN_RATES['isa']));
         setAnnualContributionIncrease('0');
-        setHasStepUp(false);
-        setFutureMonthlyContribution('');
-        setContributionStepUpAge('');
+        setContributionChangeRows([]);
       }
     }
   }, [open, account]);
@@ -76,17 +78,41 @@ export function AccountForm({ open, onOpenChange, account, profile, onSave }: Ac
     }
   };
 
-  const stepUpAgeNum = parseInt(contributionStepUpAge, 10);
-  const stepUpValid =
-    !hasStepUp ||
-    (futureMonthlyContribution.trim() !== '' &&
-      !isNaN(stepUpAgeNum) &&
-      stepUpAgeNum > profile.currentAge &&
-      stepUpAgeNum < profile.retirementAge);
+  const isRowValid = (row: { age: string; monthlyContribution: string }) => {
+    const ageNum = parseInt(row.age, 10);
+    return (
+      row.monthlyContribution.trim() !== '' &&
+      !isNaN(ageNum) &&
+      ageNum > profile.currentAge &&
+      ageNum < profile.retirementAge
+    );
+  };
+
+  const contributionChangesValid = contributionChangeRows.every(isRowValid);
+
+  const addContributionChangeRow = () => {
+    setContributionChangeRows((rows) => [
+      ...rows,
+      { id: generateContributionChangeId(), age: '', monthlyContribution: '' },
+    ]);
+  };
+
+  const updateContributionChangeRow = (id: string, updates: Partial<{ age: string; monthlyContribution: string }>) => {
+    setContributionChangeRows((rows) => rows.map((r) => (r.id === id ? { ...r, ...updates } : r)));
+  };
+
+  const removeContributionChangeRow = (id: string) => {
+    setContributionChangeRows((rows) => rows.filter((r) => r.id !== id));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!stepUpValid) return;
+    if (!contributionChangesValid) return;
+    const contributionChanges: ContributionChange[] = contributionChangeRows.map((r) => ({
+      id: r.id,
+      age: parseInt(r.age, 10),
+      monthlyContribution: parseFloat(r.monthlyContribution) || 0,
+    }));
     onSave({
       name: name.trim() || ACCOUNT_TYPE_LABELS[type],
       type,
@@ -94,8 +120,7 @@ export function AccountForm({ open, onOpenChange, account, profile, onSave }: Ac
       monthlyContribution: parseFloat(monthlyContribution) || 0,
       annualReturnRate: parseFloat(annualReturnRate) || 0,
       annualContributionIncrease: parseFloat(annualContributionIncrease) || 0,
-      futureMonthlyContribution: hasStepUp ? parseFloat(futureMonthlyContribution) || 0 : undefined,
-      contributionStepUpAge: hasStepUp ? stepUpAgeNum : undefined,
+      contributionChanges: contributionChanges.length > 0 ? contributionChanges : undefined,
     });
     onOpenChange(false);
   };
@@ -175,49 +200,69 @@ export function AccountForm({ open, onOpenChange, account, profile, onSave }: Ac
           </FormField>
 
           <div className="rounded-lg border border-border/60 p-3 space-y-3">
-            <label htmlFor="hasStepUp" className="flex items-center gap-2 text-sm cursor-pointer select-none">
-              <Checkbox id="hasStepUp" checked={hasStepUp} onCheckedChange={(v) => setHasStepUp(!!v)} />
-              Add a future contribution change
-            </label>
-            {hasStepUp && (
-              <>
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField id="futureMonthlyContribution" label="New Monthly Contribution (£)">
-                    <Input
-                      id="futureMonthlyContribution"
-                      type="number"
-                      min={0}
-                      step="any"
-                      value={futureMonthlyContribution}
-                      onChange={(e) => setFutureMonthlyContribution(e.target.value)}
-                      className="bg-secondary/50"
-                      required
-                    />
-                  </FormField>
-                  <FormField
-                    id="contributionStepUpAge"
-                    label="At Age"
-                    hint={`Between ${profile.currentAge + 1} and ${profile.retirementAge - 1}`}
-                  >
-                    <Input
-                      id="contributionStepUpAge"
-                      type="number"
-                      min={profile.currentAge + 1}
-                      max={profile.retirementAge - 1}
-                      step={1}
-                      value={contributionStepUpAge}
-                      onChange={(e) => setContributionStepUpAge(e.target.value)}
-                      className="bg-secondary/50"
-                      required
-                    />
-                  </FormField>
+            <div className="flex items-center justify-between">
+              <span className="text-sm">Future contribution changes</span>
+              <Button type="button" size="sm" variant="outline" onClick={addContributionChangeRow}>
+                + Add change
+              </Button>
+            </div>
+            {contributionChangeRows.map((row) => {
+              const rowValid = isRowValid(row);
+              return (
+                <div key={row.id} className="space-y-1">
+                  <div className="flex items-end gap-2">
+                    <FormField id={`contribAmount-${row.id}`} label="New Monthly Contribution (£)" className="flex-1">
+                      <Input
+                        id={`contribAmount-${row.id}`}
+                        type="number"
+                        min={0}
+                        step="any"
+                        value={row.monthlyContribution}
+                        onChange={(e) => updateContributionChangeRow(row.id, { monthlyContribution: e.target.value })}
+                        className="bg-secondary/50"
+                        required
+                      />
+                    </FormField>
+                    <FormField
+                      id={`contribAge-${row.id}`}
+                      label="At Age"
+                      hint={`${profile.currentAge + 1}–${profile.retirementAge - 1}`}
+                      className="flex-1"
+                    >
+                      <Input
+                        id={`contribAge-${row.id}`}
+                        type="number"
+                        min={profile.currentAge + 1}
+                        max={profile.retirementAge - 1}
+                        step={1}
+                        value={row.age}
+                        onChange={(e) => updateContributionChangeRow(row.id, { age: e.target.value })}
+                        className="bg-secondary/50"
+                        required
+                      />
+                    </FormField>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="mb-2 h-9 w-9 shrink-0 text-destructive hover:text-destructive"
+                      onClick={() => removeContributionChangeRow(row.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {!rowValid && (
+                    <p className="text-xs text-destructive">
+                      Age must be between {profile.currentAge + 1} and {profile.retirementAge - 1}.
+                    </p>
+                  )}
                 </div>
-                {!stepUpValid && (
-                  <p className="text-xs text-destructive">
-                    Step-up age must be between {profile.currentAge + 1} and {profile.retirementAge - 1}.
-                  </p>
-                )}
-              </>
+              );
+            })}
+            {contributionChangeRows.length === 0 && (
+              <p className="text-xs text-muted-foreground">
+                Add a change to model a pay rise, bonus, or contribution pause at a future age.
+              </p>
             )}
           </div>
 
@@ -242,7 +287,7 @@ export function AccountForm({ open, onOpenChange, account, profile, onSave }: Ac
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" className="bg-primary ml-4" disabled={hasStepUp && !stepUpValid}>
+            <Button type="submit" className="bg-primary ml-4" disabled={!contributionChangesValid}>
               {account ? 'Save Changes' : 'Add Account'}
             </Button>
           </DialogFooter>

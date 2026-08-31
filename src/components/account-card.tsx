@@ -158,10 +158,16 @@ export function AccountCard({ account, profile, onEdit, onDelete, baselineExpect
                 <span className="text-xs font-normal text-muted-foreground"> (+{increase}%/yr)</span>
               )}
             </p>
-            {account.futureMonthlyContribution != null && account.contributionStepUpAge != null && (
-              <p className="text-xs text-muted-foreground mt-0.5">
-                → {formatCurrency(account.futureMonthlyContribution)}/mo at age {account.contributionStepUpAge}
-              </p>
+            {account.contributionChanges && account.contributionChanges.length > 0 && (
+              <div className="mt-0.5 space-y-0.5">
+                {[...account.contributionChanges]
+                  .sort((a, b) => a.age - b.age)
+                  .map((c) => (
+                    <p key={c.id} className="text-xs text-muted-foreground">
+                      → {formatCurrency(c.monthlyContribution)}/mo at age {c.age}
+                    </p>
+                  ))}
+              </div>
             )}
           </div>
         </div>

@@ -18,16 +18,25 @@ export function calculateAgeFromBirthday(birthday: string): number {
 
 /**
  * Compute the monthly contribution amount for an account at a given point in its
- * schedule. Applies annualContributionIncrease compounding, and — if a contribution
- * step-up is configured — switches to futureMonthlyContribution once age reaches
- * contributionStepUpAge, resetting the compounding exponent to 0 at the step-up year.
+ * schedule. Applies annualContributionIncrease compounding, and — if contribution
+ * changes are configured — switches to the most recent change whose age has been
+ * reached, resetting the compounding exponent to 0 at that change's year.
  */
 export function getContributionForYear(account: Account, age: number, yearsSinceStart: number): number {
   const increase = account.annualContributionIncrease ?? 0;
-  const { futureMonthlyContribution, contributionStepUpAge } = account;
+  const changes = account.contributionChanges;
 
-  if (futureMonthlyContribution != null && contributionStepUpAge != null && age >= contributionStepUpAge) {
-    return futureMonthlyContribution * Math.pow(1 + increase / 100, age - contributionStepUpAge);
+  let applicable: { age: number; monthlyContribution: number } | undefined;
+  if (changes) {
+    for (const change of changes) {
+      if (age >= change.age && (!applicable || change.age > applicable.age)) {
+        applicable = change;
+      }
+    }
+  }
+
+  if (applicable) {
+    return applicable.monthlyContribution * Math.pow(1 + increase / 100, age - applicable.age);
   }
 
   return account.monthlyContribution * Math.pow(1 + increase / 100, yearsSinceStart);
