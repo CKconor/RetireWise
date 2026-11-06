@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Account, LumpSumWithdrawal, LumpSumType, UserProfile } from '@/types';
 import { SectionCard } from '@/components/ui/section-card';
+import { SegmentedControl } from '@/components/ui/segmented-control';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FormField } from '@/components/ui/form-field';
@@ -23,7 +24,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/calculations';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Trash2, Banknote } from 'lucide-react';
 
 interface LumpSumWithdrawalsProps {
   withdrawals: LumpSumWithdrawal[];
@@ -46,11 +47,10 @@ interface FormState {
 
 const EMPTY_FORM: FormState = { name: '', amount: '', age: '', accountId: '', type: 'withdrawal' };
 
-const WithdrawalIcon = () => (
-  <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-  </svg>
-);
+const TYPE_OPTIONS: { value: LumpSumType; label: string }[] = [
+  { value: 'withdrawal', label: 'Withdrawal' },
+  { value: 'deposit', label: 'Lump sum' },
+];
 
 export function LumpSumWithdrawals({
   withdrawals,
@@ -115,111 +115,87 @@ export function LumpSumWithdrawals({
   return (
     <>
       <SectionCard
-        icon={<WithdrawalIcon />}
-        title="Planned Withdrawals & Lump Sums"
+        title="Planned withdrawals and lump sums" icon={<Banknote />}
         action={
-          <div className="flex items-center gap-2">
+          <>
             <Button size="sm" variant="outline" onClick={() => handleAddNew('withdrawal')} disabled={accounts.length === 0}>
-              + Withdrawal
+              <Plus />
+              Withdrawal
             </Button>
             <Button size="sm" variant="outline" onClick={() => handleAddNew('deposit')} disabled={accounts.length === 0}>
-              + Lump Sum
+              <Plus />
+              Lump sum
             </Button>
-          </div>
+          </>
         }
       >
         {sorted.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-2">
-            No planned withdrawals or lump sums. Add a one-off withdrawal or deposit to see how it affects your projection.
+          <p className="text-sm text-ink-11">
+            Nothing planned. Add a one-off withdrawal or deposit to see how it affects your projection.
           </p>
         ) : (
           <>
-            <div className="flex items-center gap-2 mb-3 pb-3 border-b border-border/60">
+            <label className="flex cursor-pointer items-center gap-2 pb-3 text-sm text-ink-11">
               <Checkbox
-                id="lumpSumsEnabled"
                 checked={enabled}
                 onCheckedChange={(checked) => onToggleEnabled(checked === true)}
               />
-              <label htmlFor="lumpSumsEnabled" className="text-sm text-muted-foreground cursor-pointer">
-                Include in projections
-              </label>
-            </div>
-            <div className={cn('space-y-2', !enabled && 'opacity-50')}>
-            {sorted.map((w) => {
-              const isDeposit = w.type === 'deposit';
-              return (
-                <div
-                  key={w.id}
-                  className="flex items-center justify-between rounded-lg border border-border/60 bg-secondary/30 px-3 py-2"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{w.name}</p>
-                    <p
-                      className={cn(
-                        'text-xs',
-                        isDeposit ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'
-                      )}
-                    >
-                      {isDeposit ? '+' : '-'}
-                      {formatCurrency(w.amount)} at age {w.age} &middot; {accountName(w.accountId)}
-                    </p>
+              Include in projections
+            </label>
+            <div className={cn('hairline-t hairline-list', !enabled && 'opacity-60')}>
+              {sorted.map((w) => {
+                const isDeposit = w.type === 'deposit';
+                return (
+                  <div key={w.id} className="flex items-center justify-between gap-3 py-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm text-ink-12" title={w.name}>{w.name}</p>
+                      <p className="text-xs tabular-nums text-ink-10">
+                        <span className={isDeposit ? 'text-green-11' : undefined}>
+                          {isDeposit ? '+' : '-'}{formatCurrency(w.amount)}
+                        </span>
+                        {' '}at age {w.age} &middot; {accountName(w.accountId)}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-0.5">
+                      <Button size="icon-sm" variant="ghost" onClick={() => handleEdit(w)} aria-label={`Edit ${w.name}`}>
+                        <Pencil />
+                      </Button>
+                      <Button size="icon-sm" variant="ghost" className="hover:text-red-11" onClick={() => onDelete(w.id)} aria-label={`Delete ${w.name}`}>
+                        <Trash2 />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1 ml-2 shrink-0">
-                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleEdit(w)}>
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => onDelete(w.id)}>
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
             </div>
           </>
         )}
       </SectionCard>
 
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="md:max-w-[460px]">
           <DialogHeader>
             <DialogTitle>
               {editingId
-                ? form.type === 'deposit' ? 'Edit Lump Sum' : 'Edit Withdrawal'
-                : form.type === 'deposit' ? 'Add Planned Lump Sum' : 'Add Planned Withdrawal'}
+                ? form.type === 'deposit' ? 'Edit lump sum' : 'Edit withdrawal'
+                : form.type === 'deposit' ? 'Add planned lump sum' : 'Add planned withdrawal'}
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-2 rounded-lg bg-secondary/50 p-1">
-              <button
-                type="button"
-                onClick={() => setForm((f) => ({ ...f, type: 'withdrawal' }))}
-                className={cn(
-                  'rounded-md py-1.5 text-sm font-medium transition-colors',
-                  form.type === 'withdrawal' ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                Withdrawal
-              </button>
-              <button
-                type="button"
-                onClick={() => setForm((f) => ({ ...f, type: 'deposit' }))}
-                className={cn(
-                  'rounded-md py-1.5 text-sm font-medium transition-colors',
-                  form.type === 'deposit' ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                Lump Sum
-              </button>
-            </div>
+            <SegmentedControl
+              label="Type"
+              value={form.type}
+              options={TYPE_OPTIONS}
+              onChange={(type) => setForm((f) => ({ ...f, type }))}
+              fullWidth
+            />
 
             <FormField id="wName" label="Description">
               <Input
                 id="wName"
-                placeholder={form.type === 'deposit' ? 'e.g., Inheritance, Bonus' : 'e.g., House deposit, New car'}
+                placeholder={form.type === 'deposit' ? 'e.g., Inheritance, bonus' : 'e.g., House deposit, new car'}
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                className="bg-secondary/50"
               />
             </FormField>
 
@@ -232,11 +208,10 @@ export function LumpSumWithdrawals({
                   step="any"
                   value={form.amount}
                   onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
-                  className="bg-secondary/50"
                   required
                 />
               </FormField>
-              <FormField id="wAge" label="At Age">
+              <FormField id="wAge" label="At age">
                 <Input
                   id="wAge"
                   type="number"
@@ -245,16 +220,15 @@ export function LumpSumWithdrawals({
                   step={1}
                   value={form.age}
                   onChange={(e) => setForm((f) => ({ ...f, age: e.target.value }))}
-                  className="bg-secondary/50"
                   required
                 />
               </FormField>
             </div>
 
-            <FormField id="wAccount" label={form.type === 'deposit' ? 'Into Account' : 'From Account'}>
+            <FormField id="wAccount" label={form.type === 'deposit' ? 'Into account' : 'From account'}>
               <Select value={form.accountId} onValueChange={(v) => setForm((f) => ({ ...f, accountId: v }))}>
-                <SelectTrigger className="bg-secondary/50">
-                  <SelectValue placeholder="Select account..." />
+                <SelectTrigger id="wAccount">
+                  <SelectValue placeholder="Select account…" />
                 </SelectTrigger>
                 <SelectContent>
                   {accounts.map((a) => (
@@ -266,12 +240,12 @@ export function LumpSumWithdrawals({
               </Select>
             </FormField>
 
-            <DialogFooter className="gap-4 sm:gap-0">
+            <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" className="bg-primary ml-4" disabled={!form.accountId || !form.amount || !form.age}>
-                {editingId ? 'Save Changes' : form.type === 'deposit' ? 'Add Lump Sum' : 'Add Withdrawal'}
+              <Button type="submit" disabled={!form.accountId || !form.amount || !form.age}>
+                {editingId ? 'Save changes' : form.type === 'deposit' ? 'Add lump sum' : 'Add withdrawal'}
               </Button>
             </DialogFooter>
           </form>

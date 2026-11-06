@@ -91,13 +91,6 @@ export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
   savings: 'Savings',
 };
 
-export const ACCOUNT_TYPE_COLORS: Record<AccountType, { bg: string; text: string }> = {
-  isa: { bg: 'bg-emerald-100', text: 'text-emerald-700' },
-  sipp: { bg: 'bg-rose-100', text: 'text-rose-700' },
-  pension: { bg: 'bg-violet-100', text: 'text-violet-700' },
-  gia: { bg: 'bg-sky-100', text: 'text-sky-700' },
-  savings: { bg: 'bg-amber-100', text: 'text-amber-700' },
-};
 
 export const DEFAULT_RETURN_RATES: Record<AccountType, number> = {
   isa: 7,

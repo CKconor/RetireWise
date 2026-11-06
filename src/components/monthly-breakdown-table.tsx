@@ -1,10 +1,14 @@
 'use client';
 
 import { useMemo, useState, useCallback } from 'react';
-import { CalendarDays, X } from 'lucide-react';
+import { CalendarDays, ChevronRight, X } from 'lucide-react';
 import { Account, UserProfile, MonthlyProjectionDataPoint, LumpSumWithdrawal } from '@/types';
 import { generateMonthlyProjection, formatCurrency } from '@/lib/calculations';
-import { ACCOUNT_TYPE_DOT_COLORS } from '@/lib/constants';
+import { ACCOUNT_TYPE_CHART_COLORS } from '@/lib/constants';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { ChartSwatch } from '@/components/ui/chart';
+import { EmptyState } from '@/components/ui/empty-state';
 
 interface MonthlyBreakdownTableProps {
   accounts: Account[];
@@ -14,6 +18,10 @@ interface MonthlyBreakdownTableProps {
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const MONTH_OPTIONS = MONTH_NAMES.map((name, i) => ({ label: name, value: i + 1 }));
+
+// Sticky columns stay opaque (the table cells carry their own fill) so rows scroll under them
+const DATE_CELL = 'sticky left-0 z-10 w-[118px] min-w-[118px]';
+const AGE_CELL = 'sticky left-[118px] z-10 w-[94px] min-w-[94px]';
 
 interface YearGroup {
   year: number;
@@ -34,9 +42,9 @@ function groupByYear(points: MonthlyProjectionDataPoint[]): YearGroup[] {
 }
 
 function targetPercentColor(pct: number): string {
-  if (pct >= 100) return 'text-emerald-600 dark:text-emerald-400';
-  if (pct >= 75) return 'text-amber-600 dark:text-amber-400';
-  return 'text-muted-foreground';
+  if (pct >= 100) return '!text-green-11';
+  if (pct >= 75) return '!text-amber-11';
+  return '';
 }
 
 type MonthYear = { month: number; year: number };
@@ -94,10 +102,10 @@ export function MonthlyBreakdownTable({ accounts, profile, lumpSumWithdrawals = 
 
   if (data.length === 0) {
     return (
-      <div className="flex h-[300px] flex-col items-center justify-center">
-        <p className="font-display text-2xl text-foreground">No projection data</p>
-        <p className="mt-1 text-sm text-muted-foreground">Add accounts to see monthly projections</p>
-      </div>
+      <EmptyState
+        title="No projection data"
+        description="Add accounts to see monthly projections."
+      />
     );
   }
 
@@ -132,47 +140,44 @@ export function MonthlyBreakdownTable({ accounts, profile, lumpSumWithdrawals = 
         />
       </div>
 
-      <div className="overflow-x-auto overscroll-x-contain -mx-6 px-6 [-webkit-overflow-scrolling:touch]">
-      <table className="w-full min-w-[700px] text-sm">
-        <thead>
-          <tr className="border-b border-border/60">
-            <th className="sticky left-0 z-10 w-[118px] min-w-[118px] bg-card pb-3 pr-4 text-left font-semibold text-muted-foreground">Date</th>
-            <th className="sticky left-[118px] z-10 w-[94px] min-w-[94px] border-r border-border/40 bg-card pb-3 px-3 text-left font-semibold text-muted-foreground">Age</th>
-            {accounts.map((account) => (
-              <th key={account.id} className="pb-3 px-4 text-right font-semibold text-muted-foreground whitespace-nowrap">
-                <div className="flex items-center justify-end gap-1.5">
-                  <span
-                    className="inline-block h-2 w-2 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: ACCOUNT_TYPE_DOT_COLORS[account.type] ?? '#6b7280' }}
-                  />
-                  {account.name}
-                </div>
-              </th>
-            ))}
-            <th className="pb-3 px-4 text-right font-semibold text-muted-foreground">Total</th>
-            <th className="pb-3 pl-4 text-right font-semibold text-muted-foreground">Target %</th>
-          </tr>
-        </thead>
-        <tbody>
-          {yearGroups.map((group) => {
-            const isExpanded = expandedYears.has(group.year);
-            // Use end-of-year row for summary (last row of that year)
-            const summary = group.rows[group.rows.length - 1];
+      <div className="table-frame">
+        <table className="data-table min-w-[700px]">
+          <thead>
+            <tr>
+              <th className={DATE_CELL}>Date</th>
+              <th className={AGE_CELL}>Age</th>
+              {accounts.map((account) => (
+                <th key={account.id}>
+                  <span className="flex items-center gap-1.5">
+                    <ChartSwatch color={ACCOUNT_TYPE_CHART_COLORS[account.type]} />
+                    {account.name}
+                  </span>
+                </th>
+              ))}
+              <th>Total</th>
+              <th>Target %</th>
+            </tr>
+          </thead>
+          <tbody>
+            {yearGroups.map((group) => {
+              const isExpanded = expandedYears.has(group.year);
+              // Use end-of-year row for summary (last row of that year)
+              const summary = group.rows[group.rows.length - 1];
 
-            return (
-              <YearSection
-                key={group.year}
-                group={group}
-                summary={summary}
-                isExpanded={isExpanded}
-                onToggle={toggle}
-                accounts={accounts}
-              />
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+              return (
+                <YearSection
+                  key={group.year}
+                  group={group}
+                  summary={summary}
+                  isExpanded={isExpanded}
+                  onToggle={toggle}
+                  accounts={accounts}
+                />
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -189,62 +194,39 @@ function YearSection({ group, summary, isExpanded, onToggle, accounts }: YearSec
   return (
     <>
       {/* Year summary row */}
-      <tr
-        className="group border-b border-border/30 cursor-pointer transition-colors hover:bg-muted/30 select-none"
-        onClick={() => onToggle(group.year)}
-      >
-        <td className="sticky left-0 z-10 w-[118px] min-w-[118px] bg-card py-2.5 pr-4 font-semibold text-foreground group-hover:bg-muted">
-          <div className="flex items-center gap-2">
-            <svg
-              className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${isExpanded ? 'rotate-90' : ''}`}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2.5}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
+      <tr className="cursor-pointer select-none" onClick={() => onToggle(group.year)}>
+        <td className={DATE_CELL}>
+          <button
+            type="button"
+            aria-expanded={isExpanded}
+            aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${group.year}`}
+            className="flex cursor-pointer items-center gap-1.5 rounded-sm outline-none focus-visible:outline-2 focus-visible:outline-offset-2"
+          >
+            <ChevronRight className={cn('size-3.5 text-ink-10 transition-transform duration-150 ease-out', isExpanded && 'rotate-90')} />
             {group.year}
-          </div>
+          </button>
         </td>
-        <td className="sticky left-[118px] z-10 w-[94px] min-w-[94px] border-r border-border/40 bg-card py-2.5 px-3 font-mono text-foreground group-hover:bg-muted">{summary.age}</td>
+        <td className={cn(AGE_CELL, 'cell-strong')}>{summary.age}</td>
         {accounts.map((account) => (
-          <td key={account.id} className="py-2.5 px-4 text-right font-mono text-foreground">
+          <td key={account.id} className="cell-strong">
             {formatCurrency(summary.accountBalances[account.id] ?? 0)}
           </td>
         ))}
-        <td className="py-2.5 px-4 text-right font-mono font-semibold text-foreground">
-          {formatCurrency(summary.total)}
-        </td>
-        <td className={`py-2.5 pl-4 text-right font-mono font-semibold ${targetPercentColor(summary.targetPercent)}`}>
-          {summary.targetPercent}%
-        </td>
+        <td className="cell-strong">{formatCurrency(summary.total)}</td>
+        <td className={targetPercentColor(summary.targetPercent)}>{summary.targetPercent}%</td>
       </tr>
 
       {/* Monthly rows when expanded */}
       {isExpanded &&
         group.rows.map((row) => (
-          <tr
-            key={row.month}
-            className="group border-b border-border/20 transition-colors hover:bg-muted/20"
-          >
-            <td className="sticky left-0 z-10 w-[118px] min-w-[118px] bg-card py-2 pr-4 pl-7 font-mono text-muted-foreground group-hover:bg-muted">
-              {MONTH_NAMES[row.monthOfYear - 1]} {row.year}
-            </td>
-            <td className="sticky left-[118px] z-10 w-[94px] min-w-[94px] border-r border-border/40 bg-card py-2 px-3 font-mono text-muted-foreground group-hover:bg-muted">
-              {row.age}y {row.ageMonths}m
-            </td>
+          <tr key={row.month}>
+            <td className={cn(DATE_CELL, '!pl-8 !text-ink-11')}>{MONTH_NAMES[row.monthOfYear - 1]} {row.year}</td>
+            <td className={AGE_CELL}>{row.age}y {row.ageMonths}m</td>
             {accounts.map((account) => (
-              <td key={account.id} className="py-2 px-4 text-right font-mono text-muted-foreground">
-                {formatCurrency(row.accountBalances[account.id] ?? 0)}
-              </td>
+              <td key={account.id}>{formatCurrency(row.accountBalances[account.id] ?? 0)}</td>
             ))}
-            <td className="py-2 px-4 text-right font-mono text-foreground">
-              {formatCurrency(row.total)}
-            </td>
-            <td className={`py-2 pl-4 text-right font-mono ${targetPercentColor(row.targetPercent)}`}>
-              {row.targetPercent}%
-            </td>
+            <td className="cell-strong">{formatCurrency(row.total)}</td>
+            <td className={targetPercentColor(row.targetPercent)}>{row.targetPercent}%</td>
           </tr>
         ))}
     </>
@@ -260,48 +242,44 @@ interface DatePickerProps {
   defaultValue: MonthYear;
 }
 
+const MONTH_SELECT = 'h-[var(--control-h-pill)] cursor-pointer rounded-sm bg-ink-3 px-1.5 text-sm text-ink-12 outline-none focus-visible:outline-2 focus-visible:outline-offset-2';
+
 function DatePicker({ label, buttonLabel, value, onChange, yearRange, defaultValue }: DatePickerProps) {
   if (value === null) {
     return (
-      <button
-        onClick={() => onChange(defaultValue)}
-        className="flex items-center gap-1.5 rounded-lg border border-border/60 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/30 hover:text-foreground cursor-pointer"
-      >
-        <CalendarDays className="h-3.5 w-3.5" />
+      <Button variant="outline" size="sm" onClick={() => onChange(defaultValue)}>
+        <CalendarDays />
         {buttonLabel}
-      </button>
+      </Button>
     );
   }
 
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-border/60 px-3 py-1.5">
-      <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
-      <span className="text-xs font-medium text-muted-foreground">{label}</span>
+    <div className="flex items-center gap-1.5">
+      <span className="text-sm text-ink-11">{label}</span>
       <select
+        aria-label={`${label} month`}
         value={value.month}
         onChange={(e) => onChange({ ...value, month: Number(e.target.value) })}
-        className="rounded-md border border-border/60 bg-background px-2 py-0.5 text-xs font-medium text-foreground cursor-pointer"
+        className={MONTH_SELECT}
       >
         {MONTH_OPTIONS.map((m) => (
           <option key={m.value} value={m.value}>{m.label}</option>
         ))}
       </select>
       <select
+        aria-label={`${label} year`}
         value={value.year}
         onChange={(e) => onChange({ ...value, year: Number(e.target.value) })}
-        className="rounded-md border border-border/60 bg-background px-2 py-0.5 text-xs font-medium text-foreground cursor-pointer"
+        className={MONTH_SELECT}
       >
         {yearRange.map((y) => (
           <option key={y} value={y}>{y}</option>
         ))}
       </select>
-      <button
-        onClick={() => onChange(null)}
-        className="ml-1 flex h-5 w-5 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground cursor-pointer"
-        title="Clear"
-      >
-        <X className="h-3 w-3" />
-      </button>
+      <Button variant="ghost" size="icon-sm" onClick={() => onChange(null)} aria-label={`Clear ${label.toLowerCase()} date`}>
+        <X />
+      </Button>
     </div>
   );
 }

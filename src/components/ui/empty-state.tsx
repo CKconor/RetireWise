@@ -8,16 +8,13 @@ interface EmptyStateProps {
   className?: string;
 }
 
+/** A bare centred panel: what's missing, and what to do about it */
 export function EmptyState({ icon, title, description, action, className }: EmptyStateProps) {
   return (
-    <div className={cn('rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center', className)}>
-      {icon && (
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-[#0c1929] to-[#1e3a5f] text-amber-400">
-          {icon}
-        </div>
-      )}
-      <h3 className="mt-4 font-medium">{title}</h3>
-      <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+    <div className={cn('flex flex-col items-center justify-center rounded-md bg-ink-2 px-6 py-10 text-center dark:bg-ink-3', className)}>
+      {icon && <div className="mb-3 text-ink-10 [&_svg]:size-[18px]">{icon}</div>}
+      <p className="text-sm text-ink-12">{title}</p>
+      <p className="max-w-sm text-sm text-ink-11">{description}</p>
       {action && <div className="mt-4">{action}</div>}
     </div>
   );

@@ -1,30 +1,33 @@
 import { cn } from '@/lib/utils';
+import { Card } from '@/components/ui/card';
 
-interface StatCardProps {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  subValue?: string;
+interface FigureProps {
+  label: React.ReactNode;
+  value: React.ReactNode;
+  subValue?: React.ReactNode;
   className?: string;
 }
 
-export function StatCard({ icon, label, value, subValue, className }: StatCardProps) {
+/** A strong number with its label directly under it */
+export function Figure({ label, value, subValue, className }: FigureProps) {
   return (
-    <div className={cn(
-      'rounded-xl bg-gradient-to-br from-[#0c1929] to-[#1e3a5f] p-4',
-      'dark:from-amber-400 dark:to-amber-500',
-      className
-    )}>
-      <div className="flex items-start justify-between">
-        <div className="h-5 w-5 text-amber-400 dark:text-[#0c1929]">{icon}</div>
-      </div>
-      <div className="mt-3">
-        <p className="text-xs font-medium text-white/60 dark:text-[#0c1929]/70">{label}</p>
-        <p className="font-display text-xl text-white dark:text-[#0c1929]">{value}</p>
-        {subValue && (
-          <p className="text-xs text-white/60 dark:text-[#0c1929]/70">{subValue}</p>
-        )}
-      </div>
+    <div className={cn('min-w-0', className)}>
+      <p className="text-2xl tabular-nums text-ink-12">{value}</p>
+      <p className="text-sm text-ink-11">{label}</p>
+      {subValue && <p className="mt-0.5 text-xs tabular-nums text-ink-10">{subValue}</p>}
     </div>
+  );
+}
+
+interface StatCardProps extends FigureProps {
+  /** Only for a figure that carries a status */
+  valueClassName?: string;
+}
+
+export function StatCard({ valueClassName, className, value, ...figure }: StatCardProps) {
+  return (
+    <Card className={cn('px-5 py-4', className)}>
+      <Figure {...figure} value={valueClassName ? <span className={valueClassName}>{value}</span> : value} />
+    </Card>
   );
 }

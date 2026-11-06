@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 
 interface AccountFormProps {
   open: boolean;
@@ -127,24 +127,23 @@ export function AccountForm({ open, onOpenChange, account, profile, onSave }: Ac
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="md:max-w-[460px]">
         <DialogHeader>
-          <DialogTitle>{account ? 'Edit Account' : 'Add Account'}</DialogTitle>
+          <DialogTitle>{account ? 'Edit account' : 'Add account'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <FormField id="accountName" label="Account Name">
+          <FormField id="accountName" label="Account name">
             <Input
               id="accountName"
               placeholder="e.g., Vanguard ISA"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="bg-secondary/50"
             />
           </FormField>
 
-          <FormField id="accountType" label="Account Type">
+          <FormField id="accountType" label="Account type">
             <Select value={type} onValueChange={handleTypeChange}>
-              <SelectTrigger className="bg-secondary/50">
+              <SelectTrigger id="accountType">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -157,8 +156,8 @@ export function AccountForm({ open, onOpenChange, account, profile, onSave }: Ac
             </Select>
           </FormField>
 
-          <div className="grid grid-cols-2 gap-4">
-            <FormField id="currentBalance" label="Current Balance (£)">
+          <div className="grid gap-4 md:grid-cols-2">
+            <FormField id="currentBalance" label="Current balance (£)">
               <Input
                 id="currentBalance"
                 type="number"
@@ -166,10 +165,9 @@ export function AccountForm({ open, onOpenChange, account, profile, onSave }: Ac
                 step="any"
                 value={currentBalance}
                 onChange={(e) => setCurrentBalance(e.target.value)}
-                className="bg-secondary/50"
               />
             </FormField>
-            <FormField id="monthlyContribution" label="Monthly Contribution (£)">
+            <FormField id="monthlyContribution" label="Monthly contribution (£)">
               <Input
                 id="monthlyContribution"
                 type="number"
@@ -177,14 +175,13 @@ export function AccountForm({ open, onOpenChange, account, profile, onSave }: Ac
                 step="any"
                 value={monthlyContribution}
                 onChange={(e) => setMonthlyContribution(e.target.value)}
-                className="bg-secondary/50"
               />
             </FormField>
           </div>
 
           <FormField
             id="annualContributionIncrease"
-            label="Annual Contribution Increase (%)"
+            label="Annual contribution increase (%)"
             hint="e.g. 2% to match expected salary growth"
           >
             <Input
@@ -195,23 +192,23 @@ export function AccountForm({ open, onOpenChange, account, profile, onSave }: Ac
               step={0.5}
               value={annualContributionIncrease}
               onChange={(e) => setAnnualContributionIncrease(e.target.value)}
-              className="bg-secondary/50"
             />
           </FormField>
 
-          <div className="rounded-lg border border-border/60 p-3 space-y-3">
+          <div className="hairline-t space-y-3 pt-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm">Future contribution changes</span>
+              <span className="text-sm text-ink-12">Future contribution changes</span>
               <Button type="button" size="sm" variant="outline" onClick={addContributionChangeRow}>
-                + Add change
+                <Plus />
+                Add change
               </Button>
             </div>
             {contributionChangeRows.map((row) => {
               const rowValid = isRowValid(row);
               return (
                 <div key={row.id} className="space-y-1">
-                  <div className="flex items-end gap-2">
-                    <FormField id={`contribAmount-${row.id}`} label="New Monthly Contribution (£)" className="flex-1">
+                  <div className="flex items-start gap-2">
+                    <FormField id={`contribAmount-${row.id}`} label="New monthly (£)" className="flex-1">
                       <Input
                         id={`contribAmount-${row.id}`}
                         type="number"
@@ -219,14 +216,12 @@ export function AccountForm({ open, onOpenChange, account, profile, onSave }: Ac
                         step="any"
                         value={row.monthlyContribution}
                         onChange={(e) => updateContributionChangeRow(row.id, { monthlyContribution: e.target.value })}
-                        className="bg-secondary/50"
                         required
                       />
                     </FormField>
                     <FormField
                       id={`contribAge-${row.id}`}
-                      label="At Age"
-                      hint={`${profile.currentAge + 1}–${profile.retirementAge - 1}`}
+                      label="At age"
                       className="flex-1"
                     >
                       <Input
@@ -237,7 +232,6 @@ export function AccountForm({ open, onOpenChange, account, profile, onSave }: Ac
                         step={1}
                         value={row.age}
                         onChange={(e) => updateContributionChangeRow(row.id, { age: e.target.value })}
-                        className="bg-secondary/50"
                         required
                       />
                     </FormField>
@@ -245,14 +239,15 @@ export function AccountForm({ open, onOpenChange, account, profile, onSave }: Ac
                       type="button"
                       size="icon"
                       variant="ghost"
-                      className="mb-2 h-9 w-9 shrink-0 text-destructive hover:text-destructive"
+                      aria-label="Remove this change"
+                      className="hover:text-red-11"
                       onClick={() => removeContributionChangeRow(row.id)}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 />
                     </Button>
                   </div>
                   {!rowValid && (
-                    <p className="text-xs text-destructive">
+                    <p className="text-xs text-red-11">
                       Age must be between {profile.currentAge + 1} and {profile.retirementAge - 1}.
                     </p>
                   )}
@@ -260,16 +255,16 @@ export function AccountForm({ open, onOpenChange, account, profile, onSave }: Ac
               );
             })}
             {contributionChangeRows.length === 0 && (
-              <p className="text-xs text-muted-foreground">
-                Add a change to model a pay rise, bonus, or contribution pause at a future age.
+              <p className="text-xs text-ink-10">
+                Model a pay rise, bonus or contribution pause at a future age.
               </p>
             )}
           </div>
 
           <FormField
             id="annualReturnRate"
-            label="Expected Annual Return (%)"
-            hint="Typical: Stocks 5-10%, Bonds 2-4%, Savings 1-4%"
+            label="Expected annual return (%)"
+            hint="Typical: stocks 5–10%, bonds 2–4%, savings 1–4%"
           >
             <Input
               id="annualReturnRate"
@@ -279,16 +274,15 @@ export function AccountForm({ open, onOpenChange, account, profile, onSave }: Ac
               step={0.5}
               value={annualReturnRate}
               onChange={(e) => setAnnualReturnRate(e.target.value)}
-              className="bg-secondary/50"
             />
           </FormField>
 
-          <DialogFooter className="gap-4 sm:gap-0">
+          <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" className="bg-primary ml-4" disabled={!contributionChangesValid}>
-              {account ? 'Save Changes' : 'Add Account'}
+            <Button type="submit" disabled={!contributionChangesValid}>
+              {account ? 'Save changes' : 'Add account'}
             </Button>
           </DialogFooter>
         </form>

@@ -4,10 +4,12 @@ import { useState } from 'react';
 import { Account, UserProfile, ProjectionBaseline } from '@/types';
 import { AccountCard } from '@/components/account-card';
 import { AccountForm } from '@/components/account-form';
-import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Camera, Target, X } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { SectionHeader } from '@/components/ui/section-card';
+import { Plus, Wallet } from 'lucide-react';
 
 interface AccountListProps {
   accounts: Account[];
@@ -22,12 +24,6 @@ interface AccountListProps {
   pausedContribAccounts?: Set<string>;
   onToggleContribPause?: (id: string) => void;
 }
-
-const PlusIcon = ({ className = "h-6 w-6" }: { className?: string }) => (
-  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-  </svg>
-);
 
 function formatDate(iso: string) {
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -75,75 +71,69 @@ export function AccountList({ accounts, profile, onAdd, onUpdate, onDelete, onSa
   );
 
   return (
-    <>
-      {/* Baseline banner */}
-      {accounts.length > 0 && (
-        <div className="mb-3 flex items-center justify-between gap-3">
-          {projectionBaseline ? (
-            <div className="flex items-center gap-2 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-3 py-1.5 text-xs text-amber-700 dark:text-amber-400">
-              <Target className="h-3.5 w-3.5 flex-shrink-0" />
-              <span>Baseline set {formatDate(projectionBaseline.setDate)}</span>
-              <button
-                onClick={onClearBaseline}
-                className="ml-1 text-amber-500 hover:text-amber-700 dark:hover:text-amber-200 transition-colors cursor-pointer"
-                title="Clear baseline"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          ) : (
-            <p className="text-xs text-muted-foreground">Set a baseline to track actual vs. expected growth.</p>
-          )}
-          {onSetBaseline && (
-            <Button variant="outline" size="sm" onClick={onSetBaseline} className="gap-1.5 flex-shrink-0">
-              <Target className="h-3.5 w-3.5" />
-              {projectionBaseline ? 'Reset Baseline' : 'Set Baseline'}
-            </Button>
-          )}
-        </div>
-      )}
-
+    <section className="space-y-4">
       {accounts.length === 0 ? (
-        <div
-          onClick={handleAddClick}
-          className="cursor-pointer rounded-xl border-2 border-dashed border-border bg-card/50 p-12 text-center transition-all hover:border-muted-foreground/30 hover:bg-card/80"
-        >
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[#0c1929] to-[#1e3a5f]">
-            <PlusIcon className="h-8 w-8 text-amber-400" />
-          </div>
-          <h3 className="mt-6 font-display text-xl text-foreground">Add your first account</h3>
-          <p className="mt-2 text-muted-foreground">
-            Start tracking your retirement savings by adding an account.
-          </p>
-          <p className="mt-4 text-sm font-medium text-muted-foreground">Click to get started</p>
-        </div>
+        <Card className="px-5">
+          <EmptyState
+            icon={<Wallet />}
+            title="No accounts yet"
+            description="Add your first account to start tracking your retirement savings."
+            action={
+              <Button onClick={handleAddClick}>
+                <Plus />
+                Add account
+              </Button>
+            }
+          />
+        </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {accounts.map((account) => (
-            <AccountCard
-              key={account.id}
-              account={account}
-              profile={profile}
-              onEdit={handleEdit}
-              onDelete={onDelete}
-              baselineExpectedBalance={baselineThisMonth?.expectedAccountBalances[account.id]}
-              contributionsPaused={pausedContribAccounts?.has(account.id) ?? false}
-              onToggleContribPause={onToggleContribPause ? () => onToggleContribPause(account.id) : undefined}
-            />
-          ))}
-          <Card
-            onClick={handleAddClick}
-            className="card-hover flex min-h-[200px] cursor-pointer flex-col items-center justify-center gap-3 border-2 border-dashed border-border bg-card/50 transition-all hover:border-muted-foreground/30 hover:bg-card/80"
-          >
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-[#0c1929] to-[#1e3a5f]">
-              <PlusIcon className="h-5 w-5 text-amber-400" />
-            </div>
-            <div className="text-center">
-              <p className="font-display text-lg text-foreground">Add Account</p>
-              <p className="text-sm text-muted-foreground">Track another retirement account</p>
-            </div>
-          </Card>
-        </div>
+        <>
+          <SectionHeader
+            title="Accounts"
+            description={
+              projectionBaseline ? (
+                <>
+                  Baseline set {formatDate(projectionBaseline.setDate)}.{' '}
+                  <button
+                    onClick={onClearBaseline}
+                    className="cursor-pointer rounded-sm underline underline-offset-2 outline-none hover:text-ink-12 focus-visible:outline-2 focus-visible:outline-offset-2"
+                  >
+                    Clear baseline
+                  </button>
+                </>
+              ) : (
+                'Set a baseline to track actual against expected growth.'
+              )
+            }
+            action={
+              <>
+                {onSetBaseline && (
+                  <Button variant="outline" onClick={onSetBaseline}>
+                    {projectionBaseline ? 'Reset baseline' : 'Set baseline'}
+                  </Button>
+                )}
+                <Button onClick={handleAddClick}>
+                  <Plus />
+                  Add account
+                </Button>
+              </>
+            }
+          />
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {accounts.map((account) => (
+              <AccountCard
+                key={account.id}
+                account={account}
+                profile={profile}
+                onEdit={handleEdit}
+                onDelete={onDelete}
+                baselineExpectedBalance={baselineThisMonth?.expectedAccountBalances[account.id]}
+                contributionsPaused={pausedContribAccounts?.has(account.id) ?? false}
+                onToggleContribPause={onToggleContribPause ? () => onToggleContribPause(account.id) : undefined}
+              />
+            ))}
+          </div>
+        </>
       )}
 
       <AccountForm
@@ -155,26 +145,23 @@ export function AccountList({ accounts, profile, onAdd, onUpdate, onDelete, onSa
       />
 
       <Dialog open={snapshotPromptOpen} onOpenChange={setSnapshotPromptOpen}>
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent className="md:max-w-[460px]">
           <DialogHeader>
-            <DialogTitle className="font-display flex items-center gap-2">
-              <Camera className="h-5 w-5 text-muted-foreground" />
-              Save Snapshot?
-            </DialogTitle>
+            <DialogTitle>Save a snapshot?</DialogTitle>
             <DialogDescription>
-              Would you like to record today&apos;s balances as a net worth snapshot?
+              Record today&apos;s balances as a net worth snapshot.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter>
             <Button variant="outline" onClick={() => setSnapshotPromptOpen(false)}>
               Skip
             </Button>
             <Button onClick={() => { onSaveSnapshot?.(); setSnapshotPromptOpen(false); }}>
-              Save Snapshot
+              Save snapshot
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </section>
   );
 }

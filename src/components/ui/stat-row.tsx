@@ -1,24 +1,20 @@
 import { cn } from '@/lib/utils';
 
 interface StatRowProps {
-  label: string;
+  label: React.ReactNode;
   value: React.ReactNode;
   hint?: React.ReactNode;
-  icon?: React.ReactNode;
   className?: string;
 }
 
-export function StatRow({ label, value, hint, icon, className }: StatRowProps) {
+export function StatRow({ label, value, hint, className }: StatRowProps) {
   return (
-    <div className={cn('flex items-center justify-between', className)}>
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <div className="text-right">
-        <span className="flex items-center justify-end gap-1 font-semibold">
-          {icon}
-          {value}
-        </span>
-        {hint && <span className="text-xs text-muted-foreground">{hint}</span>}
-      </div>
+    <div className={cn('flex items-baseline justify-between gap-4 py-2', className)}>
+      <span className="min-w-0 text-sm text-ink-11">{label}</span>
+      <span className="shrink-0 text-right text-sm text-ink-12">
+        {value}
+        {hint && <span className="ml-1.5 text-xs text-ink-10">{hint}</span>}
+      </span>
     </div>
   );
 }

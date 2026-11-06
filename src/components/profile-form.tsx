@@ -1,11 +1,13 @@
 'use client';
 
+import { User } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { UserProfile } from '@/types';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SectionCard } from '@/components/ui/section-card';
 import { FormField } from '@/components/ui/form-field';
+import { StatRow } from '@/components/ui/stat-row';
 import { DatePicker } from '@/components/ui/date-picker';
 import { getYearsToRetirement, formatCurrency } from '@/lib/calculations';
 
@@ -13,36 +15,6 @@ interface ProfileFormProps {
   profile: UserProfile;
   onUpdate: (updates: Partial<UserProfile>) => void;
 }
-
-const UserIcon = () => (
-  <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-  </svg>
-);
-
-const CalendarIcon = () => (
-  <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-  </svg>
-);
-
-const TargetIcon = () => (
-  <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-  </svg>
-);
-
-const TrendIcon = () => (
-  <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-  </svg>
-);
-
-const PensionIcon = () => (
-  <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-  </svg>
-);
 
 export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
   const [retirementAge, setRetirementAge] = useState(String(profile.retirementAge));
@@ -84,22 +56,22 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
 
   return (
     <SectionCard
-      icon={<UserIcon />}
-      title="Your Details"
+      title="Your details" icon={<User />}
       contentClassName="space-y-4"
     >
       <div className="grid grid-cols-2 gap-3">
-        <FormField id="birthday" label="Date of Birth" icon={<CalendarIcon />}>
+        <FormField id="birthday" label="Date of birth" hint={`Age ${profile.currentAge}`}>
           <DatePicker
             value={profile.birthday}
             max={new Date().toISOString().split('T')[0]}
             onChange={(date) => onUpdate({ birthday: date })}
           />
-          <p className="text-xs text-muted-foreground mt-1">
-            Age: <span className="font-semibold text-foreground">{profile.currentAge}</span>
-          </p>
         </FormField>
-        <FormField id="retirementAge" label="Retirement Age" icon={<CalendarIcon />}>
+        <FormField
+          id="retirementAge"
+          label="Retirement age"
+          hint={yearsToRetirement > 0 ? `${yearsToRetirement} years to go` : undefined}
+        >
           <Input
             id="retirementAge"
             type="number"
@@ -108,23 +80,13 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
             value={retirementAge}
             onChange={(e) => setRetirementAge(e.target.value)}
             onBlur={() => handleBlur('retirementAge', retirementAge)}
-            className="bg-secondary/30 transition-colors focus:bg-white dark:focus:bg-secondary"
           />
         </FormField>
       </div>
 
-      {yearsToRetirement > 0 && (
-        <div className="card-hero rounded-2xl p-4 text-white dark:text-[#1a1a1a] shadow-xl shadow-[#0c1929]/30 dark:shadow-amber-900/40">
-          <p className="relative z-10 text-center font-display text-2xl text-wh">
-            {yearsToRetirement} <span className="text-sm font-sans text-white/60 dark:text-[#1a1a1a]/60">years to retirement</span>
-          </p>
-        </div>
-      )}
-
       <FormField
         id="targetAmount"
-        label="Retirement Target (£)"
-        icon={<TargetIcon />}
+        label="Retirement target (£)"
         hint="In today's money. A common rule: 25x your desired annual income"
       >
         <Input
@@ -135,15 +97,13 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
           value={targetAmount}
           onChange={(e) => setTargetAmount(e.target.value)}
           onBlur={() => handleBlur('targetAmount', targetAmount)}
-          className="bg-secondary/30 transition-colors focus:bg-white dark:focus:bg-secondary"
         />
       </FormField>
 
       <FormField
         id="inflation"
-        label="Expected Inflation (%)"
-        icon={<TrendIcon />}
-        hint="UK historical average is around 2-3% per year"
+        label="Expected inflation (%)"
+        hint="UK historical average is around 2–3% a year"
       >
         <Input
           id="inflation"
@@ -154,14 +114,12 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
           value={expectedInflation}
           onChange={(e) => setExpectedInflation(e.target.value)}
           onBlur={() => handleBlur('expectedInflation', expectedInflation)}
-          className="bg-secondary/30 transition-colors focus:bg-white dark:focus:bg-secondary"
         />
       </FormField>
 
       <FormField
         id="annualSalary"
-        label="Annual Salary (£)"
-        icon={<TrendIcon />}
+        label="Annual salary (£)"
         hint="Used to calculate your savings rate"
       >
         <Input
@@ -172,30 +130,19 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
           value={annualSalary}
           onChange={(e) => setAnnualSalary(e.target.value)}
           onBlur={() => handleBlur('annualSalary', annualSalary)}
-          className="bg-secondary/30 transition-colors focus:bg-white dark:focus:bg-secondary"
         />
       </FormField>
 
-      <div className="divider-gradient" />
-
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="h-4 w-4 text-muted-foreground">
-              <PensionIcon />
-            </div>
-            <span className="text-sm font-medium">State Pension</span>
-          </div>
-          <div className="flex items-center gap-2">
+      <div className="hairline-t space-y-3 pt-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-sm text-ink-12">State pension</span>
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-ink-11">
             <Checkbox
-              id="includeStatePension"
               checked={profile.includeStatePension}
               onCheckedChange={(checked) => onUpdate({ includeStatePension: checked === true })}
             />
-            <label htmlFor="includeStatePension" className="text-sm text-muted-foreground cursor-pointer">
-              Include in projections
-            </label>
-          </div>
+            Include in projections
+          </label>
         </div>
 
         {profile.includeStatePension && (
@@ -203,8 +150,8 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
             <div className="grid grid-cols-2 gap-3">
               <FormField
                 id="statePensionAmount"
-                label="Weekly Amount (£)"
-                hint="Full rate: £221.20/week"
+                label="Weekly amount (£)"
+                hint="Full rate: £221.20 a week"
               >
                 <Input
                   id="statePensionAmount"
@@ -215,13 +162,12 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
                   value={statePensionAmount}
                   onChange={(e) => setStatePensionAmount(e.target.value)}
                   onBlur={() => handleBlur('statePensionAmount', statePensionAmount)}
-                  className="bg-secondary/30 transition-colors focus:bg-white dark:focus:bg-secondary"
                 />
               </FormField>
               <FormField
                 id="statePensionAge"
-                label="Start Age"
-                hint="Currently 66-68 in UK"
+                label="Start age"
+                hint="Currently 66–68 in the UK"
               >
                 <Input
                   id="statePensionAge"
@@ -236,14 +182,10 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
                       onUpdate({ statePensionAge: numValue });
                     }
                   }}
-                  className="bg-secondary/30 transition-colors focus:bg-white dark:focus:bg-secondary"
                 />
               </FormField>
             </div>
-            <div className="flex items-center justify-between rounded-lg bg-secondary/50 p-2.5 ring-1 ring-border/60">
-              <span className="text-xs text-muted-foreground">Annual income</span>
-              <span className="font-semibold">{formatCurrency(annualStatePension)}<span className="text-xs text-muted-foreground font-normal">/yr from {profile.statePensionAge}</span></span>
-            </div>
+            <StatRow label="Annual income" value={formatCurrency(annualStatePension)} hint={`a year from ${profile.statePensionAge}`} className="tabular-nums" />
           </>
         )}
       </div>

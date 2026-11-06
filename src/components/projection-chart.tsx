@@ -13,14 +13,26 @@ import {
   ReferenceLine,
   Legend,
 } from 'recharts';
-import { BarChart3, Settings2, Table2 } from 'lucide-react';
+import { BarChart3, Settings2, Table2, TrendingUp } from 'lucide-react';
 import { Account, UserProfile, LumpSumWithdrawal } from '@/types';
+import { Button } from '@/components/ui/button';
 import { SectionCard } from '@/components/ui/section-card';
+import { SegmentedControl } from '@/components/ui/segmented-control';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
-import { formatCurrency, formatCurrencyCompact, generateProjection } from '@/lib/calculations';
-import { useChartColors } from '@/hooks/use-chart-colors';
+import {
+  CHART_COLORS,
+  ChartTooltipCard,
+  ChartTooltipDivider,
+  ChartTooltipRow,
+  chartAgeLabel,
+  chartGridProps,
+  chartLineLabel,
+  chartXAxisProps,
+  chartYAxisProps,
+} from '@/components/ui/chart';
+import { formatCurrency, generateProjection } from '@/lib/calculations';
 import { MonthlyBreakdownTable } from '@/components/monthly-breakdown-table';
 import { useRetirementSummary, useRetirementAnalysis } from '@/contexts/retirement-engine-context';
 
@@ -31,24 +43,18 @@ interface ProjectionChartProps {
   pausedContribAccounts?: Set<string>;
 }
 
-const ChartIcon = () => (
-  <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-  </svg>
-);
+type ProjectionView = 'chart' | 'table';
 
-const EmptyChartIcon = () => (
-  <svg className="h-8 w-8 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-  </svg>
-);
+const VIEW_OPTIONS: { value: ProjectionView; label: string; icon: React.ReactNode }[] = [
+  { value: 'chart', label: 'Chart', icon: <BarChart3 className="size-3.5" /> },
+  { value: 'table', label: 'Table', icon: <Table2 className="size-3.5" /> },
+];
 
 export function ProjectionChart({ accounts, profile, lumpSumWithdrawals = [], pausedContribAccounts }: ProjectionChartProps) {
-  const [view, setView] = useState<'chart' | 'table'>('chart');
+  const [view, setView] = useState<ProjectionView>('chart');
   const [showOptimistic, setShowOptimistic] = useState(true);
   const [showConservative, setShowConservative] = useState(true);
   const [showCoastFire, setShowCoastFire] = useState(true);
-  const chartColors = useChartColors();
 
   const hasPaused = (pausedContribAccounts?.size ?? 0) > 0;
 
@@ -64,100 +70,52 @@ export function ProjectionChart({ accounts, profile, lumpSumWithdrawals = [], pa
 
   if (accounts.length === 0) {
     return (
-      <SectionCard icon={<ChartIcon />} title="Growth Projection">
-        <div className="flex h-[300px] flex-col items-center justify-center">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0c1929] to-[#1e3a5f] dark:from-amber-400 dark:to-amber-500">
-            <svg className="h-8 w-8 text-amber-400 dark:text-[#0c1929]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-          </div>
-          <p className="font-display text-2xl text-foreground">No projection data</p>
-          <p className="mt-1 text-sm text-muted-foreground">Add accounts to see your growth forecast</p>
-        </div>
+      <SectionCard title="Growth projection" icon={<TrendingUp />}>
+        <EmptyState
+          icon={<BarChart3 />}
+          title="No projection data"
+          description="Add an account to see your growth forecast."
+        />
       </SectionCard>
     );
   }
 
+  const displayOptions = [
+    { label: 'High range (P75–P90)', checked: showOptimistic, onChange: setShowOptimistic },
+    { label: 'Low range (P10–P25)', checked: showConservative, onChange: setShowConservative },
+    { label: 'Coast FIRE', checked: showCoastFire, onChange: setShowCoastFire },
+  ];
+
   return (
     <SectionCard
-      icon={<ChartIcon />}
-            title="Growth Projection"
+      title="Growth projection" icon={<TrendingUp />}
       action={
-        <div className="flex items-center gap-2">
-          <span className="badge-teal">
-            {view === 'table' ? 'Nominal values' : "In today\u0027s money"}
+        <>
+          <span className="text-xs text-ink-10">
+            {view === 'table' ? 'Nominal values' : "In today's money"}
           </span>
-          <div className="flex items-center rounded-lg border border-border/60 p-0.5">
-            <button
-              onClick={() => setView('chart')}
-              className={`flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors cursor-pointer ${
-                view === 'chart'
-                  ? 'bg-muted text-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <BarChart3 className="h-3.5 w-3.5" />
-              Chart
-            </button>
-            <button
-              onClick={() => setView('table')}
-              className={`flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors cursor-pointer ${
-                view === 'table'
-                  ? 'bg-muted text-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Table2 className="h-3.5 w-3.5" />
-              Table
-            </button>
-          </div>
+          <SegmentedControl label="Projection view" value={view} options={VIEW_OPTIONS} onChange={setView} />
           {view === 'chart' && (
             <Popover>
               <PopoverTrigger asChild>
-                <button className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-                  <Settings2 className="h-4 w-4" />
-                </button>
+                <Button variant="ghost" size="icon-sm" aria-label="Display options">
+                  <Settings2 />
+                </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-52">
-                <div className="space-y-3">
-                  <p className="text-sm font-medium text-foreground">Display Options</p>
-                  <div className="space-y-2">
-                    <label className="flex items-center gap-2 text-sm cursor-pointer">
-                      <Checkbox
-                        checked={showOptimistic}
-                        onCheckedChange={(checked) => setShowOptimistic(checked === true)}
-                      />
-                      <span className="flex items-center gap-1.5">
-                        <span className="h-2 w-2 rounded-full bg-[#93c5fd]" />
-                        P75–P90 (high)
-                      </span>
-                    </label>
-                    <label className="flex items-center gap-2 text-sm cursor-pointer">
-                      <Checkbox
-                        checked={showConservative}
-                        onCheckedChange={(checked) => setShowConservative(checked === true)}
-                      />
-                      <span className="flex items-center gap-1.5">
-                        <span className="h-2 w-2 rounded-full bg-[#93c5fd]" />
-                        P10–P25 (low)
-                      </span>
-                    </label>
-                    <label className="flex items-center gap-2 text-sm cursor-pointer">
-                      <Checkbox
-                        checked={showCoastFire}
-                        onCheckedChange={(checked) => setShowCoastFire(checked === true)}
-                      />
-                      <span className="flex items-center gap-1.5">
-                        <span className="h-2 w-2 rounded-full bg-[#2c7a7b]" />
-                        Coast FIRE
-                      </span>
-                    </label>
-                  </div>
-                </div>
+              <PopoverContent className="w-56 space-y-2">
+                {displayOptions.map((option) => (
+                  <label key={option.label} className="flex cursor-pointer items-center gap-2 text-ink-12">
+                    <Checkbox
+                      checked={option.checked}
+                      onCheckedChange={(checked) => option.onChange(checked === true)}
+                    />
+                    {option.label}
+                  </label>
+                ))}
               </PopoverContent>
             </Popover>
           )}
-        </div>
+        </>
       }
     >
       {view === 'table' ? (
@@ -176,167 +134,97 @@ export function ProjectionChart({ accounts, profile, lumpSumWithdrawals = [], pa
             }))}
             margin={{ top: 10, right: 10, left: 0, bottom: 35 }}
           >
-            <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} vertical={false} />
-            <XAxis
-              dataKey="age"
-              axisLine={false}
-              tickLine={false}
-              tick={{ fill: chartColors.axis, fontSize: 12 }}
-              dy={10}
-              label={{ value: 'Age', position: 'insideBottom', offset: -20, fill: chartColors.axis, fontSize: 12, fontWeight: 600 }}
-            />
-            <YAxis
-              axisLine={false}
-              tickLine={false}
-              tick={{ fill: chartColors.axis, fontSize: 12 }}
-              tickFormatter={(value) => formatCurrencyCompact(value)}
-              dx={-10}
-            />
+            <CartesianGrid {...chartGridProps} />
+            <XAxis dataKey="age" {...chartXAxisProps} label={chartAgeLabel} />
+            <YAxis {...chartYAxisProps} />
             <Tooltip
+              isAnimationActive={false}
               content={({ active, payload, label }) => {
                 if (!active || !payload || payload.length === 0) return null;
                 const dataPoint = payload[0]?.payload;
-                const p90 = dataPoint?.p90Real as number;
-                const p75 = dataPoint?.overperformanceReal as number;
-                const p50 = dataPoint?.totalReal as number;
-                const p25 = dataPoint?.underperformanceReal as number;
-                const p10 = dataPoint?.p10Real as number;
                 const noContrib = dataPoint?.noContribReal as number | undefined;
-                const showTargets = showCoastFire && coastFireInfo;
 
-                const accountBreakdown = accounts.map((account) => ({
-                  name: account.name,
-                  value: dataPoint?.[`${account.id}_real`] as number | undefined,
-                })).filter((item) => item.value !== undefined);
+                const accountBreakdown = accounts
+                  .map((account) => ({
+                    name: account.name,
+                    value: dataPoint?.[`${account.id}_real`] as number | undefined,
+                  }))
+                  .filter((item) => item.value !== undefined)
+                  .sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
 
                 return (
-                  <div
-                    style={{
-                      backgroundColor: chartColors.tooltipBg,
-                      border: `1px solid ${chartColors.tooltipBorder}`,
-                      borderRadius: '12px',
-                      boxShadow: '0 10px 40px -10px rgba(12, 25, 41, 0.15)',
-                      padding: '12px 16px',
-                      minWidth: '190px',
-                    }}
-                  >
-                    <p style={{ color: chartColors.tooltipMuted, fontWeight: 600, marginBottom: '8px', fontSize: '13px' }}>
-                      Age {label}
-                    </p>
-                    {[
-                      { label: 'P90 (optimistic)', value: p90, color: '#93c5fd', show: showOptimistic },
-                      { label: 'P75', value: p75, color: '#60a5fa', show: showOptimistic },
-                      { label: 'P50 (base)', value: p50, color: '#3b82f6', show: true },
-                      { label: 'P25', value: p25, color: '#60a5fa', show: showConservative },
-                      { label: 'P10 (conservative)', value: p10, color: '#93c5fd', show: showConservative },
-                      { label: 'With contributions', value: noContrib ?? 0, color: '#9ca3af', show: hasPaused && noContrib !== undefined },
-                    ].filter((r) => r.show).map(({ label: l, value, color }) => (
-                      <div key={l} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                        <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: color, flexShrink: 0 }} />
-                        <span style={{ color: chartColors.tooltipText, fontSize: '13px' }}>
-                          {l}: {formatCurrency(value)}
-                        </span>
-                      </div>
+                  <ChartTooltipCard title={`Age ${label}`}>
+                    {showOptimistic && <ChartTooltipRow muted label="P90, optimistic" value={formatCurrency(dataPoint?.p90Real)} />}
+                    {showOptimistic && <ChartTooltipRow muted label="P75" value={formatCurrency(dataPoint?.overperformanceReal)} />}
+                    <ChartTooltipRow label="P50, base" value={formatCurrency(dataPoint?.totalReal)} color={CHART_COLORS.strong} />
+                    {showConservative && <ChartTooltipRow muted label="P25" value={formatCurrency(dataPoint?.underperformanceReal)} />}
+                    {showConservative && <ChartTooltipRow muted label="P10, conservative" value={formatCurrency(dataPoint?.p10Real)} />}
+                    {hasPaused && noContrib !== undefined && (
+                      <ChartTooltipRow label="With contributions" value={formatCurrency(noContrib ?? 0)} color={CHART_COLORS.secondary} dashed />
+                    )}
+                    {accountBreakdown.length > 0 && <ChartTooltipDivider />}
+                    {accountBreakdown.map((item) => (
+                      <ChartTooltipRow key={item.name} muted label={item.name} value={formatCurrency(item.value ?? 0)} />
                     ))}
-                    {accountBreakdown.length > 0 && (
-                      <div style={{ borderTop: `1px solid ${chartColors.tooltipBorder}`, marginTop: '8px', paddingTop: '8px' }}>
-                        <p style={{ color: chartColors.tooltipMuted, fontWeight: 600, marginBottom: '6px', fontSize: '12px' }}>
-                          Account Breakdown
-                        </p>
-                        {accountBreakdown
-                          .sort((a, b) => (b.value ?? 0) - (a.value ?? 0))
-                          .map((item) => (
-                            <div key={item.name} style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', marginBottom: '2px' }}>
-                              <span style={{ color: chartColors.tooltipMuted, fontSize: '12px' }}>{item.name}</span>
-                              <span style={{ color: chartColors.tooltipText, fontSize: '12px', fontWeight: 500 }}>
-                                {formatCurrency(item.value ?? 0)}
-                              </span>
-                            </div>
-                          ))}
-                      </div>
+                    {showCoastFire && coastFireInfo && (
+                      <>
+                        <ChartTooltipDivider />
+                        <ChartTooltipRow muted label="Coast FIRE" value={formatCurrency(coastFireInfo.amount)} />
+                      </>
                     )}
-                    {showTargets && (
-                      <div style={{ borderTop: `1px solid ${chartColors.tooltipBorder}`, marginTop: '8px', paddingTop: '8px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: '#2c7a7b', flexShrink: 0 }} />
-                          <span style={{ color: chartColors.tooltipMuted, fontSize: '12px' }}>
-                            Coast FIRE: {formatCurrency(coastFireInfo.amount)}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  </ChartTooltipCard>
                 );
               }}
             />
             <ReferenceLine
               y={profile.targetAmount}
-              stroke={chartColors.targetLine}
+              stroke={CHART_COLORS.target}
               strokeDasharray="8 4"
-              strokeWidth={2}
-              strokeOpacity={0.4}
-              label={({ viewBox }) => {
-                const x = (viewBox?.x ?? 0) + 4;
-                const y = (viewBox?.y ?? 0) - 8;
-                return (
-                  <g>
-                    <rect x={x - 4} y={y - 10} width={42} height={16} rx={4} fill={chartColors.labelBg} />
-                    <text x={x} y={y} fill={chartColors.axis} fontSize={12} fontWeight={600}>Target</text>
-                  </g>
-                );
-              }}
+              strokeWidth={1.5}
+              label={chartLineLabel('Target', { width: 46, dx: 4 })}
             />
             {showCoastFire && coastFireInfo && (
               <ReferenceLine
                 x={coastFireInfo.age}
-                stroke="#2c7a7b"
+                stroke={CHART_COLORS.faint}
                 strokeDasharray="6 3"
-                strokeWidth={2}
-                strokeOpacity={0.6}
-                label={({ viewBox }) => {
-                  const x = (viewBox?.x ?? 0);
-                  const y = 24;
-                  return (
-                    <g>
-                      <rect x={x - 4} y={y - 10} width={70} height={16} rx={4} fill={chartColors.labelBg} />
-                      <text x={x} y={y} fill="#2c7a7b" fontSize={12} fontWeight={600}>Coast FIRE</text>
-                    </g>
-                  );
-                }}
+                strokeWidth={1.5}
+                label={chartLineLabel('Coast FIRE', { width: 70, y: 48 })}
               />
             )}
             {/* Outer band P10→P90 */}
             {showOptimistic && showConservative && (
               <>
-                <Area stackId="outer" dataKey="outerBase" fill="transparent" stroke="none" legendType="none" />
-                <Area stackId="outer" dataKey="outerRange" fill="#3b82f6" fillOpacity={0.12} stroke="none" name="P10–P90 range" legendType="rect" />
+                <Area isAnimationActive={false} stackId="outer" dataKey="outerBase" fill="transparent" stroke="none" legendType="none" />
+                <Area isAnimationActive={false} stackId="outer" dataKey="outerRange" fill={CHART_COLORS.strong} fillOpacity={0.1} stroke="none" name="P10–P90 range" legendType="rect" />
               </>
             )}
             {/* Inner band P25→P75 */}
             {showOptimistic && showConservative && (
               <>
-                <Area stackId="inner" dataKey="innerBase" fill="transparent" stroke="none" legendType="none" />
-                <Area stackId="inner" dataKey="innerRange" fill="#3b82f6" fillOpacity={0.28} stroke="none" name="P25–P75 range" legendType="rect" />
+                <Area isAnimationActive={false} stackId="inner" dataKey="innerBase" fill="transparent" stroke="none" legendType="none" />
+                <Area isAnimationActive={false} stackId="inner" dataKey="innerRange" fill={CHART_COLORS.strong} fillOpacity={0.18} stroke="none" name="P25–P75 range" legendType="rect" />
               </>
             )}
             {/* Individual scenario lines when only one band side is shown */}
             {showOptimistic && !showConservative && (
-              <Line dataKey="p90Real" stroke="#93c5fd" strokeWidth={1.5} strokeDasharray="4 2" dot={false} name="P90 (optimistic)" />
+              <Line isAnimationActive={false} dataKey="p90Real" stroke={CHART_COLORS.secondary} strokeWidth={1.5} strokeDasharray="4 2" dot={false} name="P90, optimistic" />
             )}
             {!showOptimistic && showConservative && (
-              <Line dataKey="p10Real" stroke="#93c5fd" strokeWidth={1.5} strokeDasharray="4 2" dot={false} name="P10 (conservative)" />
+              <Line isAnimationActive={false} dataKey="p10Real" stroke={CHART_COLORS.secondary} strokeWidth={1.5} strokeDasharray="4 2" dot={false} name="P10, conservative" />
             )}
             {/* P50 base line */}
-            <Line dataKey="totalReal" stroke="#3b82f6" strokeWidth={2.5} dot={false} name="P50 (base)" />
+            <Line isAnimationActive={false} dataKey="totalReal" stroke={CHART_COLORS.strong} strokeWidth={2} dot={false} name="P50, base" />
             {/* Full-contributions comparison line (shown when any account is paused) */}
             {hasPaused && (
-              <Line dataKey="noContribReal" stroke="#9ca3af" strokeWidth={1.5} strokeDasharray="5 3" dot={false} name="With contributions" />
+              <Line isAnimationActive={false} dataKey="noContribReal" stroke={CHART_COLORS.secondary} strokeWidth={1.5} strokeDasharray="5 3" dot={false} name="With contributions" />
             )}
             <Legend
               verticalAlign="top"
               align="right"
+              iconSize={8}
               wrapperStyle={{ fontSize: '12px', paddingBottom: '8px' }}
-              formatter={(value) => <span style={{ color: chartColors.axis }}>{value}</span>}
+              formatter={(value) => <span style={{ color: CHART_COLORS.label }}>{value}</span>}
             />
           </ComposedChart>
         </ResponsiveContainer>

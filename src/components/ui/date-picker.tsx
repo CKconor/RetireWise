@@ -107,13 +107,13 @@ export function DatePicker({ value, onChange, max, className }: DatePickerProps)
         <button
           type="button"
           className={cn(
-            'flex h-9 w-full items-center gap-2 rounded-md border border-input bg-secondary/30 px-3 py-1 text-sm shadow-xs transition-colors',
-            'hover:bg-secondary/50 focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] outline-none',
-            !value && 'text-muted-foreground',
+            'flex h-[var(--control-h)] w-full cursor-pointer items-center gap-2 rounded-md bg-ink-3 px-3 text-[length:var(--text-field)] tabular-nums text-ink-12 outline-none transition-[background-color] duration-150 ease-out',
+            'hover:bg-ink-4 focus-visible:shadow-[0_0_0_2px_var(--focus-ring)]',
+            !value && 'text-ink-10',
             className,
           )}
         >
-          <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <Calendar className="size-3.5 shrink-0 text-ink-10" />
           <span className="truncate">{displayValue}</span>
         </button>
       </PopoverTrigger>
@@ -121,12 +121,12 @@ export function DatePicker({ value, onChange, max, className }: DatePickerProps)
         <div className="p-3 space-y-3">
           {/* Year nav */}
           <div className="flex items-center justify-between">
-            <Button variant="ghost" size="icon-sm" onClick={prevYear} aria-label="Previous year">
+            <Button type="button" variant="ghost" size="icon-sm" onClick={prevYear} aria-label="Previous year">
               <ChevronLeft className="h-3.5 w-3.5" />
               <ChevronLeft className="h-3.5 w-3.5 -ml-2.5" />
             </Button>
-            <span className="text-sm font-display font-semibold tracking-tight">{viewYear}</span>
-            <Button variant="ghost" size="icon-sm" onClick={nextYear} disabled={maxDate != null && viewYear >= maxDate.year} aria-label="Next year">
+            <span className="text-sm tabular-nums text-ink-12">{viewYear}</span>
+            <Button type="button" variant="ghost" size="icon-sm" onClick={nextYear} disabled={maxDate != null && viewYear >= maxDate.year} aria-label="Next year">
               <ChevronRight className="h-3.5 w-3.5" />
               <ChevronRight className="h-3.5 w-3.5 -ml-2.5" />
             </Button>
@@ -134,11 +134,11 @@ export function DatePicker({ value, onChange, max, className }: DatePickerProps)
 
           {/* Month nav */}
           <div className="flex items-center justify-between">
-            <Button variant="ghost" size="icon-sm" onClick={prevMonth} aria-label="Previous month">
+            <Button type="button" variant="ghost" size="icon-sm" onClick={prevMonth} aria-label="Previous month">
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="text-sm font-medium">{MONTH_NAMES[viewMonth]}</span>
-            <Button variant="ghost" size="icon-sm" onClick={nextMonth} disabled={!canGoNext} aria-label="Next month">
+            <span className="text-sm text-ink-12">{MONTH_NAMES[viewMonth]}</span>
+            <Button type="button" variant="ghost" size="icon-sm" onClick={nextMonth} disabled={!canGoNext} aria-label="Next month">
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
@@ -146,7 +146,7 @@ export function DatePicker({ value, onChange, max, className }: DatePickerProps)
           {/* Day headers */}
           <div className="grid grid-cols-7 gap-0">
             {DAY_HEADERS.map((d) => (
-              <div key={d} className="flex h-8 w-8 items-center justify-center text-[11px] font-medium text-muted-foreground">
+              <div key={d} className="flex h-8 w-8 items-center justify-center text-xs text-ink-10">
                 {d}
               </div>
             ))}
@@ -169,12 +169,11 @@ export function DatePicker({ value, onChange, max, className }: DatePickerProps)
                   disabled={disabled}
                   onClick={() => handleSelect(day)}
                   className={cn(
-                    'flex h-8 w-8 items-center justify-center rounded-md text-sm transition-colors',
-                    'hover:bg-accent hover:text-accent-foreground',
-                    'focus-visible:ring-2 focus-visible:ring-ring outline-none',
-                    disabled && 'pointer-events-none opacity-30',
-                    selected && 'bg-primary text-primary-foreground hover:bg-primary/90 font-semibold',
-                    !selected && today && 'ring-1 ring-primary/40 font-medium',
+                    'flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-sm tabular-nums text-ink-11 outline-none transition-colors duration-150 ease-out',
+                    'hover:bg-[var(--ghost-hover)] hover:text-ink-12 focus-visible:outline-2 focus-visible:outline-offset-2',
+                    disabled && 'pointer-events-none opacity-40',
+                    selected && 'bg-primary text-primary-foreground shadow-[var(--shadow-primary)] hover:bg-[var(--primary-hover)] hover:text-primary-foreground',
+                    !selected && today && 'text-ink-12 underline underline-offset-2',
                   )}
                 >
                   {day}

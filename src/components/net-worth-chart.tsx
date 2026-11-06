@@ -11,8 +11,20 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { TrendingUp, Plus, Trash2, Pencil, ArrowRight } from 'lucide-react';
+import { TrendingUp, Plus, Trash2, Pencil, ArrowRight, LineChart } from 'lucide-react';
 import { Account, AccountType, NetWorthSnapshot, ProjectionBaseline, ACCOUNT_TYPE_LABELS } from '@/types';
+import { EmptyState } from '@/components/ui/empty-state';
+import {
+  CHART_COLORS,
+  ChartLegend,
+  ChartTooltipCard,
+  ChartTooltipDivider,
+  ChartTooltipRow,
+  chartActiveDot,
+  chartGridProps,
+  chartXAxisProps,
+  chartYAxisProps,
+} from '@/components/ui/chart';
 import { SectionCard } from '@/components/ui/section-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,17 +38,8 @@ import {
   DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { formatCurrency, formatCurrencyCompact, calculateNetWorthForecast } from '@/lib/calculations';
-import { useChartColors } from '@/hooks/use-chart-colors';
-
-// Hex colors for each account type (for Recharts fills/strokes)
-const ACCOUNT_TYPE_HEX: Record<AccountType, string> = {
-  isa: '#10b981',
-  sipp: '#f43f5e',
-  pension: '#8b5cf6',
-  gia: '#0ea5e9',
-  savings: '#f59e0b',
-};
+import { formatCurrency, calculateNetWorthForecast } from '@/lib/calculations';
+import { ACCOUNT_TYPE_CHART_COLORS } from '@/lib/constants';
 
 const TABLE_DATES_KEY = 'retirewise-table-dates';
 
@@ -63,12 +66,6 @@ interface NetWorthChartProps {
   projectionBaseline?: ProjectionBaseline;
 }
 
-const ChartIcon = () => (
-  <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-  </svg>
-);
-
 function formatDateLabel(iso: string) {
   const d = new Date(iso + 'T00:00:00');
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' });
@@ -84,7 +81,6 @@ export function NetWorthChart({
   onClearHistory,
   projectionBaseline,
 }: NetWorthChartProps) {
-  const chartColors = useChartColors();
   const [showForecast, setShowForecast] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingDate, setEditingDate] = useState<string | null>(null); // null = adding new, string = editing existing
@@ -202,266 +198,194 @@ export function NetWorthChart({
   };
 
   const hasEnoughData = netWorthHistory.length >= 2;
+  const seriesEntries = Array.from(allAccountKeys.entries());
 
   return (
     <>
       <SectionCard
-        icon={<ChartIcon />}
-        title="Net Worth History"
+        title="Net worth history" icon={<LineChart />}
         action={
-          <div className="flex items-center gap-2">
+          <>
             {hasEnoughData && (
-              <button
-                onClick={() => setShowForecast(!showForecast)}
-                className={`flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors cursor-pointer ${
-                  showForecast ? 'text-foreground bg-muted' : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <ArrowRight className="h-3 w-3" />
+              <Button variant="ghost" size="sm" aria-pressed={showForecast} onClick={() => setShowForecast(!showForecast)}>
+                <ArrowRight />
                 Forecast
-              </button>
+              </Button>
             )}
             {netWorthHistory.length > 0 && (
-              <button
-                onClick={() => setShowList(!showList)}
-                className="flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground cursor-pointer"
-              >
+              <Button variant="ghost" size="sm" onClick={() => setShowList(!showList)}>
                 {showList ? 'Chart' : `${netWorthHistory.length} snapshots`}
-              </button>
+              </Button>
             )}
-            <Button variant="outline" size="sm" onClick={openAddDialog} className="gap-1.5">
-              <Plus className="h-3.5 w-3.5" />
-              Add Snapshot
+            <Button variant="outline" size="sm" onClick={openAddDialog}>
+              <Plus />
+              Add snapshot
             </Button>
-          </div>
+          </>
         }
       >
         {!hasEnoughData ? (
-          <div className="flex h-[300px] flex-col items-center justify-center">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0c1929] to-[#1e3a5f] dark:from-amber-400 dark:to-amber-500">
-              <TrendingUp className="h-8 w-8 text-amber-400 dark:text-[#0c1929]" />
-            </div>
-            <p className="font-display text-2xl text-foreground">Track your progress</p>
-            <p className="mt-1 text-sm text-muted-foreground max-w-xs text-center">
-              {netWorthHistory.length === 0
-                ? 'Add or edit accounts to start recording snapshots, or add a past snapshot manually.'
-                : 'One more snapshot needed to display your net worth chart.'}
-            </p>
-          </div>
+          <EmptyState
+            icon={<TrendingUp />}
+            title={netWorthHistory.length === 0 ? 'No snapshots yet' : 'One snapshot so far'}
+            description={
+              netWorthHistory.length === 0
+                ? 'Add or edit accounts to start recording snapshots, or add a past snapshot.'
+                : 'Add one more snapshot to see your net worth chart.'
+            }
+          />
         ) : showList ? (
-          <div className="space-y-2 max-h-[350px] overflow-y-auto">
-            {[...netWorthHistory].reverse().map((snap) => (
-              <div
-                key={snap.date}
-                className="flex items-center justify-between rounded-lg border border-border/60 px-4 py-3"
-              >
-                <div>
-                  <p className="text-sm font-medium">{formatDateLabel(snap.date)}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {Object.values(snap.accountBalances).map((a) => `${a.name}: ${formatCurrency(a.balance)}`).join(' · ')}
-                  </p>
+          <div className="space-y-4">
+            <div className="hairline-list max-h-[350px] overflow-y-auto">
+              {[...netWorthHistory].reverse().map((snap) => (
+                <div key={snap.date} className="flex items-center justify-between gap-3 py-2">
+                  <div className="min-w-0">
+                    <p className="text-sm text-ink-12">{formatDateLabel(snap.date)}</p>
+                    <p className="text-xs tabular-nums text-ink-10">
+                      {Object.values(snap.accountBalances).map((a) => `${a.name}: ${formatCurrency(a.balance)}`).join(' · ')}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-0.5">
+                    <span className="mr-2 text-sm tabular-nums text-ink-12">{formatCurrency(snap.totalBalance)}</span>
+                    <Button variant="ghost" size="icon-sm" onClick={() => openEditDialog(snap)} aria-label={`Edit snapshot from ${formatDateLabel(snap.date)}`}>
+                      <Pencil />
+                    </Button>
+                    <Button variant="ghost" size="icon-sm" className="hover:text-red-11" onClick={() => onDeleteSnapshot(snap.date)} aria-label={`Delete snapshot from ${formatDateLabel(snap.date)}`}>
+                      <Trash2 />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-semibold font-mono">{formatCurrency(snap.totalBalance)}</span>
-                  <button
-                    onClick={() => openEditDialog(snap)}
-                    className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => onDeleteSnapshot(snap.date)}
-                    className="text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
-            {netWorthHistory.length > 1 && (
-              <div className="pt-2 flex justify-end">
-                <Button variant="ghost" size="sm" onClick={onClearHistory} className="text-destructive hover:text-destructive">
-                  Clear all history
-                </Button>
-              </div>
-            )}
+              ))}
+            </div>
+            <Button variant="destructive-outline" size="sm" onClick={onClearHistory}>
+              Clear all history
+            </Button>
           </div>
         ) : (
-          <div className="h-[350px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 25 }}>
-                <defs>
-                  {Array.from(allAccountKeys.entries()).map(([id, info]) => (
-                    <linearGradient key={id} id={`nw-${id}`} x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={ACCOUNT_TYPE_HEX[info.type]} stopOpacity={0.4} />
-                      <stop offset="95%" stopColor={ACCOUNT_TYPE_HEX[info.type]} stopOpacity={0.05} />
-                    </linearGradient>
-                  ))}
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} vertical={false} />
-                <XAxis
-                  dataKey="dateLabel"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: chartColors.axis, fontSize: 12 }}
-                  dy={10}
-                />
-                <YAxis
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: chartColors.axis, fontSize: 12 }}
-                  tickFormatter={(value) => formatCurrencyCompact(value)}
-                  dx={-10}
-                />
-                <Tooltip
-                  content={({ active, payload }) => {
-                    if (!active || !payload || payload.length === 0) return null;
-                    const dataPoint = payload[0]?.payload;
-                    const total = dataPoint?.total as number | undefined;
-                    const forecastVal = dataPoint?.forecast as number | undefined;
-                    const isForecastOnly = total == null && forecastVal != null;
+          <>
+            <div className="h-[350px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 25 }}>
+                  <CartesianGrid {...chartGridProps} />
+                  <XAxis dataKey="dateLabel" {...chartXAxisProps} />
+                  <YAxis {...chartYAxisProps} />
+                  <Tooltip
+                    isAnimationActive={false}
+                    content={({ active, payload }) => {
+                      if (!active || !payload || payload.length === 0) return null;
+                      const dataPoint = payload[0]?.payload;
+                      const total = dataPoint?.total as number | undefined;
+                      const forecastVal = dataPoint?.forecast as number | undefined;
+                      const isForecastOnly = total == null && forecastVal != null;
 
-                    return (
-                      <div
-                        style={{
-                          backgroundColor: chartColors.tooltipBg,
-                          border: `1px solid ${chartColors.tooltipBorder}`,
-                          borderRadius: '12px',
-                          boxShadow: '0 10px 40px -10px rgba(12, 25, 41, 0.15)',
-                          padding: '12px 16px',
-                        }}
-                      >
-                        <p style={{ color: chartColors.tooltipMuted, fontWeight: 600, marginBottom: '8px', fontSize: '13px' }}>
-                          {formatDateLabel(dataPoint?.date as string)}
-                        </p>
-                        {isForecastOnly ? (
-                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
-                            <span style={{ color: '#94a3b8', fontSize: '13px' }}>Forecast</span>
-                            <span style={{ color: chartColors.tooltipText, fontSize: '13px', fontWeight: 700 }}>
-                              {formatCurrency(forecastVal)}
-                            </span>
-                          </div>
-                        ) : (
-                          <>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', marginBottom: '8px' }}>
-                              <span style={{ color: chartColors.tooltipMuted, fontSize: '13px' }}>Total</span>
-                              <span style={{ color: chartColors.tooltipText, fontSize: '13px', fontWeight: 700 }}>
-                                {formatCurrency(total ?? 0)}
-                              </span>
-                            </div>
-                            {dataPoint?.baselineExpected != null && (
-                              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', marginBottom: '8px' }}>
-                                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                  <span style={{ width: 10, borderTop: '2px dashed #f59e0b', display: 'inline-block' }} />
-                                  <span style={{ color: '#f59e0b', fontSize: '12px' }}>Baseline</span>
-                                </span>
-                                <span style={{ color: '#f59e0b', fontSize: '12px', fontWeight: 600 }}>
-                                  {formatCurrency(dataPoint.baselineExpected as number)}
-                                </span>
-                              </div>
-                            )}
-                            <div style={{ borderTop: `1px solid ${chartColors.tooltipBorder}`, paddingTop: '8px' }}>
-                              {Array.from(allAccountKeys.entries()).map(([id, info]) => {
+                      return (
+                        <ChartTooltipCard title={formatDateLabel(dataPoint?.date as string)}>
+                          {isForecastOnly ? (
+                            <ChartTooltipRow label="Forecast" value={formatCurrency(forecastVal)} color={CHART_COLORS.faint} dashed />
+                          ) : (
+                            <>
+                              <ChartTooltipRow label="Total" value={formatCurrency(total ?? 0)} />
+                              {dataPoint?.baselineExpected != null && (
+                                <ChartTooltipRow
+                                  label="Baseline"
+                                  value={formatCurrency(dataPoint.baselineExpected as number)}
+                                  color={CHART_COLORS.secondary}
+                                  dashed
+                                />
+                              )}
+                              <ChartTooltipDivider />
+                              {seriesEntries.map(([id, info]) => {
                                 const val = (dataPoint?.[id] as number) ?? 0;
                                 if (val === 0) return null;
                                 return (
-                                  <div key={id} style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', marginBottom: '2px' }}>
-                                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                      <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: ACCOUNT_TYPE_HEX[info.type], flexShrink: 0 }} />
-                                      <span style={{ color: chartColors.tooltipMuted, fontSize: '12px' }}>{info.name}</span>
-                                    </span>
-                                    <span style={{ color: chartColors.tooltipText, fontSize: '12px', fontWeight: 500 }}>
-                                      {formatCurrency(val)}
-                                    </span>
-                                  </div>
+                                  <ChartTooltipRow
+                                    key={id}
+                                    muted
+                                    label={info.name}
+                                    value={formatCurrency(val)}
+                                    color={ACCOUNT_TYPE_CHART_COLORS[info.type]}
+                                  />
                                 );
                               })}
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    );
-                  }}
-                />
-                {Array.from(allAccountKeys.entries()).map(([id, info]) => (
-                  <Area
-                    key={id}
-                    type="monotone"
-                    dataKey={id}
-                    name={info.name}
-                    stackId="1"
-                    stroke={ACCOUNT_TYPE_HEX[info.type]}
-                    strokeWidth={2}
-                    fillOpacity={1}
-                    fill={`url(#nw-${id})`}
-                    dot={false}
-                    activeDot={{ r: 4, fill: ACCOUNT_TYPE_HEX[info.type], stroke: chartColors.activeDotStroke, strokeWidth: 2 }}
+                            </>
+                          )}
+                        </ChartTooltipCard>
+                      );
+                    }}
                   />
-                ))}
-                {showForecast && (
-                  <Line
-                    type="monotone"
-                    dataKey="forecast"
-                    name="Forecast"
-                    stroke="#94a3b8"
-                    strokeWidth={2}
-                    strokeDasharray="6 3"
-                    dot={false}
-                    activeDot={{ r: 4, fill: '#94a3b8', stroke: chartColors.activeDotStroke, strokeWidth: 2 }}
-                    connectNulls={false}
-                  />
-                )}
-                {projectionBaseline && (
-                  <Line
-                    type="monotone"
-                    dataKey="baselineExpected"
-                    name="Baseline"
-                    stroke="#f59e0b"
-                    strokeWidth={2}
-                    strokeDasharray="4 4"
-                    dot={false}
-                    activeDot={{ r: 4, fill: '#f59e0b', stroke: chartColors.activeDotStroke, strokeWidth: 2 }}
-                    connectNulls
-                  />
-                )}
-              </AreaChart>
-            </ResponsiveContainer>
-            {/* Legend */}
-            <div className="flex flex-wrap items-center justify-center gap-4 mt-2">
-              {Array.from(allAccountKeys.entries()).map(([id, info]) => (
-                <div key={id} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: ACCOUNT_TYPE_HEX[info.type] }} />
-                  {info.name}
-                  <span className="text-[10px] opacity-60">({ACCOUNT_TYPE_LABELS[info.type]})</span>
-                </div>
-              ))}
-              {showForecast && (
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <span className="h-0.5 w-4 rounded-full" style={{ backgroundColor: '#94a3b8', borderTop: '2px dashed #94a3b8' }} />
-                  Forecast
-                </div>
-              )}
-              {projectionBaseline && (
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <span className="h-0.5 w-4" style={{ borderTop: '2px dashed #f59e0b', display: 'inline-block' }} />
-                  <span style={{ color: '#f59e0b' }}>Baseline</span>
-                </div>
-              )}
+                  {seriesEntries.map(([id, info]) => (
+                    <Area
+                      isAnimationActive={false}
+                      key={id}
+                      type="monotone"
+                      dataKey={id}
+                      name={info.name}
+                      stackId="1"
+                      stroke={ACCOUNT_TYPE_CHART_COLORS[info.type]}
+                      strokeWidth={1.5}
+                      fill={ACCOUNT_TYPE_CHART_COLORS[info.type]}
+                      fillOpacity={0.12}
+                      dot={false}
+                      activeDot={chartActiveDot(ACCOUNT_TYPE_CHART_COLORS[info.type])}
+                    />
+                  ))}
+                  {showForecast && (
+                    <Line
+                      isAnimationActive={false}
+                      type="monotone"
+                      dataKey="forecast"
+                      name="Forecast"
+                      stroke={CHART_COLORS.faint}
+                      strokeWidth={1.5}
+                      strokeDasharray="6 3"
+                      dot={false}
+                      activeDot={chartActiveDot(CHART_COLORS.faint)}
+                      connectNulls={false}
+                    />
+                  )}
+                  {projectionBaseline && (
+                    <Line
+                      isAnimationActive={false}
+                      type="monotone"
+                      dataKey="baselineExpected"
+                      name="Baseline"
+                      stroke={CHART_COLORS.secondary}
+                      strokeWidth={1.5}
+                      strokeDasharray="4 4"
+                      dot={false}
+                      activeDot={chartActiveDot(CHART_COLORS.secondary)}
+                      connectNulls
+                    />
+                  )}
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
-          </div>
+            <ChartLegend
+              className="mt-2"
+              items={[
+                ...seriesEntries.map(([id, info]) => ({
+                  key: id,
+                  label: `${info.name} (${ACCOUNT_TYPE_LABELS[info.type]})`,
+                  color: ACCOUNT_TYPE_CHART_COLORS[info.type],
+                })),
+                ...(showForecast ? [{ key: 'forecast', label: 'Forecast', color: CHART_COLORS.faint, dashed: true }] : []),
+                ...(projectionBaseline ? [{ key: 'baseline', label: 'Baseline', color: CHART_COLORS.secondary, dashed: true }] : []),
+              ]}
+            />
+          </>
         )}
       </SectionCard>
 
       {/* Add Snapshot Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="md:max-w-[460px]">
           <DialogHeader>
-            <DialogTitle className="font-display">{editingDate ? 'Edit Snapshot' : 'Add Past Snapshot'}</DialogTitle>
+            <DialogTitle>{editingDate ? 'Edit snapshot' : 'Add past snapshot'}</DialogTitle>
             <DialogDescription>
               {editingDate ? 'Update the account balances for this snapshot.' : 'Record your account balances for a specific date.'}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
+          <div className="space-y-4">
             <FormField id="snapshot-date" label="Date">
               <DatePicker
                 value={snapshotDate}
@@ -470,7 +394,7 @@ export function NetWorthChart({
               />
             </FormField>
             {accounts.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No accounts yet. Add accounts first.</p>
+              <p className="text-sm text-ink-11">No accounts yet. Add accounts first.</p>
             ) : (
               accounts.map((acc) => (
                 <FormField key={acc.id} id={`snap-${acc.id}`} label={acc.name}>
@@ -493,7 +417,7 @@ export function NetWorthChart({
               Cancel
             </Button>
             <Button onClick={handleSaveSnapshot} disabled={accounts.length === 0}>
-              {editingDate ? 'Update Snapshot' : 'Save Snapshot'}
+              {editingDate ? 'Update snapshot' : 'Save snapshot'}
             </Button>
           </DialogFooter>
         </DialogContent>

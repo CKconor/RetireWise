@@ -1,6 +1,9 @@
 'use client';
 
-import { Account, ACCOUNT_TYPE_LABELS, ACCOUNT_TYPE_COLORS } from '@/types';
+import { ChevronDown, ChevronUp } from 'lucide-react';
+import { Account, ACCOUNT_TYPE_LABELS } from '@/types';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/calculations';
 
 interface AccountOrderListProps {
@@ -9,18 +12,6 @@ interface AccountOrderListProps {
   retirementBalances: Record<string, number>;
   onReorder: (newOrder: string[]) => void;
 }
-
-const ArrowUpIcon = () => (
-  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
-  </svg>
-);
-
-const ArrowDownIcon = () => (
-  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-  </svg>
-);
 
 export function AccountOrderList({ accounts, accountOrder, retirementBalances, onReorder }: AccountOrderListProps) {
   const accountMap = new Map(accounts.map((a) => [a.id, a]));
@@ -46,53 +37,49 @@ export function AccountOrderList({ accounts, accountOrder, retirementBalances, o
   };
 
   if (orderedIds.length === 0) {
-    return (
-      <div className="rounded-lg bg-secondary/50 p-4 text-center">
-        <p className="text-sm text-muted-foreground">Add accounts on the Dashboard to set withdrawal order</p>
-      </div>
-    );
+    return <p className="text-sm text-ink-11">Add accounts on the dashboard to set withdrawal order.</p>;
   }
 
   return (
-    <div className="space-y-2">
+    <div className="hairline-list">
       {orderedIds.map((id, index) => {
         const account = accountMap.get(id);
         if (!account) return null;
-        const colors = ACCOUNT_TYPE_COLORS[account.type];
         const balance = retirementBalances[id] ?? 0;
 
         return (
-          <div
-            key={id}
-            className="flex items-center gap-3 rounded-lg bg-secondary/50 p-3 ring-1 ring-border/60"
-          >
-            <div className="flex flex-col gap-0.5">
-              <button
-                onClick={() => moveUp(index)}
-                disabled={index === 0}
-                className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-              >
-                <ArrowUpIcon />
-              </button>
-              <button
-                onClick={() => moveDown(index)}
-                disabled={index === orderedIds.length - 1}
-                className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-              >
-                <ArrowDownIcon />
-              </button>
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-muted-foreground">{index + 1}.</span>
-                <span className="font-medium text-sm truncate">{account.name}</span>
-                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${colors.bg} ${colors.text}`}>
-                  {ACCOUNT_TYPE_LABELS[account.type]}
-                </span>
+          <div key={id} className="flex items-center gap-3 py-2">
+            <span className="w-4 shrink-0 text-sm tabular-nums text-ink-10">{index + 1}</span>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="truncate text-sm text-ink-12" title={account.name}>{account.name}</span>
+                <Badge tone={account.type}>{ACCOUNT_TYPE_LABELS[account.type]}</Badge>
               </div>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <p className="mt-0.5 text-xs tabular-nums text-ink-10">
                 Projected: {formatCurrency(Math.round(balance))}
               </p>
+            </div>
+            <div className="flex shrink-0 gap-0.5">
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => moveUp(index)}
+                disabled={index === 0}
+                aria-label={`Move ${account.name} up`}
+                className="disabled:opacity-40"
+              >
+                <ChevronUp />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => moveDown(index)}
+                disabled={index === orderedIds.length - 1}
+                aria-label={`Move ${account.name} down`}
+                className="disabled:opacity-40"
+              >
+                <ChevronDown />
+              </Button>
             </div>
           </div>
         );
