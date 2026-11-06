@@ -7,7 +7,7 @@ import { AccountList } from '@/components/account-list';
 import { SummaryCard } from '@/components/summary-card';
 import { StatsCards } from '@/components/stats-cards';
 import { ProjectionChart } from '@/components/projection-chart';
-import { PeaceOfMindCard } from '@/components/peace-of-mind-card';
+import { DashboardResult } from '@/components/safety/dashboard-result';
 import { IsaBridgeCard } from '@/components/isa-bridge-card';
 import { MilestoneTracker } from '@/components/milestone-tracker';
 import { WhatIfScenarios } from '@/components/what-if-scenarios';
@@ -18,7 +18,7 @@ import { LumpSumWithdrawals } from '@/components/lump-sum-withdrawals';
 import { RetirementEngineProvider } from '@/contexts/retirement-engine-context';
 
 export default function Home() {
-  const { profile, accounts, netWorthHistory, lumpSumWithdrawals, lumpSumsEnabled, effectiveLumpSumWithdrawals, projectionBaseline, isLoaded } =
+  const { profile, accounts, retirementAccounts, netWorthHistory, lumpSumWithdrawals, lumpSumsEnabled, effectiveLumpSumWithdrawals, projectionBaseline, isLoaded } =
     useRetirementState();
   const { profile: profileMut, accounts: accountsMut, history, withdrawals, baseline } =
     useRetirementMutations();
@@ -36,17 +36,17 @@ export default function Home() {
   const effectiveAccounts = useMemo(
     () =>
       pausedContribAccounts.size === 0
-        ? accounts
-        : accounts.map((a) =>
+        ? retirementAccounts
+        : retirementAccounts.map((a) =>
             pausedContribAccounts.has(a.id) ? { ...a, monthlyContribution: 0 } : a
           ),
-    [accounts, pausedContribAccounts]
+    [retirementAccounts, pausedContribAccounts]
   );
 
   const handleDownloadPdf = async () => {
     setIsGeneratingPdf(true);
     try {
-      await generatePdfReport(accounts, profile);
+      await generatePdfReport(retirementAccounts, profile, effectiveLumpSumWithdrawals);
     } catch (error) {
       console.error('Failed to generate PDF:', error);
     } finally {
@@ -65,6 +65,7 @@ export default function Home() {
         <div className="space-y-4">
           <SummaryCard profile={profile} projectionBaseline={projectionBaseline} />
           <StatsCards profile={profile} />
+          <DashboardResult />
         </div>
 
         <AccountList
@@ -84,11 +85,10 @@ export default function Home() {
         <div className="grid gap-4 lg:grid-cols-12">
           <div className="min-w-0 space-y-4 lg:col-span-4">
             <ProfileForm profile={profile} onUpdate={profileMut.update} />
-            <PeaceOfMindCard profile={profile} />
           </div>
 
           <div className="min-w-0 space-y-4 lg:col-span-8">
-            <ProjectionChart accounts={accounts} profile={profile} lumpSumWithdrawals={effectiveLumpSumWithdrawals} pausedContribAccounts={pausedContribAccounts} />
+            <ProjectionChart accounts={retirementAccounts} profile={profile} lumpSumWithdrawals={effectiveLumpSumWithdrawals} pausedContribAccounts={pausedContribAccounts} />
             <LumpSumWithdrawals
               withdrawals={lumpSumWithdrawals}
               accounts={accounts}
@@ -111,7 +111,7 @@ export default function Home() {
             />
             <MilestoneTracker profile={profile} />
             <div className="grid items-start gap-4 lg:grid-cols-2">
-              <WhatIfScenarios accounts={accounts} profile={profile} lumpSumWithdrawals={effectiveLumpSumWithdrawals} />
+              <WhatIfScenarios accounts={retirementAccounts} profile={profile} lumpSumWithdrawals={effectiveLumpSumWithdrawals} />
               <IsaBridgeCard profile={profile} />
             </div>
           </div>

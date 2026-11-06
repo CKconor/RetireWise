@@ -10,7 +10,15 @@ import {
   simulateAccountFinalBalance,
   generateProjection,
   generateMonthlyProjection,
+  calculateProjectedTotalReal,
+  calculateWhatIfContribution,
+  calculateWhatIfReturns,
+  calculateAccountProjections,
+  calculateAccessibleBalance,
+  calculateRealReturn,
+  calculateReducedTarget,
 } from '@/lib/calculations';
+import { computeRetirement } from '@/lib/retirement-engine';
 import type { Account, UserProfile } from '@/types';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -333,9 +341,8 @@ describe('Contribution Step-Up integration', () => {
       []
     );
     expect(withStepUp).toBeGreaterThan(withoutStepUp);
-    // Ages 46-50: years 1-2 at £500/mo (age 46,47 boundary happens at year 2 -> age 47), years 3-5 at £800/mo
-    // year=1 -> age 46 (£500), year=2 -> age 47 (£800), year=3 -> age 48 (£800), year=4 -> age 49 (£800), year=5 -> age 50 (£800)
-    const expected = 500 * 12 + 800 * 12 * 4;
+    // Saving while aged 45 and 46 at £500/mo, then aged 47, 48 and 49 at £800/mo
+    const expected = 500 * 12 * 2 + 800 * 12 * 3;
     expect(withStepUp).toBeCloseTo(expected, 0);
   });
 
@@ -378,5 +385,97 @@ describe('Contribution Step-Up integration', () => {
     const preMonthlyDelta = points[idxPre + 1].total - points[idxPre].total;
     const postMonthlyDelta = points[idxPost + 1].total - points[idxPost].total;
     expect(postMonthlyDelta).toBeGreaterThan(preMonthlyDelta);
+  });
+});
+
+// ─── Returns below inflation ─────────────────────────────────────────────────
+
+describe('returns below inflation', () => {
+  const account = makeAccount({ currentBalance: 10_000, annualReturnRate: 2 });
+  const profile = makeProfile({ expectedInflation: 3 });
+  const tenYears = makeProfile({ expectedInflation: 3, retirementAge: 45 });
+
+  it('shows an account losing real value on the projection', () => {
+    const points = generateProjection([account], tenYears);
+    expect(points[points.length - 1].totalReal).toBeLessThan(10_000);
+  });
+
+  it('lets the lower return bands fall further than the expected line', () => {
+    const last = generateProjection([account], tenYears).at(-1)!;
+    expect(last.underperformanceReal).toBeLessThan(last.totalReal);
+    expect(last.p10Real).toBeLessThan(last.underperformanceReal);
+  });
+
+  it('shows the same loss in the projected real total', () => {
+    expect(calculateProjectedTotalReal([account], tenYears)).toBeLessThan(10_000);
+  });
+
+  it('shows the same loss in the what-if figures', () => {
+    expect(calculateWhatIfContribution([account], tenYears, 0)).toBeLessThan(10_000);
+    expect(calculateWhatIfReturns([account], tenYears, 0)).toBeLessThan(10_000);
+  });
+
+  it('shows the same loss on the account breakdown and accessible balance', () => {
+    expect(calculateAccountProjections([account], tenYears)[0].projectedValueReal).toBeLessThan(10_000);
+    expect(calculateAccessibleBalance([account], tenYears)).toBeLessThan(10_000);
+  });
+
+  it('needs more than the target today to coast when returns trail inflation', () => {
+    const number = calculateCoastFireNumber(profile, calculateRealReturn(2, 3));
+    expect(number).toBeGreaterThan(calculateReducedTarget(profile));
+  });
+});
+
+// ─── Contribution changes take effect at the same age everywhere ─────────────
+
+describe('contribution change timing', () => {
+  const account = makeAccount({
+    monthlyContribution: 100,
+    annualReturnRate: 0,
+    contributionChanges: [{ id: 'c1', age: 40, monthlyContribution: 200 }],
+  });
+  const profile = makeProfile({ currentAge: 35, retirementAge: 45, expectedInflation: 0 });
+  // Aged 35–39 at £100/mo, then aged 40–44 at £200/mo
+  const expected = 100 * 12 * 5 + 200 * 12 * 5;
+
+  it('agrees across the year-by-year projection', () => {
+    expect(generateProjection([account], profile).at(-1)!.total).toBeCloseTo(expected, 2);
+  });
+
+  it('agrees for the final balance', () => {
+    expect(simulateAccountFinalBalance(account, 10, 35, 0, [])).toBeCloseTo(expected, 2);
+  });
+
+  it('agrees for the monthly compounding calculation', () => {
+    expect(calculateFutureValue(0, 100, 0, 120, 0, account, 35)).toBeCloseTo(expected, 2);
+  });
+
+  it('applies a change dated at the current age from the first year', () => {
+    const changedNow = makeAccount({
+      monthlyContribution: 100,
+      annualReturnRate: 0,
+      contributionChanges: [{ id: 'c1', age: 35, monthlyContribution: 200 }],
+    });
+    expect(calculateFutureValue(0, 100, 0, 12, 0, changedNow, 35)).toBeCloseTo(2_400, 2);
+    expect(simulateAccountFinalBalance(changedNow, 1, 35, 0, [])).toBeCloseTo(2_400, 2);
+  });
+});
+
+// ─── Lump sums are respected ─────────────────────────────────────────────────
+
+describe('lump sums in dashboard figures', () => {
+  const lumpSum = { id: 'w1', name: 'Roof', amount: 50_000, age: 36, accountId: 'acc-1' };
+  const account = makeAccount({ currentBalance: 100_000, monthlyContribution: 1_000, annualReturnRate: 2.5 });
+  const profile = makeProfile({ currentAge: 35, retirementAge: 60, targetAmount: 120_000 });
+
+  it('delays the age the target is reached', () => {
+    // No return after inflation: 62k at 36, then +12k a year, passing 120k at 41
+    expect(computeRetirement([account], profile, [lumpSum]).targetReachAge).toBe(41);
+  });
+
+  it('reduces the accessible balance for the ISA bridge', () => {
+    const without = calculateAccessibleBalance([account], profile);
+    expect(calculateAccessibleBalance([account], profile, [lumpSum])).toBeCloseTo(without - 50_000, 2);
+    expect(computeRetirement([account], profile, [lumpSum]).isaBridgeProgress.accessible).toBeCloseTo(without - 50_000, 2);
   });
 });

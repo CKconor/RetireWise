@@ -10,14 +10,18 @@ import {
   LumpSumWithdrawal,
   ProjectionBaseline,
 } from '@/types';
-import { loadState, saveState, createAccount, createWithdrawal, DEFAULT_DRAWDOWN_CONFIG } from '@/lib/storage';
-import { calculateAgeFromBirthday, buildBaselinePoints } from '@/lib/calculations';
+import { applyProfilePatch, loadState, saveState, createAccount, createWithdrawal, DEFAULT_DRAWDOWN_CONFIG, DEFAULT_STATE } from '@/lib/storage';
+import { buildBaselinePoints, getRetirementAccounts } from '@/lib/calculations';
+import { resolvePlanningProfile } from '@/lib/retirement-simulator';
 
 // ── State shape (read) ────────────────────────────────────────────────────────
 
 export interface RetirementState {
+  /** The profile to plan against: its target is Lifestyle Enough once spending is entered */
   profile: UserProfile;
+  /** All accounts, including Emergency cash. Use retirementAccounts for projections */
   accounts: Account[];
+  retirementAccounts: Account[];
   drawdownConfig: DrawdownConfig;
   netWorthHistory: NetWorthSnapshot[];
   lumpSumWithdrawals: LumpSumWithdrawal[];
@@ -68,24 +72,7 @@ const RetirementMutationsContext = createContext<RetirementMutations | null>(nul
 // ── Provider ──────────────────────────────────────────────────────────────────
 
 export function RetirementProvider({ children }: { children: React.ReactNode }) {
-  const [appState, setAppState] = useState<AppState>(() => ({
-    profile: {
-      birthday: `${new Date().getFullYear() - 30}-01-01`,
-      currentAge: 30,
-      retirementAge: 57,
-      targetAmount: 1000000,
-      expectedInflation: 2.5,
-      annualSalary: 0,
-      statePensionAmount: 221.20,
-      statePensionAge: 67,
-      includeStatePension: true,
-    },
-    accounts: [],
-    drawdownConfig: DEFAULT_DRAWDOWN_CONFIG,
-    netWorthHistory: [],
-    lumpSumWithdrawals: [],
-    lumpSumsEnabled: true,
-  }));
+  const [appState, setAppState] = useState<AppState>(DEFAULT_STATE);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
@@ -102,11 +89,7 @@ export function RetirementProvider({ children }: { children: React.ReactNode }) 
   // ── Profile mutations ──────────────────────────────────────────────────────
 
   const updateProfile = useCallback((patch: Partial<UserProfile>) => {
-    setAppState((prev) => {
-      const newProfile = { ...prev.profile, ...patch };
-      if (patch.birthday) newProfile.currentAge = calculateAgeFromBirthday(patch.birthday);
-      return { ...prev, profile: newProfile };
-    });
+    setAppState((prev) => ({ ...prev, profile: applyProfilePatch(prev.profile, patch) }));
   }, []);
 
   // ── Account mutations ──────────────────────────────────────────────────────
@@ -232,7 +215,7 @@ export function RetirementProvider({ children }: { children: React.ReactNode }) 
   const setProjectionBaseline = useCallback(() => {
     setAppState((prev) => {
       const { monthlyPoints, accountMeta } = buildBaselinePoints(
-        prev.accounts,
+        getRetirementAccounts(prev.accounts),
         prev.profile,
         prev.lumpSumWithdrawals ?? []
       );
@@ -256,14 +239,24 @@ export function RetirementProvider({ children }: { children: React.ReactNode }) 
     () => {
       const lumpSumWithdrawals = appState.lumpSumWithdrawals ?? [];
       const lumpSumsEnabled = appState.lumpSumsEnabled ?? true;
+      const effectiveLumpSumWithdrawals = lumpSumsEnabled ? lumpSumWithdrawals : [];
+      const retirementAccounts = getRetirementAccounts(appState.accounts);
+      const drawdownConfig = appState.drawdownConfig ?? DEFAULT_DRAWDOWN_CONFIG;
       return {
-        profile: appState.profile,
+        profile: resolvePlanningProfile({
+          accounts: retirementAccounts,
+          profile: appState.profile,
+          withdrawals: effectiveLumpSumWithdrawals,
+          retirementReturn: drawdownConfig.drawdownReturnRate,
+          accountOrder: drawdownConfig.accountOrder,
+        }),
         accounts: appState.accounts,
-        drawdownConfig: appState.drawdownConfig ?? DEFAULT_DRAWDOWN_CONFIG,
+        retirementAccounts,
+        drawdownConfig,
         netWorthHistory: appState.netWorthHistory,
         lumpSumWithdrawals,
         lumpSumsEnabled,
-        effectiveLumpSumWithdrawals: lumpSumsEnabled ? lumpSumWithdrawals : [],
+        effectiveLumpSumWithdrawals,
         projectionBaseline: appState.projectionBaseline,
         isLoaded,
       };

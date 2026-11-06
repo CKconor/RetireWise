@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { calculateWithdrawalTax, type WithdrawalTaxInput } from '@/lib/drawdown';
-import type { Account } from '@/types';
+import { calculateWithdrawalTax, runMonteCarloSimulation, simulateDrawdown, type WithdrawalTaxInput } from '@/lib/drawdown';
+import type { Account, DrawdownConfig, UserProfile } from '@/types';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -74,7 +74,7 @@ describe('calculateWithdrawalTax', () => {
     it('applies CGT only to the gain portion', () => {
       // GIA: retirement balance £100k, contributed £60k → 40% gain
       // Withdrawal: £10k → gains = £4k
-      // After £3k CGT allowance: taxable = £1k → CGT = £100
+      // After £3k CGT allowance: taxable = £1k → CGT at 18% = £180
       const gia = makeAccount({ id: 'gia-1', type: 'gia' });
       const result = calculateWithdrawalTax(
         makeTaxInput({
@@ -84,8 +84,8 @@ describe('calculateWithdrawalTax', () => {
           accountTotalContributed: { 'gia-1': 60_000 },
         })
       );
-      expect(result.totalTax).toBeCloseTo(100, 0);
-      expect(result.withdrawalTax).toBeCloseTo(100, 0);
+      expect(result.totalTax).toBeCloseTo(180, 0);
+      expect(result.withdrawalTax).toBeCloseTo(180, 0);
     });
 
     it('applies the CGT annual allowance across the full withdrawal', () => {
@@ -103,8 +103,8 @@ describe('calculateWithdrawalTax', () => {
       expect(result.totalTax).toBe(0);
     });
 
-    it('uses 10% CGT rate on taxable gains', () => {
-      // 100% gain, withdrawal £13k → gains £13k, after £3k allowance = £10k taxable → £1k CGT
+    it('charges 18% on gains within the unused basic rate band', () => {
+      // 100% gain, withdrawal £13k → gains £13k, after £3k allowance = £10k taxable → £1.8k CGT
       const gia = makeAccount({ id: 'gia-1', type: 'gia' });
       const result = calculateWithdrawalTax(
         makeTaxInput({
@@ -114,7 +114,75 @@ describe('calculateWithdrawalTax', () => {
           accountTotalContributed: { 'gia-1': 0 },
         })
       );
-      expect(result.totalTax).toBeCloseTo(1_000, 0);
+      expect(result.totalTax).toBeCloseTo(1_800, 2);
+    });
+
+    it('charges 24% on gains above the basic rate band', () => {
+      // Income of £60k has used the whole basic rate band: £10k taxable gains → £2.4k CGT
+      const gia = makeAccount({ id: 'gia-1', type: 'gia' });
+      const result = calculateWithdrawalTax(
+        makeTaxInput({
+          withdrawals: { 'gia-1': 13_000 },
+          accounts: [gia],
+          accountRetirementBalances: { 'gia-1': 50_000 },
+          accountTotalContributed: { 'gia-1': 0 },
+          statePensionIncome: 60_000,
+        })
+      );
+      expect(result.withdrawalTax).toBeCloseTo(2_400, 2);
+    });
+
+    it('splits gains that straddle the basic rate band', () => {
+      // £40k income → £27,430 taxable, £10,270 of band unused. £20k taxable gains:
+      // £10,270 at 18% + £9,730 at 24% = £4,183.80
+      const gia = makeAccount({ id: 'gia-1', type: 'gia' });
+      const result = calculateWithdrawalTax(
+        makeTaxInput({
+          withdrawals: { 'gia-1': 23_000 },
+          accounts: [gia],
+          accountRetirementBalances: { 'gia-1': 50_000 },
+          accountTotalContributed: { 'gia-1': 0 },
+          statePensionIncome: 40_000,
+        })
+      );
+      expect(result.withdrawalTax).toBeCloseTo(4_183.8, 2);
+    });
+  });
+
+  describe('Income tax bands', () => {
+    // Statutory figures from the 2026/27 bands, England, Wales and Northern Ireland
+    it.each([
+      [100_000, 27_432],
+      [116_760, 37_488],
+      [120_000, 39_432],
+      [125_140, 42_516],
+      [150_000, 53_703],
+    ])('charges the statutory tax on £%i of income', (income, tax) => {
+      const pension = makeAccount({ id: 'pen-1', type: 'pension' });
+      const result = calculateWithdrawalTax(
+        makeTaxInput({
+          withdrawals: { 'pen-1': income },
+          accounts: [pension],
+          accountRetirementBalances: { 'pen-1': 0 },
+        })
+      );
+      expect(result.totalTax).toBeCloseTo(tax, 2);
+    });
+  });
+
+  describe('Lump sum allowance', () => {
+    it('caps tax-free pension cash at £268,275 across all pensions', () => {
+      const first = makeAccount({ id: 'pen-1', type: 'pension' });
+      const second = makeAccount({ id: 'pen-2', type: 'sipp' });
+      const result = calculateWithdrawalTax(
+        makeTaxInput({
+          withdrawals: { 'pen-1': 300_000, 'pen-2': 300_000 },
+          accounts: [first, second],
+          accountRetirementBalances: { 'pen-1': 1_200_000, 'pen-2': 1_200_000 },
+        })
+      );
+      const taxFree = Object.values(result.updatedSippTaxFreeUsed).reduce((sum, used) => sum + used, 0);
+      expect(taxFree).toBe(268_275);
     });
   });
 
@@ -231,5 +299,184 @@ describe('calculateWithdrawalTax', () => {
       expect(result.totalTax).toBeCloseTo(33_432, 0);
       expect(result.withdrawalTax).toBeCloseTo(31_946, 0);
     });
+  });
+});
+
+// ─── Reporting shortfalls ────────────────────────────────────────────────────
+
+describe('simulateDrawdown shortfalls', () => {
+  const profile: UserProfile = {
+    birthday: '1976-01-01',
+    currentAge: 50,
+    retirementAge: 50,
+    targetAmount: 500_000,
+    expectedInflation: 2.5,
+    annualSalary: 0,
+    statePensionAmount: 241.3,
+    statePensionAge: 68,
+    includeStatePension: false,
+  };
+  const config: DrawdownConfig = {
+    strategy: 'fixed',
+    fixedAnnualIncome: 20_000,
+    withdrawalRate: 4,
+    drawdownReturnRate: 0,
+    accountOrder: [],
+    planningHorizon: 52,
+    taxModeling: false,
+  };
+
+  it('reports money running out in the final year of the plan', () => {
+    const isa = makeAccount({ id: 'isa-1', type: 'isa', currentBalance: 30_000 });
+    const result = simulateDrawdown([isa], profile, config);
+    expect(result.depletionAge).toBe(51);
+    expect(result.firstShortfallAge).toBe(51);
+    expect(result.years[1].shortfall).toBeCloseTo(10_000, 2);
+  });
+
+  it('does not report a plan paid in full, even if it ends on exactly nothing', () => {
+    const isa = makeAccount({ id: 'isa-1', type: 'isa', currentBalance: 40_000 });
+    const result = simulateDrawdown([isa], profile, config);
+    expect(result.depletionAge).toBeNull();
+    expect(result.firstShortfallAge).toBeNull();
+  });
+
+  it('reports a shortfall while the pension is locked, without calling the money gone', () => {
+    const isa = makeAccount({ id: 'isa-1', type: 'isa', currentBalance: 10_000 });
+    const pension = makeAccount({ id: 'pen-1', type: 'pension', currentBalance: 500_000 });
+    const result = simulateDrawdown([isa, pension], profile, config);
+    expect(result.firstShortfallAge).toBe(50);
+    expect(result.years[0].shortfall).toBeCloseTo(10_000, 2);
+    expect(result.depletionAge).toBeNull();
+  });
+
+  it('does not count a plan with a locked-pension shortfall as a Monte Carlo success', () => {
+    const isa = makeAccount({ id: 'isa-1', type: 'isa', currentBalance: 10_000 });
+    const pension = makeAccount({ id: 'pen-1', type: 'pension', currentBalance: 500_000 });
+    const result = runMonteCarloSimulation([isa, pension], profile, config, 20, 0);
+    expect(result.successRate).toBe(0);
+  });
+});
+
+// ─── Lump sums and the taxable gain ──────────────────────────────────────────
+
+describe('simulateDrawdown lump sums', () => {
+  const profile: UserProfile = {
+    birthday: '1976-01-01',
+    currentAge: 50,
+    retirementAge: 50,
+    targetAmount: 500_000,
+    expectedInflation: 2.5,
+    annualSalary: 0,
+    statePensionAmount: 241.3,
+    statePensionAge: 68,
+    includeStatePension: false,
+  };
+  const config: DrawdownConfig = {
+    strategy: 'fixed',
+    fixedAnnualIncome: 10_000,
+    withdrawalRate: 4,
+    drawdownReturnRate: 0,
+    accountOrder: [],
+    planningHorizon: 53,
+    taxModeling: false,
+  };
+
+  it('applies a withdrawal dated after retirement', () => {
+    const isa = makeAccount({ id: 'isa-1', currentBalance: 100_000 });
+    const roof = { id: 'w1', name: 'Roof', amount: 30_000, age: 51, accountId: 'isa-1' };
+    const result = simulateDrawdown([isa], profile, config, undefined, [roof]);
+    expect(result.years.map((year) => year.portfolioBalance)).toEqual([90_000, 50_000, 40_000]);
+  });
+
+  it('applies a deposit dated after retirement', () => {
+    const isa = makeAccount({ id: 'isa-1', currentBalance: 100_000 });
+    const gift = { id: 'w1', name: 'Gift', amount: 30_000, age: 51, accountId: 'isa-1', type: 'deposit' as const };
+    const result = simulateDrawdown([isa], profile, config, undefined, [gift]);
+    expect(result.years.at(-1)!.portfolioBalance).toBe(100_000);
+  });
+});
+
+describe('simulateDrawdown taxable GIA gain', () => {
+  const profile: UserProfile = {
+    birthday: '1986-01-01',
+    currentAge: 39,
+    retirementAge: 41,
+    targetAmount: 500_000,
+    expectedInflation: 2.5,
+    annualSalary: 0,
+    statePensionAmount: 241.3,
+    statePensionAge: 68,
+    includeStatePension: false,
+  };
+  const config: DrawdownConfig = {
+    strategy: 'percentage',
+    fixedAnnualIncome: 0,
+    withdrawalRate: 100,
+    drawdownReturnRate: 0,
+    accountOrder: [],
+    planningHorizon: 42,
+    taxModeling: true,
+  };
+
+  it('counts contribution changes as money paid in, not gain', () => {
+    // No return after inflation, so everything withdrawn is money paid in
+    const gia = makeAccount({
+      id: 'gia-1',
+      type: 'gia',
+      monthlyContribution: 0,
+      annualReturnRate: 2.5,
+      contributionChanges: [{ id: 'c1', age: 40, monthlyContribution: 1_000 }],
+    });
+    expect(simulateDrawdown([gia], profile, config).totalTaxPaid).toBe(0);
+  });
+
+  it('counts a deposit as money paid in, not gain', () => {
+    const gia = makeAccount({ id: 'gia-1', type: 'gia', annualReturnRate: 2.5 });
+    const deposit = { id: 'w1', name: 'Gift', amount: 20_000, age: 40, accountId: 'gia-1', type: 'deposit' as const };
+    expect(simulateDrawdown([gia], profile, config, undefined, [deposit]).totalTaxPaid).toBe(0);
+  });
+
+  it('keeps the share of gain the same after a withdrawal', () => {
+    // Withdrawing half of a grown pot should leave half the money paid in, so the same
+    // share of what remains is gain. CGT is then on that gain, less the £3k allowance, at 18%.
+    const oneYear = { ...profile, currentAge: 40 };
+    const growing = makeAccount({ id: 'gia-1', type: 'gia', currentBalance: 100_000, annualReturnRate: 15 });
+    const half = { id: 'w1', name: 'Roof', amount: 0, age: 41, accountId: 'gia-1' };
+    const balance = simulateDrawdown([growing], oneYear, config).years[0].grossWithdrawal;
+    half.amount = balance / 2;
+    const result = simulateDrawdown([growing], oneYear, config, undefined, [half]);
+    const remaining = result.years[0].grossWithdrawal;
+    const gain = remaining * (1 - 100_000 / balance);
+    expect(result.totalTaxPaid).toBeCloseTo((gain - 3_000) * 0.18, 2);
+  });
+});
+
+describe('runMonteCarloSimulation lowest income', () => {
+  it('reports the lowest yearly income of a percentage strategy', () => {
+    const profile: UserProfile = {
+      birthday: '1976-01-01',
+      currentAge: 60,
+      retirementAge: 60,
+      targetAmount: 500_000,
+      expectedInflation: 2.5,
+      annualSalary: 0,
+      statePensionAmount: 241.3,
+      statePensionAge: 68,
+      includeStatePension: false,
+    };
+    const config: DrawdownConfig = {
+      strategy: 'percentage',
+      fixedAnnualIncome: 0,
+      withdrawalRate: 10,
+      drawdownReturnRate: 0,
+      accountOrder: [],
+      planningHorizon: 63,
+      taxModeling: false,
+    };
+    const isa = makeAccount({ id: 'isa-1', currentBalance: 100_000 });
+    // No volatility: 10k, then 9k, then 8.1k
+    const result = runMonteCarloSimulation([isa], profile, config, 10, 0);
+    expect(result.lowestYearlyIncome).toBeCloseTo(8_100, 2);
   });
 });

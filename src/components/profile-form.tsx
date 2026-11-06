@@ -10,6 +10,7 @@ import { FormField } from '@/components/ui/form-field';
 import { StatRow } from '@/components/ui/stat-row';
 import { DatePicker } from '@/components/ui/date-picker';
 import { getYearsToRetirement, formatCurrency } from '@/lib/calculations';
+import { UK_FIGURES } from '@/lib/uk-figures';
 
 interface ProfileFormProps {
   profile: UserProfile;
@@ -84,21 +85,25 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
         </FormField>
       </div>
 
-      <FormField
-        id="targetAmount"
-        label="Retirement target (£)"
-        hint="In today's money. A common rule: 25x your desired annual income"
-      >
-        <Input
+      {profile.targetIsEnough ? (
+        <StatRow label="Lifestyle Enough" value={formatCurrency(profile.targetAmount)} hint="from your spending on Safety" className="tabular-nums" />
+      ) : (
+        <FormField
           id="targetAmount"
-          type="number"
-          min={0}
-          step={10000}
-          value={targetAmount}
-          onChange={(e) => setTargetAmount(e.target.value)}
-          onBlur={() => handleBlur('targetAmount', targetAmount)}
-        />
-      </FormField>
+          label="Retirement target (£)"
+          hint="In today's money. Enter your spending on Safety to work this out instead"
+        >
+          <Input
+            id="targetAmount"
+            type="number"
+            min={0}
+            step={10000}
+            value={targetAmount}
+            onChange={(e) => setTargetAmount(e.target.value)}
+            onBlur={() => handleBlur('targetAmount', targetAmount)}
+          />
+        </FormField>
+      )}
 
       <FormField
         id="inflation"
@@ -151,7 +156,7 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
               <FormField
                 id="statePensionAmount"
                 label="Weekly amount (£)"
-                hint="Full rate: £221.20 a week"
+                hint={`Full rate: £${UK_FIGURES.fullStatePensionWeekly.toFixed(2)} a week`}
               >
                 <Input
                   id="statePensionAmount"
@@ -167,7 +172,11 @@ export function ProfileForm({ profile, onUpdate }: ProfileFormProps) {
               <FormField
                 id="statePensionAge"
                 label="Start age"
-                hint="Currently 66–68 in the UK"
+                hint={profile.statePensionAgeOverridden ? (
+                  <button type="button" className="underline underline-offset-2" onClick={() => onUpdate({ statePensionAgeOverridden: false })}>
+                    Use my birthday
+                  </button>
+                ) : 'From your birthday'}
               >
                 <Input
                   id="statePensionAge"

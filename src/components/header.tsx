@@ -14,6 +14,7 @@ interface HeaderProps {
 const navLinks = [
   { href: '/', label: 'Dashboard' },
   { href: '/drawdown', label: 'Drawdown' },
+  { href: '/safety', label: 'Safety' },
 ];
 
 export function Header({ onDownloadPdf, isGeneratingPdf }: HeaderProps) {
@@ -23,7 +24,7 @@ export function Header({ onDownloadPdf, isGeneratingPdf }: HeaderProps) {
     <header className="hairline-b">
       <div className="mx-auto flex min-h-[52px] max-w-[1200px] items-center justify-between gap-3 px-5 py-2">
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
+          <div className="hidden items-center gap-2 sm:flex">
             <div className="flex size-7 items-center justify-center rounded-lg bg-primary">
               <svg className="size-4 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />

@@ -1,10 +1,9 @@
 import jsPDF from 'jspdf';
-import { Account, UserProfile, ACCOUNT_TYPE_LABELS } from '@/types';
+import { Account, UserProfile, LumpSumWithdrawal, ACCOUNT_TYPE_LABELS } from '@/types';
 import {
   calculateTotalBalance,
   calculateTotalContributions,
   calculateProjectedTotalReal,
-  calculateConfidenceScore,
   formatCurrency,
   generateProjection,
   calculateTotalRetirementIncome,
@@ -32,7 +31,8 @@ function hexToRgb(hex: string): [number, number, number] {
 
 export async function generatePdfReport(
   accounts: Account[],
-  profile: UserProfile
+  profile: UserProfile,
+  withdrawals: LumpSumWithdrawal[] = []
 ): Promise<void> {
   const doc = new jsPDF({
     orientation: 'portrait',
@@ -49,9 +49,8 @@ export async function generatePdfReport(
   // Calculate all values needed for the report
   const totalBalance = calculateTotalBalance(accounts);
   const totalContributions = calculateTotalContributions(accounts);
-  const projectedTotal = calculateProjectedTotalReal(accounts, profile);
-  const confidenceScore = calculateConfidenceScore(accounts, profile);
-  const projection = generateProjection(accounts, profile);
+  const projectedTotal = calculateProjectedTotalReal(accounts, profile, withdrawals);
+  const projection = generateProjection(accounts, profile, withdrawals);
   const yearsToRetirement = profile.retirementAge - profile.currentAge;
   const progress = Math.min(100, (projectedTotal / profile.targetAmount) * 100);
   const retirementIncome = calculateTotalRetirementIncome(projectedTotal, profile);
@@ -157,15 +156,6 @@ export async function generatePdfReport(
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
   doc.text(`${Math.round(progress)}%`, rightX, summaryY + 7);
-
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(...hexToRgb(COLORS.muted));
-  doc.text('Confidence Score', rightX, summaryY + 18);
-  doc.setTextColor(...hexToRgb(COLORS.text));
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.text(`${confidenceScore}/10`, rightX, summaryY + 25);
 
   y += 58; // 45 (box height) + 13 (section spacing)
 

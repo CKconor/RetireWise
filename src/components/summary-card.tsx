@@ -49,7 +49,7 @@ export function SummaryCard({ profile, projectionBaseline }: SummaryCardProps) {
     ? Math.round((potentialReduction / monthlyContributions) * 100)
     : 0;
 
-  const showStatePension = profile.includeStatePension && statePensionEquivalent > 0;
+  const showStatePension = profile.includeStatePension && (statePensionEquivalent > 0 || profile.targetIsEnough);
   const hasDetails = showStatePension || baselineDelta !== null;
 
   return (
@@ -106,7 +106,7 @@ export function SummaryCard({ profile, projectionBaseline }: SummaryCardProps) {
                   <StatRow label={`Income from age ${profile.statePensionAge}`} value={`${formatCurrency(retirementIncome.totalIncome)}/yr`} />
                   <StatRow label="From portfolio (4% withdrawal)" value={formatCurrency(retirementIncome.portfolioIncome)} />
                   <StatRow label="From state pension" value={formatCurrency(retirementIncome.statePensionIncome)} />
-                  <StatRow label="Reduces target by" value={formatCurrency(statePensionEquivalent)} />
+                  {!profile.targetIsEnough && <StatRow label="Reduces target by" value={formatCurrency(statePensionEquivalent)} />}
                 </div>
               </div>
             )}

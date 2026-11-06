@@ -33,6 +33,7 @@ import { formatCurrency } from '@/lib/calculations';
 interface MonteCarloChartProps {
   mcResult: MonteCarloResult;
   deterministicResult: DrawdownSimulationResult;
+  canRunOut: boolean;
   numSimulations: number;
   volatility: number;
   isLoading: boolean;
@@ -43,6 +44,7 @@ interface MonteCarloChartProps {
 export function MonteCarloChart({
   mcResult,
   deterministicResult,
+  canRunOut,
   numSimulations,
   volatility,
   isLoading,
@@ -91,22 +93,34 @@ export function MonteCarloChart({
 
       {/* Stats row */}
       <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-        <Figure
-          label="Success rate"
-          value={<span className={successClass}>{successRate.toFixed(0)}%</span>}
-          subValue="Funds last to horizon"
-        />
-        <Figure
-          label="Median depletion"
-          value={mcResult.medianDepletionAge !== null ? `Age ${mcResult.medianDepletionAge}` : 'Never'}
-          subValue="Of failed simulations"
-        />
+        {canRunOut ? (
+          <>
+            <Figure
+              label="Success rate"
+              value={<span className={successClass}>{successRate.toFixed(0)}%</span>}
+              subValue="Income paid in full to horizon"
+            />
+            <Figure
+              label="Median depletion"
+              value={mcResult.medianDepletionAge !== null ? `Age ${mcResult.medianDepletionAge}` : 'Never'}
+              subValue="Of failed simulations"
+            />
+          </>
+        ) : (
+          <Figure
+            label="Lowest yearly income"
+            value={formatCurrency(Math.round(mcResult.lowestYearlyIncome))}
+            subValue="In a 1-in-10 bad run. This strategy lowers income rather than running out"
+          />
+        )}
         <Figure
           label="Simulations"
           value={mcResult.numSimulations.toLocaleString()}
           subValue="Scenarios run"
         />
       </div>
+
+      <p className="mb-4 text-xs text-ink-10">Only returns in retirement are randomised. Your pot at retirement is the same in every run.</p>
 
       {/* Chart */}
       <div className="h-[350px]">

@@ -10,7 +10,7 @@ import { SectionCard } from '@/components/ui/section-card';
 import { Figure } from '@/components/ui/stat-card';
 import { StatRow } from '@/components/ui/stat-row';
 import { formatCurrency } from '@/lib/calculations';
-import { PRIVATE_PENSION_ACCESS_AGE } from '@/lib/constants';
+import { PRIVATE_PENSION_ACCESS_AGE } from '@/lib/uk-figures';
 import { onTrackTone } from '@/lib/utils';
 import { useRetirementAnalysis } from '@/contexts/retirement-engine-context';
 

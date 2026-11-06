@@ -37,18 +37,18 @@ export function useRetirementProjection(): RetirementProjection {
   return ctx;
 }
 
-// Scalar fields only — components that don't need points/stressTests/isaBridgeProgress
-export type RetirementSummary = Omit<RetirementProjection, 'points' | 'stressTests' | 'isaBridgeProgress'>;
+// Scalar fields only — components that don't need points/isaBridgeProgress
+export type RetirementSummary = Omit<RetirementProjection, 'points' | 'isaBridgeProgress'>;
 
-// Array/heavy fields — components that render charts or stress test data
-export type RetirementAnalysis = Pick<RetirementProjection, 'points' | 'stressTests' | 'isaBridgeProgress'>;
+// Array/heavy fields — components that render charts
+export type RetirementAnalysis = Pick<RetirementProjection, 'points' | 'isaBridgeProgress'>;
 
 export function useRetirementSummary(): RetirementSummary {
-  const { points: _, stressTests: __, isaBridgeProgress: ___, ...summary } = useRetirementProjection();
+  const { points: _, isaBridgeProgress: __, ...summary } = useRetirementProjection();
   return summary;
 }
 
 export function useRetirementAnalysis(): RetirementAnalysis {
-  const { points, stressTests, isaBridgeProgress } = useRetirementProjection();
-  return { points, stressTests, isaBridgeProgress };
+  const { points, isaBridgeProgress } = useRetirementProjection();
+  return { points, isaBridgeProgress };
 }

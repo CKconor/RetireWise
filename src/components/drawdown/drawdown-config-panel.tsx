@@ -20,7 +20,6 @@ interface DrawdownConfigPanelProps {
 const STRATEGY_OPTIONS: { value: DrawdownConfig['strategy']; label: string }[] = [
   { value: 'fixed', label: 'Fixed income' },
   { value: 'percentage', label: '% of portfolio' },
-  { value: 'rmd', label: 'RMD' },
 ];
 
 export function DrawdownConfigPanel({ config, accounts, retirementBalances, onUpdate }: DrawdownConfigPanelProps) {
@@ -73,10 +72,6 @@ export function DrawdownConfigPanel({ config, accounts, retirementBalances, onUp
             onBlur={() => handleBlur('fixedAnnualIncome', fixedIncome)}
           />
         </FormField>
-      ) : config.strategy === 'rmd' ? (
-        <p className="text-sm text-ink-11">
-          Withdraws the portfolio balance divided by an IRS life expectancy factor each year. Mandatory minimums rise as a share of the pot with age.
-        </p>
       ) : (
         <FormField
           id="withdrawalRate"
@@ -99,8 +94,8 @@ export function DrawdownConfigPanel({ config, accounts, retirementBalances, onUp
       <div className="grid grid-cols-2 gap-3">
         <FormField
           id="drawdownReturnRate"
-          label="Return rate (%)"
-          hint="Conservative growth during retirement"
+          label="Return after inflation (%)"
+          hint="Yearly growth in retirement, in today's money"
         >
           <Input
             id="drawdownReturnRate"

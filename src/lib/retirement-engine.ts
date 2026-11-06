@@ -3,7 +3,6 @@ import {
   UserProfile,
   LumpSumWithdrawal,
   ProjectionDataPoint,
-  StressTestResult,
 } from '@/types';
 import {
   generateProjection,
@@ -19,7 +18,7 @@ import {
   calculateCoastFireNumber,
   findCoastFireYear,
   calculateIsaBridgeProgress,
-  calculateMarketDropImpact,
+  calculateRealReturn,
   getYearsToRetirement,
   IsaBridgeProgress,
 } from '@/lib/calculations';
@@ -45,9 +44,6 @@ export interface RetirementProjection {
   requiredContribution: number;
   retirementIncome: { portfolioIncome: number; statePensionIncome: number; totalIncome: number };
 
-  // Confidence
-  confidenceScore: number;
-
   // Milestones
   requiredBalanceNow: number;
   targetReachAge: number | null;
@@ -58,8 +54,6 @@ export interface RetirementProjection {
   // ISA Bridge
   isaBridgeProgress: IsaBridgeProgress;
 
-  // Stress tests precomputed for 20%, 30%, 40% market drops
-  stressTests: StressTestResult[];
 }
 
 /**
@@ -97,21 +91,12 @@ export function computeRetirement(
   );
   const retirementIncome = calculateTotalRetirementIncome(projectedTotalReal, profile);
 
-  // Confidence score — inlined to reuse already-computed points
-  const conservativeAtRetirement = lastPoint?.underperformanceReal ?? 0;
-  const progressRatio = projectedTotalReal / profile.targetAmount;
-  let score = Math.min(5, progressRatio * 5);
-  if (progressRatio > 1) score += Math.min(2, (progressRatio - 1) * 4);
-  score += Math.min(2, yearsToRetirement / 20);
-  if (conservativeAtRetirement >= profile.targetAmount) score += 1;
-  const confidenceScore = Math.min(10, Math.max(1, Math.round(score)));
-
   // Milestone support
   const requiredBalanceNow = calculateRequiredBalanceNow(accounts, profile, profile.targetAmount);
-  const targetReachAge = calculateTargetReachAge(accounts, profile);
+  const targetReachAge = calculateTargetReachAge(accounts, profile, withdrawals);
 
   // Coast FIRE — derived from already-computed points
-  const realReturn = Math.max(0, averageReturnRate - profile.expectedInflation);
+  const realReturn = calculateRealReturn(averageReturnRate, profile.expectedInflation);
   const coastFireNumber = calculateCoastFireNumber(profile, realReturn);
   const coastFireYearIndex = findCoastFireYear(points, coastFireNumber);
   const coastFireInfo =
@@ -120,10 +105,7 @@ export function computeRetirement(
       : null;
 
   // ISA Bridge
-  const isaBridgeProgress = calculateIsaBridgeProgress(accounts, profile);
-
-  // Stress tests — fixed scenarios, precomputed here so components get them for free
-  const stressTests = [20, 30, 40].map((drop) => calculateMarketDropImpact(accounts, profile, drop));
+  const isaBridgeProgress = calculateIsaBridgeProgress(accounts, profile, withdrawals);
 
   return {
     points,
@@ -138,11 +120,9 @@ export function computeRetirement(
     progress,
     requiredContribution,
     retirementIncome,
-    confidenceScore,
     requiredBalanceNow,
     targetReachAge,
     coastFireInfo,
     isaBridgeProgress,
-    stressTests,
   };
 }

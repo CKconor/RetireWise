@@ -1,5 +1,6 @@
 import { AppState, Account, UserProfile, DrawdownConfig, NetWorthSnapshot, LumpSumWithdrawal, ProjectionBaseline, BaselineMonthPoint } from '@/types';
 import { calculateAgeFromBirthday } from '@/lib/calculations';
+import { getStatePensionAge, UK_FIGURES } from '@/lib/uk-figures';
 
 function migrateLegacyBaseline(raw: unknown): ProjectionBaseline | undefined {
   if (!raw || typeof raw !== 'object') return undefined;
@@ -79,6 +80,17 @@ function migrateLegacyBaseline(raw: unknown): ProjectionBaseline | undefined {
  * Migration: convert the old single-step-up fields (futureMonthlyContribution +
  * contributionStepUpAge) into the new contributionChanges array.
  */
+const OLD_DEFAULT_RETIREMENT_RETURN = 3;
+
+/** Fills new settings, and moves plans off the removed RMD strategy and the old return default. */
+export function migrateDrawdownConfig(raw: unknown): DrawdownConfig {
+  const config = { ...DEFAULT_DRAWDOWN_CONFIG, ...(raw as Partial<DrawdownConfig> | undefined) };
+  if (config.drawdownReturnRate === OLD_DEFAULT_RETIREMENT_RETURN) {
+    config.drawdownReturnRate = DEFAULT_DRAWDOWN_CONFIG.drawdownReturnRate;
+  }
+  return (config.strategy as string) === 'rmd' ? { ...config, strategy: 'percentage' } : config;
+}
+
 function migrateAccount(raw: unknown): Account {
   const a = raw as Account & { futureMonthlyContribution?: number; contributionStepUpAge?: number };
   if (a.contributionChanges == null && a.futureMonthlyContribution != null && a.contributionStepUpAge != null) {
@@ -104,22 +116,61 @@ const DEFAULT_PROFILE: UserProfile = {
   targetAmount: 1000000,
   expectedInflation: 2.5,
   annualSalary: 0,
-  statePensionAmount: 221.20, // 2024/25 full new State Pension weekly rate
-  statePensionAge: 67,
+  statePensionAmount: UK_FIGURES.fullStatePensionWeekly,
+  statePensionAge: getStatePensionAge(`${currentYear - 30}-01-01`),
   includeStatePension: true,
 };
+
+const OLD_DEFAULT_STATE_PENSION_WEEKLY = 221.2;
+const OLD_DEFAULT_STATE_PENSION_AGE = 67;
+
+/** Fills new fields and moves saved plans off old state pension defaults. */
+export function migrateProfile(raw: unknown): UserProfile {
+  const saved = (raw ?? {}) as Partial<UserProfile>;
+  const profile: UserProfile = { ...DEFAULT_PROFILE, ...saved };
+
+  // Migration: synthesize birthday from currentAge if missing
+  if (!saved.birthday) {
+    profile.birthday = `${currentYear - profile.currentAge}-01-01`;
+  }
+
+  // Always derive currentAge from birthday
+  profile.currentAge = calculateAgeFromBirthday(profile.birthday);
+
+  if (profile.statePensionAmount === OLD_DEFAULT_STATE_PENSION_WEEKLY) {
+    profile.statePensionAmount = UK_FIGURES.fullStatePensionWeekly;
+  }
+
+  if (profile.statePensionAgeOverridden === undefined && saved.statePensionAge !== undefined) {
+    profile.statePensionAgeOverridden = saved.statePensionAge !== OLD_DEFAULT_STATE_PENSION_AGE;
+  }
+  if (!profile.statePensionAgeOverridden) {
+    profile.statePensionAge = getStatePensionAge(profile.birthday);
+  }
+
+  return profile;
+}
+
+/** One change to the profile, keeping the fields that depend on it in step. */
+export function applyProfilePatch(profile: UserProfile, patch: Partial<UserProfile>): UserProfile {
+  const next = { ...profile, ...patch };
+  if (patch.birthday) next.currentAge = calculateAgeFromBirthday(patch.birthday);
+  if (patch.statePensionAge !== undefined) next.statePensionAgeOverridden = true;
+  if (!next.statePensionAgeOverridden) next.statePensionAge = getStatePensionAge(next.birthday);
+  return next;
+}
 
 export const DEFAULT_DRAWDOWN_CONFIG: DrawdownConfig = {
   strategy: 'percentage',
   fixedAnnualIncome: 40000,
   withdrawalRate: 4,
-  drawdownReturnRate: 3,
+  drawdownReturnRate: 2,
   accountOrder: [],
   planningHorizon: 90,
   taxModeling: true,
 };
 
-const DEFAULT_STATE: AppState = {
+export const DEFAULT_STATE: AppState = {
   profile: DEFAULT_PROFILE,
   accounts: [],
   drawdownConfig: DEFAULT_DRAWDOWN_CONFIG,
@@ -137,20 +188,10 @@ export function loadState(): AppState {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved) as AppState;
-      const profile = { ...DEFAULT_PROFILE, ...parsed.profile };
-
-      // Migration: synthesize birthday from currentAge if missing
-      if (!parsed.profile?.birthday) {
-        profile.birthday = `${currentYear - profile.currentAge}-01-01`;
-      }
-
-      // Always derive currentAge from birthday
-      profile.currentAge = calculateAgeFromBirthday(profile.birthday);
-
       return {
-        profile,
+        profile: migrateProfile(parsed.profile),
         accounts: (parsed.accounts || []).map(migrateAccount),
-        drawdownConfig: { ...DEFAULT_DRAWDOWN_CONFIG, ...parsed.drawdownConfig },
+        drawdownConfig: migrateDrawdownConfig(parsed.drawdownConfig),
         netWorthHistory: parsed.netWorthHistory || [],
         lumpSumWithdrawals: parsed.lumpSumWithdrawals || [],
         lumpSumsEnabled: parsed.lumpSumsEnabled ?? true,

@@ -8,51 +8,49 @@ import {
   AccountType,
   LumpSumWithdrawal,
 } from '@/types';
-import { calculateFutureValue, calculateAnnualStatePension, simulateAccountFinalBalance } from '@/lib/calculations';
-import { PRIVATE_PENSION_ACCESS_AGE } from '@/lib/constants';
+import { applyWithdrawalsToBalance, calculateAnnualStatePension, calculateRealReturn, simulateAccountAccumulation } from '@/lib/calculations';
+import { BASIC_RATE_BAND, PRIVATE_PENSION_ACCESS_AGE, UK_FIGURES } from '@/lib/uk-figures';
 
 // Default withdrawal order by account type priority
 const DEFAULT_TYPE_ORDER: AccountType[] = ['isa', 'gia', 'savings', 'sipp', 'pension'];
 
-// IRS Uniform Lifetime Table — life expectancy factors used for RMD calculation.
-// For ages below 73 (pre-RMD), we use the factor at 73 as a floor.
-const RMD_FACTORS: Record<number, number> = {
-  73: 26.5, 74: 25.5, 75: 24.6, 76: 23.7, 77: 22.9,
-  78: 22.0, 79: 21.1, 80: 20.2, 81: 19.4, 82: 18.5,
-  83: 17.7, 84: 16.8, 85: 16.0, 86: 15.2, 87: 14.4,
-  88: 13.7, 89: 12.9, 90: 12.2, 91: 11.5, 92: 10.8,
-  93: 10.1, 94: 9.5,  95: 8.9,  96: 8.4,  97: 7.8,
-  98: 7.3,  99: 6.8,  100: 6.4,
-};
+// Ignores rounding differences smaller than a penny
+const SHORTFALL_TOLERANCE = 0.005;
 
-function getRmdFactor(age: number): number {
-  if (age < 73) return RMD_FACTORS[73];
-  return RMD_FACTORS[Math.min(age, 100)] ?? 6.4;
+function getTaxableIncomeAfterAllowance(totalIncome: number): number {
+  const { personalAllowance, personalAllowanceTaperStart } = UK_FIGURES;
+  const allowanceReduction = Math.max(0, (totalIncome - personalAllowanceTaperStart) / 2);
+  const effectiveAllowance = Math.max(0, personalAllowance - allowanceReduction);
+  return Math.max(0, totalIncome - effectiveAllowance);
 }
-
-// UK tax constants
-const PERSONAL_ALLOWANCE = 12570;
-const BASIC_LIMIT = 50270;
-const HIGHER_LIMIT = 125140;
-const CGT_ALLOWANCE = 3000;
 
 /**
  * Calculate UK income tax on a given total income, applying personal allowance and tax bands.
  */
 function calculateIncomeTax(totalIncome: number): number {
-  const allowanceReduction = Math.max(0, (totalIncome - 100000) / 2);
-  const effectiveAllowance = Math.max(0, PERSONAL_ALLOWANCE - allowanceReduction);
-  if (totalIncome <= effectiveAllowance) return 0;
-  const taxable = totalIncome - effectiveAllowance;
-  const basicBand = BASIC_LIMIT - PERSONAL_ALLOWANCE;
-  const higherBand = HIGHER_LIMIT - BASIC_LIMIT;
+  const { additionalRateThreshold, basicRate, higherRate, additionalRate } = UK_FIGURES;
+  const taxable = getTaxableIncomeAfterAllowance(totalIncome);
 
-  if (taxable <= basicBand) {
-    return taxable * 0.2;
-  } else if (taxable <= basicBand + higherBand) {
-    return basicBand * 0.2 + (taxable - basicBand) * 0.4;
+  if (taxable <= BASIC_RATE_BAND) {
+    return taxable * basicRate;
   }
-  return basicBand * 0.2 + higherBand * 0.4 + (taxable - basicBand - higherBand) * 0.45;
+  if (taxable <= additionalRateThreshold) {
+    return BASIC_RATE_BAND * basicRate + (taxable - BASIC_RATE_BAND) * higherRate;
+  }
+  return (
+    BASIC_RATE_BAND * basicRate +
+    (additionalRateThreshold - BASIC_RATE_BAND) * higherRate +
+    (taxable - additionalRateThreshold) * additionalRate
+  );
+}
+
+/** Gains use up whatever basic rate band income has left, then pay the higher rate. */
+function calculateCapitalGainsTax(totalGains: number, taxableIncome: number): number {
+  const { capitalGainsAllowance, capitalGainsBasicRate, capitalGainsHigherRate } = UK_FIGURES;
+  const taxableGains = Math.max(0, totalGains - capitalGainsAllowance);
+  const unusedBasicBand = Math.max(0, BASIC_RATE_BAND - getTaxableIncomeAfterAllowance(taxableIncome));
+  const gainsAtBasicRate = Math.min(taxableGains, unusedBasicBand);
+  return gainsAtBasicRate * capitalGainsBasicRate + (taxableGains - gainsAtBasicRate) * capitalGainsHigherRate;
 }
 
 export interface WithdrawalTaxInput {
@@ -69,8 +67,8 @@ export interface WithdrawalTaxInput {
  * Calculate tax on withdrawals for a given year.
  * Properly allocates tax between state pension and portfolio withdrawals:
  * - ISA/savings withdrawals are completely tax-free
- * - Pension/SIPP withdrawals: 25% tax-free lump sum, rest taxed as income
- * - GIA withdrawals: CGT on gains only (annual allowance applied once across all GIAs)
+ * - Pension/SIPP withdrawals: 25% tax-free lump sum, up to the lump sum allowance across all pensions, rest taxed as income
+ * - GIA withdrawals: CGT on gains only (annual allowance applied once across all GIAs), at a rate set by income
  * - State pension uses personal allowance first; remaining allowance applies to pension withdrawals
  */
 export function calculateWithdrawalTax({
@@ -115,9 +113,11 @@ export function calculateWithdrawalTax({
       case 'pension': {
         // 25% tax-free lump sum, rest taxed as income
         const totalPot = accountRetirementBalances[accountId] ?? 0;
-        const taxFreeAllowance = totalPot * 0.25;
+        const taxFreeAllowance = totalPot * UK_FIGURES.pensionTaxFreeShare;
         const usedSoFar = newSippTaxFreeUsed[accountId] ?? 0;
-        const remainingTaxFree = Math.max(0, taxFreeAllowance - usedSoFar);
+        const usedAcrossPensions = Object.values(newSippTaxFreeUsed).reduce((sum, used) => sum + used, 0);
+        const remainingLumpSumAllowance = Math.max(0, UK_FIGURES.lumpSumAllowance - usedAcrossPensions);
+        const remainingTaxFree = Math.min(Math.max(0, taxFreeAllowance - usedSoFar), remainingLumpSumAllowance);
         const taxFreeFromThis = Math.min(withdrawal, remainingTaxFree);
         newSippTaxFreeUsed[accountId] = usedSoFar + taxFreeFromThis;
         const taxablePortion = withdrawal - taxFreeFromThis;
@@ -127,9 +127,8 @@ export function calculateWithdrawalTax({
     }
   }
 
-  // Apply CGT annual allowance once across all GIA gains
-  const taxableGains = Math.max(0, totalGiaGains - CGT_ALLOWANCE);
-  const totalCgt = taxableGains * 0.1;
+  // CGT annual allowance applies once across all GIA gains
+  const totalCgt = calculateCapitalGainsTax(totalGiaGains, taxableIncome);
 
   // Income tax on combined taxable income (state pension + pension/SIPP taxable portions)
   const totalIncomeTax = calculateIncomeTax(taxableIncome);
@@ -151,7 +150,7 @@ export function calculateWithdrawalTax({
  * Get ordered accounts for withdrawal based on config's accountOrder.
  * Falls back to default type-based order for any accounts not in the order list.
  */
-function getOrderedAccounts(accounts: Account[], accountOrder: string[]): Account[] {
+export function getOrderedAccounts(accounts: Account[], accountOrder: string[]): Account[] {
   const accountMap = new Map(accounts.map((a) => [a.id, a]));
   const ordered: Account[] = [];
   const seen = new Set<string>();
@@ -174,23 +173,74 @@ function getOrderedAccounts(accounts: Account[], accountOrder: string[]): Accoun
 }
 
 /**
- * Calculate total contributions made to an account from now until retirement.
+ * Simulate drawdown from retirement through planning horizon.
  */
-function calculateTotalContributed(account: Account, yearsToRetirement: number): number {
-  let total = account.currentBalance;
-  let monthlyContrib = account.monthlyContribution;
-  for (let year = 0; year < yearsToRetirement; year++) {
-    total += monthlyContrib * 12;
-    if (account.annualContributionIncrease > 0) {
-      monthlyContrib *= 1 + account.annualContributionIncrease / 100;
-    }
+/** Each account's projected balance at retirement and the money paid into it, in real terms. */
+export function projectRetirementPots(
+  accounts: Account[],
+  profile: UserProfile,
+  withdrawals: LumpSumWithdrawal[]
+): { balances: Record<string, number>; moneyPaidIn: Record<string, number> } {
+  const yearsToRetirement = Math.max(0, profile.retirementAge - profile.currentAge);
+  const balances: Record<string, number> = {};
+  const moneyPaidIn: Record<string, number> = {};
+  for (const account of accounts) {
+    const realReturn = calculateRealReturn(account.annualReturnRate, profile.expectedInflation);
+    const pot = simulateAccountAccumulation(account, yearsToRetirement, profile.currentAge, realReturn, withdrawals);
+    balances[account.id] = pot.balance;
+    moneyPaidIn[account.id] = pot.moneyPaidIn;
   }
-  return total;
+  return { balances, moneyPaidIn };
 }
 
 /**
- * Simulate drawdown from retirement through planning horizon.
+ * Takes `amount` out of the accounts for one year, reducing `balances` and returning
+ * what came from each account. With tax on and the pension accessible, it draws pensions
+ * up to the personal allowance first, then the configured order, then pensions again.
+ * Otherwise it follows the configured order, skipping any pension still locked.
  */
+export function drawFromAccounts(
+  orderedAccounts: Account[],
+  balances: Record<string, number>,
+  amount: number,
+  age: number,
+  statePensionThisYear: number,
+  taxModeling: boolean
+): Record<string, number> {
+  const drawn: Record<string, number> = {};
+  let remaining = amount;
+  const isPension = (account: Account) => account.type === 'sipp' || account.type === 'pension';
+
+  const drawFrom = (accounts: Account[], capFor: () => number = () => Infinity) => {
+    for (const account of accounts) {
+      if (remaining <= 0 || capFor() <= 0) break;
+      const balance = balances[account.id] ?? 0;
+      if (balance <= 0) continue;
+      const withdrawal = Math.min(remaining, balance, capFor());
+      drawn[account.id] = (drawn[account.id] ?? 0) + withdrawal;
+      balances[account.id] = balance - withdrawal;
+      remaining -= withdrawal;
+    }
+  };
+
+  const pensionAccessible = age >= PRIVATE_PENSION_ACCESS_AGE;
+  if (taxModeling && pensionAccessible) {
+    const pensions = orderedAccounts.filter(isPension);
+    const cap = Math.max(0, UK_FIGURES.personalAllowance - statePensionThisYear);
+    let drawnWithinCap = 0;
+    for (const account of pensions) {
+      const before = remaining;
+      drawFrom([account], () => cap - drawnWithinCap);
+      drawnWithinCap += before - remaining;
+    }
+    drawFrom(orderedAccounts.filter((account) => !isPension(account)));
+    drawFrom(pensions);
+  } else {
+    drawFrom(orderedAccounts.filter((account) => !isPension(account) || pensionAccessible));
+  }
+  return drawn;
+}
+
 export function simulateDrawdown(
   accounts: Account[],
   profile: UserProfile,
@@ -205,28 +255,20 @@ export function simulateDrawdown(
     return {
       years: [],
       depletionAge: null,
+      firstShortfallAge: null,
       totalNetIncomeGenerated: 0,
       totalTaxPaid: 0,
       accountDepletionAges: {},
     };
   }
 
-  // Calculate projected balances at retirement (real terms), applying lump sum withdrawals
-  const accountBalances: Record<string, number> = {};
-  const accountTotalContributed: Record<string, number> = {};
-  const accountRetirementBalances: Record<string, number> = {}; // Snapshot for tax calc reference
-
-  for (const account of accounts) {
-    const realReturn = Math.max(0, account.annualReturnRate - profile.expectedInflation);
-    const balance = simulateAccountFinalBalance(account, yearsToRetirement, profile.currentAge, realReturn, withdrawals);
-    accountBalances[account.id] = balance;
-    accountRetirementBalances[account.id] = balance;
-    accountTotalContributed[account.id] = calculateTotalContributed(account, yearsToRetirement);
-  }
+  // Projected balances at retirement (real terms), applying lump sum withdrawals
+  const { balances: accountRetirementBalances, moneyPaidIn: accountTotalContributed } = projectRetirementPots(accounts, profile, withdrawals);
+  const accountBalances: Record<string, number> = { ...accountRetirementBalances };
 
   const initialPortfolio = Object.values(accountBalances).reduce((sum, b) => sum + b, 0);
 
-  // Fixed withdrawal is constant; percentage and RMD recalculate each year inside the loop
+  // Fixed withdrawal is constant; percentage recalculates each year inside the loop
   let annualWithdrawal: number;
   if (config.strategy === 'fixed') {
     annualWithdrawal = config.fixedAnnualIncome;
@@ -239,10 +281,10 @@ export function simulateDrawdown(
     : 0;
 
   const orderedAccounts = getOrderedAccounts(accounts, config.accountOrder);
-  const SIPP_ACCESS_AGE = PRIVATE_PENSION_ACCESS_AGE;
 
   const years: DrawdownYearResult[] = [];
   let depletionAge: number | null = null;
+  let firstShortfallAge: number | null = null;
   let totalNetIncomeGenerated = 0;
   let totalTaxPaid = 0;
   const accountDepletionAges: Record<string, number | null> = {};
@@ -254,6 +296,14 @@ export function simulateDrawdown(
 
   for (let yearIndex = 0; yearIndex < retirementYears; yearIndex++) {
     const age = profile.retirementAge + yearIndex;
+
+    // Lump sums due at retirement are already in the starting balances, unless already retired
+    if (yearIndex > 0 || yearsToRetirement === 0) {
+      for (const account of accounts) {
+        accountBalances[account.id] = applyWithdrawalsToBalance(accountBalances[account.id] ?? 0, account.id, withdrawals, { kind: 'annual', age });
+      }
+    }
+
     const portfolioBalance = Object.values(accountBalances).reduce((sum, b) => sum + b, 0);
 
     // Check if portfolio already depleted
@@ -262,9 +312,7 @@ export function simulateDrawdown(
     }
 
     // Recalculate withdrawal each year for dynamic strategies
-    if (config.strategy === 'rmd') {
-      annualWithdrawal = portfolioBalance / getRmdFactor(age);
-    } else if (config.strategy === 'percentage') {
+    if (config.strategy === 'percentage') {
       annualWithdrawal = portfolioBalance * (config.withdrawalRate / 100);
     }
 
@@ -275,93 +323,29 @@ export function simulateDrawdown(
     const portfolioWithdrawalNeeded = Math.max(0, annualWithdrawal - statePensionThisYear);
 
     // Withdraw from accounts
-    let remainingToWithdraw = Math.min(portfolioWithdrawalNeeded, portfolioBalance);
-    const yearWithdrawals: Record<string, number> = {};
-
-    const isPensionAccessible = age >= SIPP_ACCESS_AGE;
-    const isPensionType = (t: AccountType) => t === 'sipp' || t === 'pension';
-
-    if (config.taxModeling && isPensionAccessible) {
-      // Tax-efficient strategy: withdraw from pension/SIPP only up to the
-      // remaining personal allowance (after state pension), so taxable pension
-      // income stays within the PA and incurs zero tax. The 25% tax-free lump
-      // sum is applied automatically in the tax calculation. The rest comes
-      // from the highest priority account (ISA, etc.).
-      const remainingPA = Math.max(0, PERSONAL_ALLOWANCE - statePensionThisYear);
-      const taxEfficientCap = remainingPA;
-
-      // First pass: withdraw from pension/SIPP up to the tax-efficient cap
-      let pensionWithdrawn = 0;
-      for (const account of orderedAccounts) {
-        if (remainingToWithdraw <= 0 || pensionWithdrawn >= taxEfficientCap) break;
-        if (!isPensionType(account.type)) continue;
-        const balance = accountBalances[account.id] ?? 0;
-        if (balance <= 0) continue;
-
-        const withdrawal = Math.min(remainingToWithdraw, balance, taxEfficientCap - pensionWithdrawn);
-        yearWithdrawals[account.id] = withdrawal;
-        accountBalances[account.id] = balance - withdrawal;
-        remainingToWithdraw -= withdrawal;
-        pensionWithdrawn += withdrawal;
-
-        if (accountBalances[account.id] <= 0 && accountDepletionAges[account.id] === null) {
-          accountDepletionAges[account.id] = age;
-        }
-      }
-
-      // Second pass: withdraw remainder from non-pension accounts in configured order
-      for (const account of orderedAccounts) {
-        if (remainingToWithdraw <= 0) break;
-        if (isPensionType(account.type)) continue;
-        const balance = accountBalances[account.id] ?? 0;
-        if (balance <= 0) continue;
-
-        const withdrawal = Math.min(remainingToWithdraw, balance);
-        yearWithdrawals[account.id] = withdrawal;
-        accountBalances[account.id] = balance - withdrawal;
-        remainingToWithdraw -= withdrawal;
-
-        if (accountBalances[account.id] <= 0 && accountDepletionAges[account.id] === null) {
-          accountDepletionAges[account.id] = age;
-        }
-      }
-
-      // Third pass: if still short, draw beyond the cap from pension (taxed but necessary)
-      for (const account of orderedAccounts) {
-        if (remainingToWithdraw <= 0) break;
-        if (!isPensionType(account.type)) continue;
-        const balance = accountBalances[account.id] ?? 0;
-        if (balance <= 0) continue;
-
-        const withdrawal = Math.min(remainingToWithdraw, balance);
-        yearWithdrawals[account.id] = (yearWithdrawals[account.id] ?? 0) + withdrawal;
-        accountBalances[account.id] = balance - withdrawal;
-        remainingToWithdraw -= withdrawal;
-
-        if (accountBalances[account.id] <= 0 && accountDepletionAges[account.id] === null) {
-          accountDepletionAges[account.id] = age;
-        }
-      }
-    } else {
-      // Standard withdrawal: follow configured account order
-      for (const account of orderedAccounts) {
-        if (remainingToWithdraw <= 0) break;
-        const balance = accountBalances[account.id] ?? 0;
-        if (balance <= 0) continue;
-        if (isPensionType(account.type) && !isPensionAccessible) continue;
-
-        const withdrawal = Math.min(remainingToWithdraw, balance);
-        yearWithdrawals[account.id] = withdrawal;
-        accountBalances[account.id] = balance - withdrawal;
-        remainingToWithdraw -= withdrawal;
-
-        if (accountBalances[account.id] <= 0 && accountDepletionAges[account.id] === null) {
-          accountDepletionAges[account.id] = age;
-        }
+    const yearWithdrawals = drawFromAccounts(
+      orderedAccounts,
+      accountBalances,
+      Math.min(portfolioWithdrawalNeeded, portfolioBalance),
+      age,
+      statePensionThisYear,
+      config.taxModeling
+    );
+    for (const accountId of Object.keys(yearWithdrawals)) {
+      if (accountBalances[accountId] <= 0 && accountDepletionAges[accountId] === null) {
+        accountDepletionAges[accountId] = age;
       }
     }
 
     const grossWithdrawal = Object.values(yearWithdrawals).reduce((sum, w) => sum + w, 0);
+
+    const unpaid = portfolioWithdrawalNeeded - grossWithdrawal;
+    const shortfall = unpaid > SHORTFALL_TOLERANCE ? unpaid : 0;
+    if (shortfall > 0) {
+      firstShortfallAge ??= age;
+      const moneyLeft = Object.values(accountBalances).reduce((sum, b) => sum + b, 0);
+      if (moneyLeft <= 0) depletionAge ??= age;
+    }
 
     // Calculate tax — properly allocates between state pension and withdrawals
     const { totalTax, withdrawalTax, updatedSippTaxFreeUsed } = calculateWithdrawalTax({
@@ -404,12 +388,14 @@ export function simulateDrawdown(
       portfolioBalance: Math.max(0, endPortfolioBalance),
       accountBalances: { ...accountBalances },
       accountWithdrawals: yearWithdrawals,
+      shortfall,
     });
   }
 
   return {
     years,
     depletionAge,
+    firstShortfallAge,
     totalNetIncomeGenerated,
     totalTaxPaid,
     accountDepletionAges,
@@ -438,18 +424,20 @@ export function runMonteCarloSimulation(
 ): MonteCarloResult {
   const retirementYears = Math.max(0, config.planningHorizon - profile.retirementAge);
   if (accounts.length === 0 || retirementYears <= 0)
-    return { years: [], successRate: 0, medianDepletionAge: null, numSimulations };
+    return { years: [], successRate: 0, lowestYearlyIncome: 0, medianDepletionAge: null, numSimulations };
 
   const balancesByYear: number[][] = Array.from({ length: retirementYears }, () => []);
   let successCount = 0;
   const depletionAges: number[] = [];
+  const lowestIncomes: number[] = [];
 
   for (let i = 0; i < numSimulations; i++) {
     const result = simulateDrawdown(accounts, profile, config,
       () => normalRandom(config.drawdownReturnRate, volatility), withdrawals);
     result.years.forEach((yr, idx) => balancesByYear[idx].push(yr.portfolioBalance));
-    if (result.depletionAge === null) successCount++;
-    else depletionAges.push(result.depletionAge);
+    lowestIncomes.push(Math.min(...result.years.map((yr) => yr.totalNetIncome)));
+    if (result.firstShortfallAge === null) successCount++;
+    if (result.depletionAge !== null) depletionAges.push(result.depletionAge);
   }
 
   const years = balancesByYear.map((balances, idx) => {
@@ -468,6 +456,7 @@ export function runMonteCarloSimulation(
   return {
     years,
     successRate: (successCount / numSimulations) * 100,
+    lowestYearlyIncome: percentile([...lowestIncomes].sort((a, b) => a - b), 10),
     medianDepletionAge: sortedDA.length ? sortedDA[Math.floor(sortedDA.length / 2)] : null,
     numSimulations,
   };

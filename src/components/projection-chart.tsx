@@ -81,8 +81,8 @@ export function ProjectionChart({ accounts, profile, lumpSumWithdrawals = [], pa
   }
 
   const displayOptions = [
-    { label: 'High range (P75–P90)', checked: showOptimistic, onChange: setShowOptimistic },
-    { label: 'Low range (P10–P25)', checked: showConservative, onChange: setShowConservative },
+    { label: 'Returns 2–4 points higher', checked: showOptimistic, onChange: setShowOptimistic },
+    { label: 'Returns 2–4 points lower', checked: showConservative, onChange: setShowConservative },
     { label: 'Coast FIRE', checked: showCoastFire, onChange: setShowCoastFire },
   ];
 
@@ -154,11 +154,11 @@ export function ProjectionChart({ accounts, profile, lumpSumWithdrawals = [], pa
 
                 return (
                   <ChartTooltipCard title={`Age ${label}`}>
-                    {showOptimistic && <ChartTooltipRow muted label="P90, optimistic" value={formatCurrency(dataPoint?.p90Real)} />}
-                    {showOptimistic && <ChartTooltipRow muted label="P75" value={formatCurrency(dataPoint?.overperformanceReal)} />}
-                    <ChartTooltipRow label="P50, base" value={formatCurrency(dataPoint?.totalReal)} color={CHART_COLORS.strong} />
-                    {showConservative && <ChartTooltipRow muted label="P25" value={formatCurrency(dataPoint?.underperformanceReal)} />}
-                    {showConservative && <ChartTooltipRow muted label="P10, conservative" value={formatCurrency(dataPoint?.p10Real)} />}
+                    {showOptimistic && <ChartTooltipRow muted label="Returns 4 points higher" value={formatCurrency(dataPoint?.p90Real)} />}
+                    {showOptimistic && <ChartTooltipRow muted label="Returns 2 points higher" value={formatCurrency(dataPoint?.overperformanceReal)} />}
+                    <ChartTooltipRow label="Expected returns" value={formatCurrency(dataPoint?.totalReal)} color={CHART_COLORS.strong} />
+                    {showConservative && <ChartTooltipRow muted label="Returns 2 points lower" value={formatCurrency(dataPoint?.underperformanceReal)} />}
+                    {showConservative && <ChartTooltipRow muted label="Returns 4 points lower" value={formatCurrency(dataPoint?.p10Real)} />}
                     {hasPaused && noContrib !== undefined && (
                       <ChartTooltipRow label="With contributions" value={formatCurrency(noContrib ?? 0)} color={CHART_COLORS.secondary} dashed />
                     )}
@@ -192,26 +192,26 @@ export function ProjectionChart({ accounts, profile, lumpSumWithdrawals = [], pa
                 label={chartLineLabel('Coast FIRE', { width: 70, y: 48 })}
               />
             )}
-            {/* Outer band P10→P90 */}
+            {/* Outer band: returns 4 points either side */}
             {showOptimistic && showConservative && (
               <>
                 <Area isAnimationActive={false} stackId="outer" dataKey="outerBase" fill="transparent" stroke="none" legendType="none" />
-                <Area isAnimationActive={false} stackId="outer" dataKey="outerRange" fill={CHART_COLORS.strong} fillOpacity={0.1} stroke="none" name="P10–P90 range" legendType="rect" />
+                <Area isAnimationActive={false} stackId="outer" dataKey="outerRange" fill={CHART_COLORS.strong} fillOpacity={0.1} stroke="none" name="Returns 4 points either side" legendType="rect" />
               </>
             )}
-            {/* Inner band P25→P75 */}
+            {/* Inner band: returns 2 points either side */}
             {showOptimistic && showConservative && (
               <>
                 <Area isAnimationActive={false} stackId="inner" dataKey="innerBase" fill="transparent" stroke="none" legendType="none" />
-                <Area isAnimationActive={false} stackId="inner" dataKey="innerRange" fill={CHART_COLORS.strong} fillOpacity={0.18} stroke="none" name="P25–P75 range" legendType="rect" />
+                <Area isAnimationActive={false} stackId="inner" dataKey="innerRange" fill={CHART_COLORS.strong} fillOpacity={0.18} stroke="none" name="Returns 2 points either side" legendType="rect" />
               </>
             )}
             {/* Individual scenario lines when only one band side is shown */}
             {showOptimistic && !showConservative && (
-              <Line isAnimationActive={false} dataKey="p90Real" stroke={CHART_COLORS.secondary} strokeWidth={1.5} strokeDasharray="4 2" dot={false} name="P90, optimistic" />
+              <Line isAnimationActive={false} dataKey="p90Real" stroke={CHART_COLORS.secondary} strokeWidth={1.5} strokeDasharray="4 2" dot={false} name="Returns 4 points higher" />
             )}
             {!showOptimistic && showConservative && (
-              <Line isAnimationActive={false} dataKey="p10Real" stroke={CHART_COLORS.secondary} strokeWidth={1.5} strokeDasharray="4 2" dot={false} name="P10, conservative" />
+              <Line isAnimationActive={false} dataKey="p10Real" stroke={CHART_COLORS.secondary} strokeWidth={1.5} strokeDasharray="4 2" dot={false} name="Returns 4 points lower" />
             )}
             {/* P50 base line */}
             <Line isAnimationActive={false} dataKey="totalReal" stroke={CHART_COLORS.strong} strokeWidth={2} dot={false} name="P50, base" />

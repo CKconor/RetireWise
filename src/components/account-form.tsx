@@ -13,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FormField } from '@/components/ui/form-field';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -39,6 +40,8 @@ export function AccountForm({ open, onOpenChange, account, profile, onSave }: Ac
   const [monthlyContribution, setMonthlyContribution] = useState('');
   const [annualReturnRate, setAnnualReturnRate] = useState('');
   const [annualContributionIncrease, setAnnualContributionIncrease] = useState('0');
+  const [isEmergencyCash, setIsEmergencyCash] = useState(false);
+  const [allowContributionCut, setAllowContributionCut] = useState(false);
   const [contributionChangeRows, setContributionChangeRows] = useState<
     { id: string; age: string; monthlyContribution: string }[]
   >([]);
@@ -52,6 +55,8 @@ export function AccountForm({ open, onOpenChange, account, profile, onSave }: Ac
         setMonthlyContribution(String(account.monthlyContribution));
         setAnnualReturnRate(String(account.annualReturnRate));
         setAnnualContributionIncrease(String(account.annualContributionIncrease ?? 0));
+        setIsEmergencyCash(account.isEmergencyCash ?? false);
+        setAllowContributionCut(account.allowContributionCut ?? false);
         setContributionChangeRows(
           (account.contributionChanges ?? []).map((c) => ({
             id: c.id,
@@ -121,6 +126,8 @@ export function AccountForm({ open, onOpenChange, account, profile, onSave }: Ac
       annualReturnRate: parseFloat(annualReturnRate) || 0,
       annualContributionIncrease: parseFloat(annualContributionIncrease) || 0,
       contributionChanges: contributionChanges.length > 0 ? contributionChanges : undefined,
+      isEmergencyCash: type === 'savings' && isEmergencyCash ? true : undefined,
+      allowContributionCut: type === 'pension' && allowContributionCut ? true : undefined,
     });
     onOpenChange(false);
   };
@@ -276,6 +283,26 @@ export function AccountForm({ open, onOpenChange, account, profile, onSave }: Ac
               onChange={(e) => setAnnualReturnRate(e.target.value)}
             />
           </FormField>
+
+          {type === 'savings' && (
+            <div className="space-y-1">
+              <label htmlFor="isEmergencyCash" className="flex cursor-pointer items-center gap-2 text-sm text-ink-12">
+                <Checkbox id="isEmergencyCash" checked={isEmergencyCash} onCheckedChange={(checked) => setIsEmergencyCash(checked === true)} />
+                This is Emergency cash
+              </label>
+              <p className="text-xs text-ink-10">Counts towards net worth, but not your retirement pot or Verdict.</p>
+            </div>
+          )}
+
+          {type === 'pension' && (
+            <div className="space-y-1">
+              <label htmlFor="allowContributionCut" className="flex cursor-pointer items-center gap-2 text-sm text-ink-12">
+                <Checkbox id="allowContributionCut" checked={allowContributionCut} onCheckedChange={(checked) => setAllowContributionCut(checked === true)} />
+                Over-saving can suggest cutting this
+              </label>
+              <p className="text-xs text-ink-10">Leave this off if the account gets employer money you could lose.</p>
+            </div>
+          )}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

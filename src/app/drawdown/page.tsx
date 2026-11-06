@@ -11,10 +11,10 @@ import { DrawdownYearTable } from '@/components/drawdown/drawdown-year-table';
 import { MonteCarloChart } from '@/components/drawdown/monte-carlo-chart';
 import { AnnuityEstimator } from '@/components/drawdown/annuity-estimator';
 import { simulateDrawdown, runMonteCarloSimulation } from '@/lib/drawdown';
-import { simulateAccountFinalBalance } from '@/lib/calculations';
+import { calculateRealReturn, simulateAccountFinalBalance } from '@/lib/calculations';
 
 export default function DrawdownPage() {
-  const { profile, accounts, drawdownConfig, effectiveLumpSumWithdrawals: lumpSumWithdrawals, isLoaded } = useRetirementState();
+  const { profile, retirementAccounts: accounts, drawdownConfig, effectiveLumpSumWithdrawals: lumpSumWithdrawals, isLoaded } = useRetirementState();
   const { drawdown } = useRetirementMutations();
 
   const [mcNumSimulations, setMcNumSimulations] = useState(1000);
@@ -25,7 +25,7 @@ export default function DrawdownPage() {
     const yearsToRetirement = Math.max(0, profile.retirementAge - profile.currentAge);
     const balances: Record<string, number> = {};
     for (const account of accounts) {
-      const realReturn = Math.max(0, account.annualReturnRate - profile.expectedInflation);
+      const realReturn = calculateRealReturn(account.annualReturnRate, profile.expectedInflation);
       balances[account.id] = simulateAccountFinalBalance(account, yearsToRetirement, profile.currentAge, realReturn, lumpSumWithdrawals);
     }
     return balances;
@@ -87,6 +87,7 @@ export default function DrawdownPage() {
           <MonteCarloChart
             mcResult={mcResult}
             deterministicResult={simulation}
+            canRunOut={drawdownConfig.strategy === 'fixed'}
             numSimulations={mcNumSimulations}
             volatility={mcVolatility}
             isLoading={mcLoading}
