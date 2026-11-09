@@ -17,12 +17,13 @@ export function StatsCards({ profile }: StatsCardsProps) {
     : null;
 
   return (
-    <div className="grid gap-4 md:grid-cols-3">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <StatCard label="Portfolio today" value={formatCurrency(totalBalance)} />
+      <StatCard label="Saved each month" value={formatCurrency(monthlyContributions)} />
       <StatCard
-        label="Saved each month"
-        value={formatCurrency(monthlyContributions)}
-        subValue={savingsRate !== null ? `${savingsRate}% of salary` : undefined}
+        label="Of salary saved"
+        value={savingsRate !== null ? `${savingsRate}%` : '–'}
+        subValue={savingsRate !== null ? undefined : 'Add your salary in Your details to see this'}
       />
       <StatCard label={profile.targetIsEnough ? 'Lifestyle Enough' : 'Retirement target'} value={formatCurrency(profile.targetAmount)} />
     </div>
